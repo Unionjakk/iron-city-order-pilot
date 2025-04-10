@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDate } from '@/components/shopify/utils/dateUtils';
 
 type PinnacleStatsCardProps = {
   stockCount: number | null;
@@ -11,6 +12,9 @@ type PinnacleStatsCardProps = {
 };
 
 const PinnacleStatsCard = ({ stockCount, lastUpload, isLoading }: PinnacleStatsCardProps) => {
+  // Format the upload date for better display if available
+  const formattedDate = lastUpload ? formatDate(lastUpload) : 'None';
+  
   return (
     <div className="mt-8 p-4 bg-zinc-800/60 rounded-lg border border-zinc-700">
       <h3 className="font-medium text-orange-400 mb-2">Current Data Status</h3>
@@ -23,12 +27,12 @@ const PinnacleStatsCard = ({ stockCount, lastUpload, isLoading }: PinnacleStatsC
           <div>
             <span className="text-zinc-400 text-sm">Stock Items:</span>
             <span className="ml-2 text-zinc-200 font-semibold">
-              {stockCount !== null ? stockCount.toLocaleString() : 'None'}
+              {stockCount !== null && stockCount > 0 ? stockCount.toLocaleString() : 'None'}
             </span>
           </div>
           <div>
             <span className="text-zinc-400 text-sm">Last Upload:</span>
-            <span className="ml-2 text-zinc-200 font-semibold">{lastUpload || 'None'}</span>
+            <span className="ml-2 text-zinc-200 font-semibold">{formattedDate}</span>
           </div>
         </div>
       )}

@@ -14,40 +14,30 @@ const PinnacleUpload = () => {
   const fetchStockStats = async () => {
     try {
       setIsLoading(true);
-      // Get count of stock items using execute_sql function
+      
+      // First, get count of stock items
       const { data: countData, error: countError } = await supabase
-        .rpc('execute_sql', { sql: 'SELECT COUNT(*) as count FROM pinnacle_stock' });
+        .from('pinnacle_stock')
+        .select('id', { count: 'exact', head: true });
       
-      if (countError) throw countError;
-      
-      // Safely extract count value with proper type checking
-      if (countData && Array.isArray(countData) && countData.length > 0) {
-        // The count will be in the first object of the array, in a property named 'count'
-        const countObj = countData[0] as Record<string, any>;
-        const countValue = countObj?.count;
-        
-        // Convert to number if it's a string
-        setStockCount(typeof countValue === 'number' ? countValue : parseInt(String(countValue)) || 0);
+      if (countError) {
+        console.error('Error fetching stock count:', countError);
       } else {
-        setStockCount(0);
+        // Get the count from the response
+        setStockCount(countData?.length !== undefined ? countData.length : null);
       }
       
-      // Get most recent upload using execute_sql function
-      const { data: uploadHistory, error: historyError } = await supabase
-        .rpc('execute_sql', { 
-          sql: 'SELECT upload_timestamp FROM pinnacle_upload_history ORDER BY upload_timestamp DESC LIMIT 1' 
-        });
+      // Then, get most recent upload timestamp
+      const { data: uploadData, error: uploadError } = await supabase
+        .from('pinnacle_upload_history')
+        .select('upload_timestamp')
+        .order('upload_timestamp', { ascending: false })
+        .limit(1);
       
-      if (historyError) throw historyError;
-      
-      // Safely extract timestamp with proper type checking
-      if (uploadHistory && Array.isArray(uploadHistory) && uploadHistory.length > 0) {
-        const historyObj = uploadHistory[0] as Record<string, any>;
-        const timestamp = historyObj?.upload_timestamp;
-        
-        if (timestamp) {
-          setLastUpload(new Date(String(timestamp)).toLocaleString());
-        }
+      if (uploadError) {
+        console.error('Error fetching last upload:', uploadError);
+      } else if (uploadData && uploadData.length > 0) {
+        setLastUpload(uploadData[0].upload_timestamp);
       }
     } catch (error) {
       console.error('Error fetching stock stats:', error);
