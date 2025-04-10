@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ShopifyOrder } from '@/components/shopify/OrdersTable';
@@ -11,7 +12,7 @@ export const useShopifyOrders = () => {
   const [autoImportEnabled, setAutoImportEnabled] = useState(false);
   const { toast } = useToast();
 
-  // Check if a column exists in a table
+  // Check if a column exists in a table using RPC
   const checkColumnExists = async (tableName: string, columnName: string): Promise<boolean> => {
     try {
       // Check if we have cached the column existence result
@@ -43,23 +44,26 @@ export const useShopifyOrders = () => {
         
         // Fallback: try to manually check using a select query
         try {
-          // Try to query the table with a limit of 1 row
-          const { data: tableData, error: tableError } = await supabase
-            .from(tableName)
-            .select('*')
-            .limit(1);
+          // Use a dynamic query approach that's type-safe
+          const query = `SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = '${tableName}'
+              AND column_name = '${columnName}'
+          ) as exists`;
           
-          if (tableError) {
-            console.error('Error with fallback query:', tableError);
+          const { data: fallbackData, error: fallbackError } = await supabase.rpc('execute_sql', {
+            sql: query
+          });
+          
+          if (fallbackError) {
+            console.error('Error with fallback query:', fallbackError);
             return false;
           }
           
-          // If we got a row, check if the column exists in the first row
-          if (tableData && tableData.length > 0) {
-            return columnName in tableData[0];
-          }
-          
-          return false;
+          const exists = fallbackData && fallbackData[0] && fallbackData[0].exists;
+          return !!exists;
         } catch (error) {
           console.error('Exception with fallback query:', error);
           return false;
