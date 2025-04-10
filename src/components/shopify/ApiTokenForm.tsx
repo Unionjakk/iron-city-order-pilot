@@ -40,71 +40,80 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
     return token.substring(0, 4) + '********' + token.substring(token.length - 4);
   };
 
-  // Check for token in localStorage on mount
-  useEffect(() => {
-    // Force immediate check for token
-    const checkForToken = () => {
-      try {
-        const storedToken = localStorage.getItem('shopify_token');
-        console.log('ApiTokenForm - checking for token, found:', !!storedToken);
-        if (storedToken) {
-          setHasToken(true);
-          setMaskedToken(maskToken(storedToken));
-        } else {
-          setHasToken(false);
-          setMaskedToken('');
-        }
-      } catch (error) {
-        console.error('Error accessing localStorage:', error);
+  // Improved token detection function
+  const detectToken = () => {
+    try {
+      const storedToken = localStorage.getItem('shopify_token');
+      console.log('ApiTokenForm - detecting token:', !!storedToken);
+      
+      if (storedToken) {
+        // Token found - update state
+        setHasToken(true);
+        setMaskedToken(maskToken(storedToken));
+      } else {
+        // No token found - clear state
+        setHasToken(false);
+        setMaskedToken('');
       }
-    };
+    } catch (error) {
+      console.error('Error accessing localStorage:', error);
+    }
+  };
+
+  // Check for token in localStorage on mount with improved reliability
+  useEffect(() => {
+    // Immediate check
+    detectToken();
     
-    checkForToken();
-    
-    // Also set up a small delay to check again in case the parent component is still initializing
-    const timeoutId = setTimeout(checkForToken, 500);
+    // Retry after a short delay in case the parent component is still initializing
+    const timeoutId = setTimeout(detectToken, 500);
     
     return () => clearTimeout(timeoutId);
   }, [setHasToken, setMaskedToken]);
 
-  // Handle form submission
+  // Handle form submission with improved error handling
   const onSubmit = (data: ApiTokenForm) => {
     setIsLoading(true);
     
-    // Simulate API call to validate token
-    setTimeout(() => {
-      try {
-        // In a real app, you would verify the token with Shopify here
-        localStorage.setItem('shopify_token', data.apiToken);
-        console.log('Token saved to localStorage');
-        
-        // Update the UI
-        setMaskedToken(maskToken(data.apiToken));
-        setHasToken(true);
-        
-        toast({
-          title: "API Token Saved",
-          description: "Your Shopify API token has been securely saved.",
-          variant: "default",
-        });
-      } catch (error) {
-        console.error('Error saving token:', error);
-        toast({
-          title: "Error Saving Token",
-          description: "There was a problem saving your API token.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-        form.reset();
-      }
-    }, 1000);
+    try {
+      // Save token to localStorage
+      localStorage.setItem('shopify_token', data.apiToken);
+      console.log('Token saved to localStorage');
+      
+      // Trigger a custom event to notify other components
+      window.dispatchEvent(new Event('shopify_token_updated'));
+      
+      // Update UI
+      setMaskedToken(maskToken(data.apiToken));
+      setHasToken(true);
+      
+      toast({
+        title: "API Token Saved",
+        description: "Your Shopify API token has been securely saved.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error saving token:', error);
+      toast({
+        title: "Error Saving Token",
+        description: "There was a problem saving your API token.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      form.reset();
+    }
   };
 
-  // Handle token removal
+  // Handle token removal with improved error handling
   const handleRemoveToken = () => {
     try {
       localStorage.removeItem('shopify_token');
+      console.log('Token removed from localStorage');
+      
+      // Trigger a custom event to notify other components
+      window.dispatchEvent(new Event('shopify_token_updated'));
+      
       setHasToken(false);
       setMaskedToken('');
       

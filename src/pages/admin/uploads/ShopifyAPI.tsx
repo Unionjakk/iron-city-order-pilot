@@ -20,11 +20,12 @@ const ShopifyAPI = () => {
     return token.substring(0, 4) + '********' + token.substring(token.length - 4);
   };
 
-  // Check for existing token on component mount
-  useEffect(() => {
+  // Check for existing token with more robust detection
+  const checkForToken = () => {
     try {
       const token = localStorage.getItem('shopify_token');
-      console.log('ShopifyAPI - checking for token, found:', !!token);
+      console.log('ShopifyAPI - checking for token:', !!token);
+      
       if (token) {
         setHasToken(true);
         setMaskedToken(maskToken(token));
@@ -35,6 +36,28 @@ const ShopifyAPI = () => {
     } catch (error) {
       console.error('Error accessing localStorage:', error);
     }
+  };
+
+  // Initial check on component mount
+  useEffect(() => {
+    checkForToken();
+    
+    // Set up a retry mechanism in case the first check fails
+    const timeoutId = setTimeout(checkForToken, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  // Create a listener for storage events to detect token changes
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'shopify_token') {
+        checkForToken();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   return (
