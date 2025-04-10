@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ShoppingCart, RefreshCw, CheckCircle, AlertCircle, Key, Clock, Shield, Info } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define the form schema
 const apiTokenSchema = z.object({
@@ -46,24 +47,57 @@ const ShopifyAPI = () => {
     },
   });
 
-  // Check for existing token on component mount (in a real app, this would check local storage or a backend API)
+  // Check for existing token on component mount and fetch recent orders
   useEffect(() => {
-    // This is a simulation - in a real app, you'd check if the token exists in secure storage
     const checkExistingToken = () => {
-      // Simulating an existing token check
       const hasExistingToken = localStorage.getItem('shopify_token') !== null;
       
       if (hasExistingToken) {
-        // Create a masked version of the token for display
         const token = localStorage.getItem('shopify_token') || '';
         const masked = maskToken(token);
         setMaskedToken(masked);
         setHasToken(true);
+        
+        // Fetch recent orders
+        fetchRecentOrders();
       }
     };
     
     checkExistingToken();
   }, []);
+
+  // Function to fetch recent orders from Supabase
+  const fetchRecentOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('shopify_orders')
+        .select('id, shopify_order_id, created_at, customer_name, items_count, status')
+        .order('imported_at', { ascending: false })
+        .limit(10);
+      
+      if (error) {
+        console.error('Error fetching orders:', error);
+        return;
+      }
+      
+      if (data) {
+        setImportedOrders(data);
+        
+        // Set last import time if we have orders
+        if (data.length > 0) {
+          const latestOrder = data.reduce((latest, order) => {
+            return new Date(latest.imported_at || 0) > new Date(order.imported_at || 0) 
+              ? latest 
+              : order;
+          }, data[0]);
+          
+          setLastImport(latestOrder.imported_at || null);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
 
   // Function to mask the token for display
   const maskToken = (token: string) => {
@@ -78,7 +112,6 @@ const ShopifyAPI = () => {
     // Simulate API call to validate token
     setTimeout(() => {
       // In a real app, you would verify the token with Shopify here
-      // For now, we'll just save it to localStorage for demonstration
       localStorage.setItem('shopify_token', data.apiToken);
       
       // Update the UI
@@ -110,20 +143,68 @@ const ShopifyAPI = () => {
   };
 
   // Handle manual import
-  const handleManualImport = () => {
+  const handleManualImport = async () => {
     setIsImporting(true);
     
-    // Simulate import process
-    setTimeout(() => {
-      setIsImporting(false);
-      setLastImport(new Date().toISOString());
+    try {
+      const token = localStorage.getItem('shopify_token');
+      
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "No API token found. Please add your Shopify API token first.",
+          variant: "destructive",
+        });
+        setIsImporting(false);
+        return;
+      }
+      
+      // In a production app, this would be a secure API call to your backend
+      // which would then call the Shopify API with the token
+      // For demo purposes, we'll simulate a successful import
+      
+      // In reality, you would call an edge function or API route like:
+      /*
+      const response = await fetch('/api/import-shopify-orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to import orders');
+      }
+      
+      const data = await response.json();
+      */
+      
+      // Simulate a successful import after a delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Fetch the updated orders
+      await fetchRecentOrders();
+      
+      // Set the last import time
+      const nowTime = new Date().toISOString();
+      setLastImport(nowTime);
       
       toast({
         title: "Import Completed",
         description: "Successfully imported orders from Shopify.",
         variant: "default",
       });
-    }, 2000);
+    } catch (error) {
+      console.error('Error importing orders:', error);
+      toast({
+        title: "Import Failed",
+        description: "Failed to import orders. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   // Function to render status badge
