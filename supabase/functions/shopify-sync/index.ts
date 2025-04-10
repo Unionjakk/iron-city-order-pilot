@@ -201,7 +201,7 @@ function transformShopifyOrder(order: any) {
       tags: order.tags,
       order_number: order.order_number,
     },
-    status: 'imported',
+    status: 'unfulfilled', // Explicitly mark as unfulfilled
     imported_at: new Date().toISOString(),
   };
 }
@@ -295,10 +295,13 @@ async function archiveFulfilledOrders(apiToken: string) {
           const order = data.order;
           
           // If order is fulfilled or no longer unfulfilled, archive it
-          if (order && (order.fulfillment_status === 'fulfilled' || order.status !== 'unfulfilled')) {
-            console.log(`Archiving order ${orderId} as it's now ${order.fulfillment_status || order.status}`);
+          // IMPORTANT: Double check that the order is ACTUALLY fulfilled
+          if (order && order.fulfillment_status === 'fulfilled') {
+            console.log(`Archiving order ${orderId} as it's now fulfilled`);
             await archiveOrder(orderId);
             archivedCount++;
+          } else {
+            console.log(`Order ${orderId} status is ${order?.fulfillment_status || 'unknown'}, not archiving`);
           }
         } catch (error) {
           console.error(`Error checking order ${orderId}:`, error);
@@ -340,6 +343,12 @@ async function archiveOrder(shopifyOrderId: string) {
     
     if (!orderData) {
       console.log(`Order ${shopifyOrderId} not found for archiving`);
+      return false;
+    }
+    
+    // CRITICAL CHECK: Don't archive unfulfilled orders
+    if (orderData.status === 'unfulfilled') {
+      console.log(`Order ${shopifyOrderId} is marked as unfulfilled, NOT archiving it`);
       return false;
     }
     
@@ -426,6 +435,148 @@ async function archiveOrder(shopifyOrderId: string) {
   }
 }
 
+// Check and restore orders that are still unfulfilled but archived
+async function restoreUnfulfilledArchivedOrders(shopifyOrderIds: string[]) {
+  console.log(`Checking if any of ${shopifyOrderIds.length} incoming orders are incorrectly archived...`);
+  
+  if (!shopifyOrderIds || shopifyOrderIds.length === 0) {
+    return { restored: 0 };
+  }
+  
+  try {
+    let restoredCount = 0;
+    
+    // Process in chunks to avoid query size limits
+    for (const chunk of chunkArray(shopifyOrderIds, 50)) {
+      // Check which of these order IDs exist in the archived table
+      const { data: archivedOrders, error: queryError } = await supabase
+        .from('shopify_archived_orders')
+        .select('*')
+        .in('shopify_order_id', chunk);
+        
+      if (queryError) {
+        console.error('Error checking for archived orders:', queryError);
+        continue;
+      }
+      
+      if (!archivedOrders || archivedOrders.length === 0) {
+        console.log(`No incorrectly archived orders found in this chunk`);
+        continue;
+      }
+      
+      console.log(`Found ${archivedOrders.length} orders in archive that should be active - restoring them`);
+      
+      // Restore each incorrectly archived order
+      for (const archivedOrder of archivedOrders) {
+        try {
+          // First make sure the order doesn't already exist in active orders
+          const { data: existingOrder } = await supabase
+            .from('shopify_orders')
+            .select('id')
+            .eq('shopify_order_id', archivedOrder.shopify_order_id)
+            .maybeSingle();
+            
+          if (existingOrder) {
+            console.log(`Order ${archivedOrder.shopify_order_id} already exists in active orders, will delete from archive`);
+            
+            // Delete from archive since it exists in active
+            await supabase
+              .from('shopify_archived_order_items')
+              .delete()
+              .eq('archived_order_id', archivedOrder.id);
+              
+            await supabase
+              .from('shopify_archived_orders')
+              .delete()
+              .eq('id', archivedOrder.id);
+              
+            restoredCount++;
+            continue;
+          }
+          
+          // Get archived line items
+          const { data: archivedLineItems } = await supabase
+            .from('shopify_archived_order_items')
+            .select('*')
+            .eq('archived_order_id', archivedOrder.id);
+            
+          // Restore order to active orders table
+          const orderToRestore = {
+            shopify_order_id: archivedOrder.shopify_order_id,
+            shopify_order_number: archivedOrder.shopify_order_number,
+            created_at: archivedOrder.created_at,
+            customer_name: archivedOrder.customer_name,
+            customer_email: archivedOrder.customer_email,
+            customer_phone: archivedOrder.customer_phone,
+            items_count: archivedOrder.items_count,
+            shipping_address: archivedOrder.shipping_address,
+            note: archivedOrder.note,
+            status: 'unfulfilled', // Make sure it's marked as unfulfilled
+            location_id: archivedOrder.location_id,
+            location_name: archivedOrder.location_name,
+            metadata: archivedOrder.metadata,
+            imported_at: new Date().toISOString(),
+          };
+          
+          const { data: insertedOrder, error: insertError } = await supabase
+            .from('shopify_orders')
+            .insert(orderToRestore)
+            .select('id')
+            .single();
+            
+          if (insertError) {
+            console.error(`Error restoring archived order ${archivedOrder.id}:`, insertError);
+            continue;
+          }
+          
+          // Now restore line items if we have them
+          if (archivedLineItems && archivedLineItems.length > 0) {
+            const lineItemsToRestore = archivedLineItems.map(item => ({
+              order_id: insertedOrder.id,
+              shopify_line_item_id: item.shopify_line_item_id,
+              sku: item.sku,
+              product_id: item.product_id,
+              variant_id: item.variant_id,
+              title: item.title,
+              quantity: item.quantity,
+              price: item.price,
+              properties: item.properties
+            }));
+            
+            await supabase
+              .from('shopify_order_items')
+              .insert(lineItemsToRestore);
+          }
+          
+          // Delete from archive tables
+          if (archivedLineItems && archivedLineItems.length > 0) {
+            await supabase
+              .from('shopify_archived_order_items')
+              .delete()
+              .eq('archived_order_id', archivedOrder.id);
+          }
+          
+          await supabase
+            .from('shopify_archived_orders')
+            .delete()
+            .eq('id', archivedOrder.id);
+            
+          restoredCount++;
+          console.log(`Successfully restored order ${archivedOrder.shopify_order_id} from archive`);
+        } catch (error) {
+          console.error(`Error restoring archived order ${archivedOrder.id}:`, error);
+        }
+      }
+    }
+    
+    console.log(`Restored ${restoredCount} incorrectly archived orders`);
+    return { restored: restoredCount };
+  } catch (error) {
+    console.error('Error in restore check process:', error);
+    return { restored: 0, error };
+  }
+}
+
 // Function to synchronize Shopify orders
 async function syncShopifyOrders(apiToken: string, skipArchiving = false) {
   console.log(`Starting Shopify order sync (skipArchiving=${skipArchiving})...`);
@@ -444,6 +595,12 @@ async function syncShopifyOrders(apiToken: string, skipArchiving = false) {
     // Then fetch current unfulfilled orders from Shopify
     const shopifyOrders = await fetchShopifyOrders(apiToken);
     
+    // Get the shopify_order_ids to check if any are incorrectly archived
+    const shopifyOrderIds = shopifyOrders.map((order: any) => order.id.toString());
+    
+    // Check and restore any orders that are incorrectly archived
+    const restoreResult = await restoreUnfulfilledArchivedOrders(shopifyOrderIds);
+    
     // Get existing orders from our database to avoid duplicates
     const { data: existingOrders, error: fetchError } = await supabase
       .from('shopify_orders')
@@ -454,7 +611,8 @@ async function syncShopifyOrders(apiToken: string, skipArchiving = false) {
       return { 
         success: false, 
         error: fetchError.message,
-        archived: archiveResult.archived
+        archived: archiveResult.archived,
+        restored: restoreResult.restored
       };
     }
     
@@ -522,6 +680,7 @@ async function syncShopifyOrders(apiToken: string, skipArchiving = false) {
       success: true,
       imported: insertedCount,
       archived: archiveResult.archived,
+      restored: restoreResult.restored,
       total_unfulfilled: shopifyOrders.length
     };
   } catch (error) {

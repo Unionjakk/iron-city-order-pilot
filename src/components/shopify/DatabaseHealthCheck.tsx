@@ -66,26 +66,42 @@ const DatabaseHealthCheck = () => {
         return;
       }
       
-      // Check for duplicate orders (same shopify_order_id in both tables)
-      const { data: duplicateData, error: duplicateError } = await supabase.rpc(
-        'get_duplicate_shopify_orders'
-      );
-      
-      const duplicate_orders = duplicateData || 0;
-      
+      // Check for duplicate orders by running a SQL query
+      const { data: duplicateData, error: duplicateError } = await supabase
+        .from('shopify_archived_orders')
+        .select('shopify_order_id')
+        .in(
+          'shopify_order_id', 
+          supabase.from('shopify_orders').select('shopify_order_id')
+        )
+        .select('id', { count: 'exact' })
+        
       if (duplicateError) {
         console.error('Error checking for duplicates:', duplicateError);
       }
       
+      const duplicate_orders = duplicateData ? duplicateData.length : 0;
+      
       // Check for line item mismatches (orders with no line items)
-      const { data: mismatchData, error: mismatchError } = await supabase.rpc(
-        'get_orders_without_line_items'
-      );
+      // Find orders without line items
+      const { data: activeOrdersData } = await supabase
+        .from('shopify_orders')
+        .select('id');
+        
+      let mismatched_line_items = 0;
       
-      const mismatched_line_items = mismatchData || 0;
-      
-      if (mismatchError) {
-        console.error('Error checking for line item mismatches:', mismatchError);
+      if (activeOrdersData && activeOrdersData.length > 0) {
+        // For each active order, check if it has line items
+        for (const order of activeOrdersData) {
+          const { count } = await supabase
+            .from('shopify_order_items')
+            .select('*', { count: 'exact', head: true })
+            .eq('order_id', order.id);
+            
+          if (count === 0) {
+            mismatched_line_items++;
+          }
+        }
       }
       
       // Check for fulfilled orders in active table
@@ -103,8 +119,8 @@ const DatabaseHealthCheck = () => {
         isChecking: false,
         unfulfilled_in_archive: unfulfilled_in_archive || 0,
         fulfilled_in_active: fulfilled_in_active || 0,
-        duplicate_orders: duplicate_orders,
-        mismatched_line_items: mismatched_line_items,
+        duplicate_orders,
+        mismatched_line_items,
         last_check: new Date().toISOString()
       });
       
