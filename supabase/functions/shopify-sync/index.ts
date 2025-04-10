@@ -422,8 +422,9 @@ serve(async (req) => {
 async function fetchShopifyOrders(apiToken: string): Promise<ShopifyOrder[]> {
   // Fetch unfulfilled orders from Shopify
   try {
+    // Updated URL to use the current API version and your store's URL
     const response = await fetch(
-      "https://iron-city-hardware.myshopify.com/admin/api/2022-01/orders.json?status=open&fulfillment_status=unfulfilled",
+      "https://iron-city-hardware.myshopify.com/admin/api/2023-10/orders.json?status=open&fulfillment_status=unfulfilled",
       {
         headers: {
           "X-Shopify-Access-Token": apiToken,
@@ -435,13 +436,22 @@ async function fetchShopifyOrders(apiToken: string): Promise<ShopifyOrder[]> {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Shopify API error (${response.status}):`, errorText);
-      throw new Error(`Shopify API error: ${response.status} ${errorText}`);
+      
+      if (response.status === 401) {
+        throw new Error("Authentication failed. Your Shopify API token might be invalid or expired.");
+      } else if (response.status === 404) {
+        throw new Error("Store not found. Please verify your Shopify store URL is correct and the app is installed.");
+      } else if (response.status === 403) {
+        throw new Error("Access forbidden. Your API token might not have the necessary permissions.");
+      } else {
+        throw new Error(`Shopify API error: ${response.status} - ${errorText || "Unknown error"}`);
+      }
     }
 
     const data = await response.json();
     if (!data.orders || !Array.isArray(data.orders)) {
       console.error("Unexpected Shopify API response format:", data);
-      return [];
+      throw new Error("Received unexpected data format from Shopify API");
     }
     return data.orders;
   } catch (error) {
@@ -453,8 +463,9 @@ async function fetchShopifyOrders(apiToken: string): Promise<ShopifyOrder[]> {
 async function fetchSingleOrder(apiToken: string, orderId: string): Promise<any> {
   // Fetch a single order by ID to check its current status
   try {
+    // Updated URL to use the current API version
     const response = await fetch(
-      `https://iron-city-hardware.myshopify.com/admin/api/2022-01/orders/${orderId}.json`,
+      `https://iron-city-hardware.myshopify.com/admin/api/2023-10/orders/${orderId}.json`,
       {
         headers: {
           "X-Shopify-Access-Token": apiToken,
@@ -466,7 +477,14 @@ async function fetchSingleOrder(apiToken: string, orderId: string): Promise<any>
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Shopify API error for order ${orderId} (${response.status}):`, errorText);
-      throw new Error(`Shopify API error: ${response.status} ${errorText}`);
+      
+      if (response.status === 401) {
+        throw new Error("Authentication failed. Your Shopify API token might be invalid or expired.");
+      } else if (response.status === 404) {
+        throw new Error(`Order ${orderId} not found in Shopify.`);
+      } else {
+        throw new Error(`Shopify API error: ${response.status} - ${errorText || "Unknown error"}`);
+      }
     }
 
     const data = await response.json();
