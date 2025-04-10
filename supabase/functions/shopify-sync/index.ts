@@ -54,10 +54,11 @@ async function fetchShopifyOrders(apiToken: string): Promise<any> {
   const endpoint = `https://${shopifyDomain}/admin/api/${apiVersion}/orders.json`;
   
   // Parameters to filter for unfulfilled orders and limit fields
+  // Added order_number to the fields parameter to get the customer-facing order number
   const params = new URLSearchParams({
     status: "unfulfilled",
     limit: "250",
-    fields: "id,created_at,customer,line_items,shipping_address,note,fulfillment_status",
+    fields: "id,order_number,created_at,customer,line_items,shipping_address,note,fulfillment_status",
   });
 
   console.log(`Fetching orders from Shopify: ${endpoint}?${params}`);
@@ -94,6 +95,7 @@ function transformShopifyOrder(order: any) {
   
   return {
     shopify_order_id: order.id.toString(),
+    shopify_order_number: order.order_number?.toString(), // Store the customer-facing order number
     created_at: order.created_at,
     customer_name: customerName,
     customer_email: order.customer?.email || null,
@@ -305,6 +307,13 @@ async function syncShopifyOrders(apiToken: string) {
         }
       }
     }
+    
+    // Update last sync time in settings
+    await supabase.rpc('upsert_shopify_setting', { 
+      setting_name_param: 'last_sync_time', 
+      setting_value_param: new Date().toISOString() 
+    });
+    console.log('Updated last sync time in database');
     
     return { 
       success: true,

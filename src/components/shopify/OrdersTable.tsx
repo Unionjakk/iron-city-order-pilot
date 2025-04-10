@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 export interface ShopifyOrder {
   id: string;
   shopify_order_id: string;
+  shopify_order_number?: string; // Added to store the customer-facing order number
   created_at: string;
   customer_name: string;
   items_count: number;
@@ -71,7 +72,8 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
       <Table>
         <TableHeader className="bg-zinc-800/50">
           <TableRow>
-            <TableHead className="text-zinc-400">Order ID</TableHead>
+            <TableHead className="text-zinc-400">Order Number</TableHead>
+            <TableHead className="text-zinc-400">Shopify ID</TableHead>
             <TableHead className="text-zinc-400">Created</TableHead>
             <TableHead className="text-zinc-400">Customer</TableHead>
             <TableHead className="text-zinc-400">Items</TableHead>
@@ -85,7 +87,10 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
           {orders.map((order) => (
             <TableRow key={order.id} className="border-zinc-800 hover:bg-zinc-800/30">
               <TableCell className="font-medium text-zinc-300">
-                #{order.shopify_order_id}
+                #{order.shopify_order_number || 'N/A'}
+              </TableCell>
+              <TableCell className="text-zinc-400">
+                #{order.shopify_order_id.substring(order.shopify_order_id.length - 6)}
               </TableCell>
               <TableCell className="text-zinc-400">
                 {formatDate(order.created_at)}

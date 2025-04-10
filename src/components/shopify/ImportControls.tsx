@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Clock, Info, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,7 @@ interface ImportControlsProps {
 // Any changes must maintain compatibility with the live system
 const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) => {
   const [isImporting, setIsImporting] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const { toast } = useToast();
 
   // The special value 'placeholder_token' represents no token being set
@@ -30,6 +31,26 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
+  };
+
+  // Get last sync time from database
+  const fetchLastSyncTime = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_shopify_setting', { 
+        setting_name_param: 'last_sync_time' 
+      });
+      
+      if (error) {
+        console.error('Error retrieving last sync time from database:', error);
+        return;
+      }
+      
+      if (data && typeof data === 'string' && data !== PLACEHOLDER_TOKEN_VALUE) {
+        setLastSyncTime(data);
+      }
+    } catch (error) {
+      console.error('Exception retrieving last sync time:', error);
+    }
   };
 
   // Get token from database
@@ -91,6 +112,9 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       // Fetch the updated orders to refresh the UI
       await fetchRecentOrders();
       
+      // Refresh the last sync time
+      await fetchLastSyncTime();
+      
       toast({
         title: "Import Completed",
         description: `Successfully imported ${data.imported} new orders and archived ${data.archived} fulfilled orders.`,
@@ -108,21 +132,28 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     }
   };
 
+  // Fetch last sync time on component mount
+  useEffect(() => {
+    fetchLastSyncTime();
+  }, []);
+
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div className="space-y-2">
         <div className="flex items-center text-zinc-400">
           <Clock className="mr-2 h-4 w-4" />
           <span>
-            {lastImport 
-              ? `Last import: ${formatDate(lastImport)}` 
-              : 'No imports have been run yet'}
+            {lastSyncTime 
+              ? `Last import: ${formatDate(lastSyncTime)}` 
+              : lastImport 
+                ? `Last import: ${formatDate(lastImport)}` 
+                : 'No imports have been run yet'}
           </span>
         </div>
         
         <div className="flex items-center text-zinc-400">
           <Info className="mr-2 h-4 w-4" />
-          <span>Auto-import scheduled every 30 minutes</span>
+          <span>Auto-import scheduled every 30 minutes via cron job</span>
         </div>
       </div>
       

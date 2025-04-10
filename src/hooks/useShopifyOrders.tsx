@@ -13,10 +13,19 @@ export const useShopifyOrders = () => {
   const fetchRecentOrders = async () => {
     setIsLoading(true);
     try {
+      // Try to get the last sync time from settings
+      const { data: lastSyncData } = await supabase.rpc('get_shopify_setting', { 
+        setting_name_param: 'last_sync_time' 
+      });
+      
+      if (lastSyncData && typeof lastSyncData === 'string') {
+        setLastImport(lastSyncData);
+      }
+      
       // Fetch active orders
       const { data: activeData, error: activeError } = await supabase
         .from('shopify_orders')
-        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at')
+        .select('id, shopify_order_id, shopify_order_number, created_at, customer_name, items_count, status, imported_at')
         .order('imported_at', { ascending: false })
         .limit(10);
       
@@ -36,8 +45,8 @@ export const useShopifyOrders = () => {
       if (activeData) {
         setImportedOrders(activeData as ShopifyOrder[]);
         
-        // Set last import time if we have orders
-        if (activeData.length > 0) {
+        // Set last import time if we have orders and no last sync time
+        if (activeData.length > 0 && !lastSyncData) {
           const latestOrder = activeData.reduce((latest, order) => {
             return new Date(latest.imported_at || '0') > new Date(order.imported_at || '0') 
               ? latest 
