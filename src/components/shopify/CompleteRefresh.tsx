@@ -91,31 +91,69 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
       }
       addDebugMessage("Successfully deleted all order items");
       
-      // Use direct RPC function to execute raw SQL for more direct control
-      // This ensures we bypass any caching or race conditions
+      // IMPROVED: Use multiple deletion approaches to ensure complete deletion
+      
+      // 1. First try: Use direct SQL for more reliable deletion
       addDebugMessage("Deleting all orders with direct SQL...");
-      const { error: ordersError } = await supabase.rpc('execute_sql', {
+      const { error: sqlError } = await supabase.rpc('execute_sql', {
         sql: "DELETE FROM shopify_orders"
       });
         
-      if (ordersError) {
-        throw new Error(`Failed to delete orders: ${ordersError.message}`);
+      if (sqlError) {
+        addDebugMessage(`SQL deletion method failed: ${sqlError.message}. Trying fallback method...`);
+      } else {
+        addDebugMessage("SQL deletion successful");
       }
       
-      // Verify orders were deleted by checking count
+      // 2. Second try: Standard delete operation as fallback
+      addDebugMessage("Running fallback deletion method...");
+      const { error: deleteError } = await supabase
+        .from('shopify_orders')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+      
+      if (deleteError) {
+        throw new Error(`Failed to delete orders with standard method: ${deleteError.message}`);
+      }
+      
+      // VERIFICATION: Double-check that all orders were actually deleted
       const { count, error: countError } = await supabase
         .from('shopify_orders')
         .select('*', { count: 'exact', head: true });
-        
+      
       if (countError) {
         throw new Error(`Failed to verify order deletion: ${countError.message}`);
       }
       
       if (count && count > 0) {
-        throw new Error(`Order deletion failed: ${count} orders still remain in database`);
+        addDebugMessage(`WARNING: ${count} orders still remain in database after deletion`);
+        
+        // Try one more approach with a different SQL statement
+        addDebugMessage("Final attempt: Using TRUNCATE SQL statement...");
+        const { error: truncateError } = await supabase.rpc('execute_sql', {
+          sql: "TRUNCATE TABLE shopify_orders CASCADE"
+        });
+        
+        if (truncateError) {
+          addDebugMessage(`TRUNCATE failed: ${truncateError.message}`);
+          throw new Error(`Order deletion failed: ${count} orders still remain in database after multiple deletion attempts`);
+        }
+        
+        // Verify one last time
+        const { count: finalCount, error: finalCountError } = await supabase
+          .from('shopify_orders')
+          .select('*', { count: 'exact', head: true });
+          
+        if (finalCountError) {
+          throw new Error(`Failed to verify final deletion: ${finalCountError.message}`);
+        }
+        
+        if (finalCount && finalCount > 0) {
+          throw new Error(`Order deletion failed: ${finalCount} orders still remain in database after all deletion attempts`);
+        }
       }
       
-      addDebugMessage("Successfully deleted all orders");
+      addDebugMessage("Successfully deleted all orders - verified zero remaining");
     } catch (error) {
       console.error("Error deleting orders:", error);
       throw error;
