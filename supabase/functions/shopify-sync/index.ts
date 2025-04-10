@@ -45,97 +45,134 @@ const formatDate = (date: Date): string => {
   return date.toISOString();
 };
 
-// Function to fetch orders from Shopify
+// Function to fetch orders from Shopify with pagination to get all orders
 async function fetchShopifyOrders(apiToken: string): Promise<any> {
-  // Construct Shopify API URL for unfulfilled orders
-  const shopifyDomain = "opus-harley-davidson.myshopify.com"; // Replace with actual store domain
+  const shopifyDomain = "opus-harley-davidson.myshopify.com";
   const apiVersion = "2023-07";
-  const endpoint = `https://${shopifyDomain}/admin/api/${apiVersion}/orders.json`;
+  
+  // We'll collect all orders here
+  let allOrders = [];
+  // Keep track of the next page URL
+  let nextPageUrl = null;
+  // Start with the first page
+  let currentUrl = `https://${shopifyDomain}/admin/api/${apiVersion}/orders.json`;
   
   // Parameters to filter for unfulfilled orders and limit fields
-  // Added order_number and location_id to the fields parameter
   const params = new URLSearchParams({
     status: "unfulfilled",
-    limit: "250",
     fields: "id,order_number,created_at,customer,line_items,shipping_address,note,fulfillment_status,location_id",
   });
 
-  console.log(`Fetching orders from Shopify: ${endpoint}?${params}`);
+  console.log(`Starting to fetch all unfulfilled orders from Shopify`);
   
-  try {
-    const response = await fetch(`${endpoint}?${params}`, {
-      method: "GET",
-      headers: {
-        "X-Shopify-Access-Token": apiToken,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Shopify API error: ${response.status} ${response.statusText}`, errorText);
-      throw new Error(`Shopify API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    console.log(`Fetched ${data.orders?.length || 0} unfulfilled orders from Shopify`);
+  // Loop until we have no more pages
+  do {
+    // Determine which URL to use - either the current page or next page
+    let fetchUrl = nextPageUrl || `${currentUrl}?${params}`;
     
-    // If we have orders with location_id, fetch location details
-    const ordersWithLocations = data.orders || [];
-    const locationIds = new Set();
+    console.log(`Fetching orders page from Shopify: ${fetchUrl}`);
     
-    // Collect unique location IDs
-    ordersWithLocations.forEach(order => {
-      if (order.location_id) {
-        locationIds.add(order.location_id.toString());
+    try {
+      const response = await fetch(fetchUrl, {
+        method: "GET",
+        headers: {
+          "X-Shopify-Access-Token": apiToken,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Shopify API error: ${response.status} ${response.statusText}`, errorText);
+        throw new Error(`Shopify API error: ${response.status} ${response.statusText}`);
       }
-    });
-    
-    // Create a map of location IDs to location names
-    const locationMap = new Map();
-    
-    // Fetch location details if we have any location IDs
-    if (locationIds.size > 0) {
-      console.log(`Fetching details for ${locationIds.size} locations`);
+
+      const data = await response.json();
+      const pageOrders = data.orders || [];
       
-      for (const locationId of locationIds) {
-        try {
-          const locationEndpoint = `https://${shopifyDomain}/admin/api/${apiVersion}/locations/${locationId}.json`;
-          const locationResponse = await fetch(locationEndpoint, {
-            method: "GET",
-            headers: {
-              "X-Shopify-Access-Token": apiToken,
-              "Content-Type": "application/json",
-            },
-          });
-          
-          if (locationResponse.ok) {
-            const locationData = await locationResponse.json();
-            if (locationData.location && locationData.location.name) {
-              locationMap.set(locationId, locationData.location.name);
-              console.log(`Location ${locationId} name: ${locationData.location.name}`);
-            }
-          } else {
-            console.error(`Error fetching location ${locationId}: ${locationResponse.status}`);
+      console.log(`Fetched ${pageOrders.length} unfulfilled orders from page`);
+      
+      // Add this page's orders to our collection
+      allOrders = allOrders.concat(pageOrders);
+      
+      // Check for Link header which contains pagination info
+      const linkHeader = response.headers.get('Link');
+      nextPageUrl = null;
+      
+      if (linkHeader) {
+        // Parse the Link header to get the next page URL
+        const links = linkHeader.split(',');
+        for (const link of links) {
+          const match = link.match(/<(.+)>;\s*rel="next"/);
+          if (match) {
+            nextPageUrl = match[1];
+            break;
           }
-        } catch (error) {
-          console.error(`Error fetching location ${locationId}:`, error);
         }
       }
+      
+      console.log(`Next page URL: ${nextPageUrl || 'No more pages'}`);
+      
+    } catch (error) {
+      console.error("Error fetching from Shopify API:", error);
+      throw error;
     }
+  } while (nextPageUrl);
+  
+  console.log(`Completed fetching all unfulfilled orders. Total: ${allOrders.length}`);
+  
+  // If we have orders with location_id, fetch location details
+  const ordersWithLocations = allOrders || [];
+  const locationIds = new Set();
+  
+  // Collect unique location IDs
+  ordersWithLocations.forEach(order => {
+    if (order.location_id) {
+      locationIds.add(order.location_id.toString());
+    }
+  });
+  
+  // Create a map of location IDs to location names
+  const locationMap = new Map();
+  
+  // Fetch location details if we have any location IDs
+  if (locationIds.size > 0) {
+    console.log(`Fetching details for ${locationIds.size} locations`);
     
-    // Add location names to orders
-    ordersWithLocations.forEach(order => {
-      if (order.location_id) {
-        order.location_name = locationMap.get(order.location_id.toString()) || null;
+    for (const locationId of locationIds) {
+      try {
+        const locationEndpoint = `https://${shopifyDomain}/admin/api/${apiVersion}/locations/${locationId}.json`;
+        const locationResponse = await fetch(locationEndpoint, {
+          method: "GET",
+          headers: {
+            "X-Shopify-Access-Token": apiToken,
+            "Content-Type": "application/json",
+          },
+        });
+        
+        if (locationResponse.ok) {
+          const locationData = await locationResponse.json();
+          if (locationData.location && locationData.location.name) {
+            locationMap.set(locationId, locationData.location.name);
+            console.log(`Location ${locationId} name: ${locationData.location.name}`);
+          }
+        } else {
+          console.error(`Error fetching location ${locationId}: ${locationResponse.status}`);
+        }
+      } catch (error) {
+        console.error(`Error fetching location ${locationId}:`, error);
       }
-    });
-    
-    return ordersWithLocations;
-  } catch (error) {
-    console.error("Error fetching from Shopify API:", error);
-    throw error;
+    }
   }
+  
+  // Add location names to orders
+  ordersWithLocations.forEach(order => {
+    if (order.location_id) {
+      order.location_name = locationMap.get(order.location_id.toString()) || null;
+    }
+  });
+  
+  return ordersWithLocations;
 }
 
 // Function to transform Shopify order to our database format
