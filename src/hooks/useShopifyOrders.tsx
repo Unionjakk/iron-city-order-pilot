@@ -33,10 +33,28 @@ export const useShopifyOrders = () => {
       setAutoImportEnabled(autoImportData === 'true');
       
       // Fetch active orders with basic information
-      // Explicitly include shopify_order_number in the select query
-      const { data: activeData, error: activeError } = await supabase
-        .from('shopify_orders')
-        .select('id, shopify_order_id, shopify_order_number, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
+      // First, try with shopify_order_number included in the query
+      let activeData;
+      let activeError;
+      
+      try {
+        // Try with shopify_order_number included (which might not exist yet)
+        const activeResult = await supabase
+          .from('shopify_orders')
+          .select('id, shopify_order_id, shopify_order_number, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
+          
+        activeData = activeResult.data;
+        activeError = activeResult.error;
+      } catch (err) {
+        // If that fails, try without shopify_order_number
+        console.warn('Falling back to query without shopify_order_number', err);
+        const fallbackResult = await supabase
+          .from('shopify_orders')
+          .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
+          
+        activeData = fallbackResult.data;
+        activeError = fallbackResult.error;
+      }
       
       if (activeError) {
         console.error('Error fetching active orders:', activeError);
@@ -112,7 +130,7 @@ export const useShopifyOrders = () => {
       }
       
       // Fetch archived orders - using the RPC function to avoid type issues
-      // The get_archived_shopify_orders function should return all fields including shopify_order_number
+      // The get_archived_shopify_orders function returns all fields including shopify_order_number
       const { data: archivedData, error: archivedError } = await supabase
         .rpc('get_archived_shopify_orders', { limit_count: 10 });
         
@@ -153,7 +171,7 @@ export const useShopifyOrders = () => {
             // Add line items to each archived order
             const archivedOrdersWithLineItems = archivedData.map(order => ({
               ...order,
-              // Use shopify_order_number if available, otherwise use empty string as fallback
+              // Add shopify_order_number if it exists, otherwise use empty string
               shopify_order_number: order.shopify_order_number || '',
               line_items: lineItemsByOrderId[order.id] || []
             })) as ShopifyOrder[];
@@ -162,6 +180,7 @@ export const useShopifyOrders = () => {
           } else {
             setArchivedOrders(archivedData.map(order => ({
               ...order,
+              // Add shopify_order_number if it exists, otherwise use empty string
               shopify_order_number: order.shopify_order_number || '',
               line_items: []
             })) as ShopifyOrder[]);
