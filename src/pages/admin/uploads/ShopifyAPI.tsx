@@ -22,10 +22,18 @@ const ShopifyAPI = () => {
 
   // Check for existing token on component mount
   useEffect(() => {
-    const token = localStorage.getItem('shopify_token');
-    if (token) {
-      setHasToken(true);
-      setMaskedToken(maskToken(token));
+    try {
+      const token = localStorage.getItem('shopify_token');
+      console.log('ShopifyAPI - checking for token, found:', !!token);
+      if (token) {
+        setHasToken(true);
+        setMaskedToken(maskToken(token));
+      } else {
+        setHasToken(false);
+        setMaskedToken('');
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage:', error);
     }
   }, []);
 

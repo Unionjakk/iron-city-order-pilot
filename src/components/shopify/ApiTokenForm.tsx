@@ -42,11 +42,29 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
 
   // Check for token in localStorage on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('shopify_token');
-    if (storedToken) {
-      setHasToken(true);
-      setMaskedToken(maskToken(storedToken));
-    }
+    // Force immediate check for token
+    const checkForToken = () => {
+      try {
+        const storedToken = localStorage.getItem('shopify_token');
+        console.log('ApiTokenForm - checking for token, found:', !!storedToken);
+        if (storedToken) {
+          setHasToken(true);
+          setMaskedToken(maskToken(storedToken));
+        } else {
+          setHasToken(false);
+          setMaskedToken('');
+        }
+      } catch (error) {
+        console.error('Error accessing localStorage:', error);
+      }
+    };
+    
+    checkForToken();
+    
+    // Also set up a small delay to check again in case the parent component is still initializing
+    const timeoutId = setTimeout(checkForToken, 500);
+    
+    return () => clearTimeout(timeoutId);
   }, [setHasToken, setMaskedToken]);
 
   // Handle form submission
@@ -55,35 +73,54 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
     
     // Simulate API call to validate token
     setTimeout(() => {
-      // In a real app, you would verify the token with Shopify here
-      localStorage.setItem('shopify_token', data.apiToken);
-      
-      // Update the UI
-      setMaskedToken(maskToken(data.apiToken));
-      setHasToken(true);
-      setIsLoading(false);
-      
-      toast({
-        title: "API Token Saved",
-        description: "Your Shopify API token has been securely saved.",
-        variant: "default",
-      });
-      
-      form.reset();
+      try {
+        // In a real app, you would verify the token with Shopify here
+        localStorage.setItem('shopify_token', data.apiToken);
+        console.log('Token saved to localStorage');
+        
+        // Update the UI
+        setMaskedToken(maskToken(data.apiToken));
+        setHasToken(true);
+        
+        toast({
+          title: "API Token Saved",
+          description: "Your Shopify API token has been securely saved.",
+          variant: "default",
+        });
+      } catch (error) {
+        console.error('Error saving token:', error);
+        toast({
+          title: "Error Saving Token",
+          description: "There was a problem saving your API token.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+        form.reset();
+      }
     }, 1000);
   };
 
   // Handle token removal
   const handleRemoveToken = () => {
-    localStorage.removeItem('shopify_token');
-    setHasToken(false);
-    setMaskedToken('');
-    
-    toast({
-      title: "API Token Removed",
-      description: "Your Shopify API token has been removed.",
-      variant: "default",
-    });
+    try {
+      localStorage.removeItem('shopify_token');
+      setHasToken(false);
+      setMaskedToken('');
+      
+      toast({
+        title: "API Token Removed",
+        description: "Your Shopify API token has been removed.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error removing token:', error);
+      toast({
+        title: "Error Removing Token",
+        description: "There was a problem removing your API token.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
