@@ -5,19 +5,19 @@ const HarleyUpload = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-orange-800">Harley Davidson Upload</h1>
-        <p className="text-orange-600">Import data from Harley Davidson reports</p>
+        <h1 className="text-2xl font-bold text-orange-500">Harley Davidson Upload</h1>
+        <p className="text-orange-400/80">Import data from Harley Davidson reports</p>
       </div>
       
-      <Card className="border-orange-200">
+      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-orange-700">Coming Soon: Harley Davidson Data Import</CardTitle>
-          <CardDescription>Comprehensive report processing</CardDescription>
+          <CardTitle className="text-orange-500">Coming Soon: Harley Davidson Data Import</CardTitle>
+          <CardDescription className="text-zinc-400">Comprehensive report processing</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="mb-4">This module will enable you to:</p>
+          <p className="mb-4 text-zinc-300">This module will enable you to:</p>
           
-          <ul className="list-disc pl-5 space-y-2">
+          <ul className="list-disc pl-5 space-y-2 text-zinc-300">
             <li>Upload and process multiple Harley Davidson report types:
               <ul className="list-disc pl-5 mt-1">
                 <li>Backorder reports</li>
@@ -31,9 +31,9 @@ const HarleyUpload = () => {
             <li>Generate actionable insights from historical ordering patterns</li>
           </ul>
           
-          <div className="mt-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
-            <h3 className="font-medium text-orange-700 mb-2">Development In Progress</h3>
-            <p className="text-sm">We're currently building this feature to handle the complexities of Harley Davidson's reporting systems. The completed module will provide comprehensive visibility into your orders, backorders, and product availability.</p>
+          <div className="mt-6 p-4 bg-zinc-800/60 rounded-lg border border-zinc-700">
+            <h3 className="font-medium text-orange-400 mb-2">Development In Progress</h3>
+            <p className="text-sm text-zinc-300">We're currently building this feature to handle the complexities of Harley Davidson's reporting systems. The completed module will provide comprehensive visibility into your orders, backorders, and product availability.</p>
           </div>
         </CardContent>
       </Card>

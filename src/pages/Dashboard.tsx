@@ -1,92 +1,17 @@
 
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Settings, Menu as MenuIcon } from 'lucide-react';
-import { useState } from 'react';
+import NavBar from '@/components/NavBar';
 
 const Dashboard = () => {
-  const { signOut, user } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(prev => !prev);
-  };
+  const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black to-zinc-900">
-      <header className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800 sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-bold text-orange-500">Iron City Shopify</h1>
-          </div>
-          
-          <div className="md:hidden">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleMobileMenu}
-              className="text-orange-400 hover:bg-zinc-800 hover:text-orange-300"
-            >
-              <MenuIcon className="h-5 w-5" />
-            </Button>
-          </div>
-          
-          <div className="hidden md:flex items-center space-x-4">
-            <Link to="/admin" className="text-orange-400 hover:text-orange-300 px-3 py-2">
-              Admin
-            </Link>
-            <span className="text-sm text-orange-300">
-              Welcome, {user?.user_metadata.full_name || 'User'}
-            </span>
-            <Button variant="outline" size="sm" onClick={signOut} 
-              className="border-zinc-700 text-orange-400 hover:bg-zinc-800 hover:text-orange-300">
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-black to-zinc-900">
+      <NavBar />
 
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={toggleMobileMenu}>
-          <div className="h-full w-64 bg-zinc-900 border-r border-zinc-800 p-4" onClick={e => e.stopPropagation()}>
-            <div className="flex flex-col space-y-4">
-              <span className="text-sm text-orange-300">
-                Welcome, {user?.user_metadata.full_name || 'User'}
-              </span>
-              
-              <nav className="space-y-2">
-                <Link 
-                  to="/" 
-                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-zinc-800 text-orange-400 font-medium"
-                  onClick={toggleMobileMenu}
-                >
-                  <LayoutDashboard className="h-4 w-4" />
-                  <span>Dashboard</span>
-                </Link>
-                
-                <Link 
-                  to="/admin" 
-                  className="flex items-center gap-2 px-4 py-2 rounded-md text-zinc-400 hover:bg-zinc-800/70 hover:text-orange-300"
-                  onClick={toggleMobileMenu}
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>Admin</span>
-                </Link>
-              </nav>
-              
-              <Button variant="outline" onClick={signOut} 
-                className="w-full border-zinc-700 text-orange-400 hover:bg-zinc-800 hover:text-orange-300">
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 flex-grow">
         <section className="mb-10">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-orange-500">Coming Soon: Iron City Shopify Order System</h2>
@@ -177,8 +102,28 @@ const Dashboard = () => {
         </section>
       </main>
       
-      <footer className="bg-zinc-900/80 backdrop-blur-sm border-t border-zinc-800 py-4 text-center text-zinc-500">
-        <p>© {new Date().getFullYear()} Iron City Shopify. All rights reserved.</p>
+      <footer className="bg-zinc-900/80 backdrop-blur-sm border-t border-zinc-800 py-4 text-center">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 text-zinc-400">
+            <div>
+              <h3 className="text-orange-400 text-sm font-medium mb-2">Contact Us</h3>
+              <p className="text-xs">support@ironcityshopify.com</p>
+              <p className="text-xs">+1 (412) 555-1234</p>
+            </div>
+            <div>
+              <h3 className="text-orange-400 text-sm font-medium mb-2">Policies</h3>
+              <p className="text-xs">Privacy Policy</p>
+              <p className="text-xs">Terms of Service</p>
+            </div>
+            <div>
+              <h3 className="text-orange-400 text-sm font-medium mb-2">About</h3>
+              <p className="text-xs">Iron City Shopify is a comprehensive order management system.</p>
+            </div>
+          </div>
+          <div className="border-t border-zinc-800 pt-3">
+            <p className="text-zinc-500 text-sm">© {new Date().getFullYear()} Iron City Shopify. All rights reserved.</p>
+          </div>
+        </div>
       </footer>
     </div>
   );
