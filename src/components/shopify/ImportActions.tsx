@@ -83,6 +83,9 @@ const ImportActions = ({
           </>
         )}
       </Button>
+      <div className="text-xs text-zinc-500 flex items-center px-2">
+        Need a full reset? See the Complete Data Refresh section below.
+      </div>
     </div>
   );
 };

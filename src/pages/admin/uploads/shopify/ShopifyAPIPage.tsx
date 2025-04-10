@@ -13,6 +13,7 @@ import ImportControlsCard from './components/ImportControlsCard';
 import DatabaseHealthCheckCard from './components/DatabaseHealthCheckCard';
 import OrdersViewCard from './components/OrdersViewCard';
 import ApiDocumentationCard from './components/ApiDocumentationCard';
+import CompleteRefresh from '@/components/shopify/CompleteRefresh';
 
 // IMPORTANT: This component interacts with a PRODUCTION Shopify API
 // Any changes must maintain compatibility with the live system
@@ -162,6 +163,13 @@ const ShopifyAPIPage = () => {
           ordersLoading={ordersLoading}
           handleRefresh={handleRefresh}
           apiError={apiConnectionError}
+        />
+      )}
+      
+      {/* Complete Refresh Card - NEW */}
+      {hasToken && (
+        <CompleteRefresh
+          onRefreshComplete={fetchRecentOrders}
         />
       )}
       
