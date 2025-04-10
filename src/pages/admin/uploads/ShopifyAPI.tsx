@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -21,7 +20,7 @@ const apiTokenSchema = z.object({
 
 type ApiTokenForm = z.infer<typeof apiTokenSchema>;
 
-// Order interface
+// Order interface that matches our database schema
 interface ShopifyOrder {
   id: string;
   shopify_order_id: string;
@@ -29,6 +28,7 @@ interface ShopifyOrder {
   customer_name: string;
   items_count: number;
   status: string;
+  imported_at?: string;
 }
 
 const ShopifyAPI = () => {
@@ -71,7 +71,7 @@ const ShopifyAPI = () => {
     try {
       const { data, error } = await supabase
         .from('shopify_orders')
-        .select('id, shopify_order_id, created_at, customer_name, items_count, status')
+        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at')
         .order('imported_at', { ascending: false })
         .limit(10);
       
@@ -81,12 +81,12 @@ const ShopifyAPI = () => {
       }
       
       if (data) {
-        setImportedOrders(data);
+        setImportedOrders(data as ShopifyOrder[]);
         
         // Set last import time if we have orders
         if (data.length > 0) {
           const latestOrder = data.reduce((latest, order) => {
-            return new Date(latest.imported_at || 0) > new Date(order.imported_at || 0) 
+            return new Date(latest.imported_at || '0') > new Date(order.imported_at || '0') 
               ? latest 
               : order;
           }, data[0]);
@@ -161,27 +161,28 @@ const ShopifyAPI = () => {
       
       // In a production app, this would be a secure API call to your backend
       // which would then call the Shopify API with the token
-      // For demo purposes, we'll simulate a successful import
-      
-      // In reality, you would call an edge function or API route like:
-      /*
-      const response = await fetch('/api/import-shopify-orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to import orders');
-      }
-      
-      const data = await response.json();
-      */
       
       // Simulate a successful import after a delay
       await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // In a real implementation, you would insert the order data into Supabase here
+      // For now, let's simulate adding an order for demonstration purposes
+      const mockOrderData = {
+        shopify_order_id: 'SHO' + Math.floor(Math.random() * 10000),
+        created_at: new Date().toISOString(),
+        customer_name: 'Simulated Customer',
+        items_count: Math.floor(Math.random() * 5) + 1,
+        status: 'imported',
+      };
+      
+      const { error } = await supabase
+        .from('shopify_orders')
+        .insert([mockOrderData]);
+        
+      if (error) {
+        console.error('Error inserting order:', error);
+        throw new Error('Failed to insert demo order');
+      }
       
       // Fetch the updated orders
       await fetchRecentOrders();
