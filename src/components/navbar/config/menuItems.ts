@@ -7,6 +7,7 @@ export interface MenuItem {
   icon?: React.ElementType;
   isDropdown?: boolean;
   children?: MenuItem[];
+  isSubItem?: boolean;
 }
 
 export const mainMenuItems: MenuItem[] = [
