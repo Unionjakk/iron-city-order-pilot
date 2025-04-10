@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -39,65 +38,45 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
         }
       });
 
+      // Check for invocation error
       if (response.error) {
         console.error('Error invoking edge function for deletion:', response.error);
-        throw new Error(`Failed to delete data: ${response.error.message || 'Unknown error'}`);
+        throw new Error(`Failed to connect to cleanup service: ${response.error.message || 'Unknown error'}`);
       }
       
-      const data = response.data;
+      // Check response format
+      if (!response.data) {
+        throw new Error('Cleanup service returned an invalid response');
+      }
       
-      if (!data || !data.success) {
-        const errorMsg = data?.error || 'Unknown error occurred during deletion';
+      // Check for error in response data
+      if (!response.data.success) {
+        const errorMsg = response.data.error || 'Unknown error occurred during deletion';
         console.error('Deletion failed:', errorMsg);
         throw new Error(`Deletion failed: ${errorMsg}`);
       }
       
-      // Check response and verify if deletion was successful
-      if (data.cleaned === true) {
+      // Verify deletion was successful
+      if (response.data.cleaned === true) {
         addDebugMessage("Database successfully cleaned via edge function");
-      } else {
-        addDebugMessage("WARNING: Edge function did not confirm successful deletion");
         
-        // Perform a verification check directly
+        // Additional verification
         const { count: orderCount, error: orderCountError } = await supabase
           .from('shopify_orders')
           .select('*', { count: 'exact', head: true });
-        
+          
         if (orderCountError) {
           addDebugMessage(`Error verifying deletion: ${orderCountError.message}`);
         } else if (orderCount && orderCount > 0) {
-          addDebugMessage(`WARNING: ${orderCount} orders still exist in database`);
-          
-          // Try to use RPC as a last resort
-          addDebugMessage("Attempting final deletion via RPC...");
-          
-          // Use an RPC to delete with elevated privileges
-          const { error: rpcOrdersError } = await supabase.rpc('execute_sql', {
-            sql: `DELETE FROM public.shopify_order_items;
-                  DELETE FROM public.shopify_orders;`
-          });
-          
-          if (rpcOrdersError) {
-            addDebugMessage(`Error in RPC deletion: ${rpcOrdersError.message}`);
-            throw new Error(`Failed to delete data via RPC: ${rpcOrdersError.message}`);
-          }
-          
-          // Final verification
-          const { count: finalCount } = await supabase
-            .from('shopify_orders')
-            .select('*', { count: 'exact', head: true });
-            
-          if (finalCount && finalCount > 0) {
-            throw new Error(`Deletion failed: ${finalCount} orders still remain after multiple deletion attempts`);
-          } else {
-            addDebugMessage("All orders successfully deleted using RPC method");
-          }
+          addDebugMessage(`WARNING: Database still contains ${orderCount} orders after deletion`);
         } else {
-          addDebugMessage("All orders successfully deleted");
+          addDebugMessage("Verification confirmed: All orders have been deleted");
         }
+      } else {
+        addDebugMessage("WARNING: Edge function did not confirm successful deletion");
+        throw new Error("Cleanup operation did not complete successfully");
       }
       
-      addDebugMessage("Database is now clean and ready for import");
       return true;
     } catch (error) {
       console.error("Error deleting orders:", error);

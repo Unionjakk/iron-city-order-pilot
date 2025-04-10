@@ -245,7 +245,7 @@ export async function getShopifyApiEndpoint(debug: (message: string) => void) {
   return endpointData || "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json";
 }
 
-// New function to clean database completely - bypasses RLS with service role
+// Function to clean database completely - bypasses RLS with service role
 export async function cleanDatabaseCompletely(debug: (message: string) => void) {
   try {
     debug("Performing complete database cleanup with service role privileges...");
@@ -258,7 +258,7 @@ export async function cleanDatabaseCompletely(debug: (message: string) => void) 
     const { error: itemsDeleteError } = await serviceClient
       .from('shopify_order_items')
       .delete()
-      .is('order_id', 'not.null');
+      .neq('id', '00000000-0000-0000-0000-000000000000');
     
     if (itemsDeleteError) {
       debug(`Error deleting order items: ${itemsDeleteError.message}`);
@@ -270,7 +270,7 @@ export async function cleanDatabaseCompletely(debug: (message: string) => void) 
     const { error: ordersDeleteError } = await serviceClient
       .from('shopify_orders')
       .delete()
-      .is('id', 'not.null');
+      .neq('id', '00000000-0000-0000-0000-000000000000');
     
     if (ordersDeleteError) {
       debug(`Error deleting orders: ${ordersDeleteError.message}`);

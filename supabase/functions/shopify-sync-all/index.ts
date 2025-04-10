@@ -1,4 +1,3 @@
-
 // Supabase Edge Function
 // This function handles importing ALL orders from Shopify
 // It imports all orders without archiving
@@ -78,7 +77,7 @@ serve(async (req) => {
     if (operation === "clean") {
       debug("Starting CLEAN operation to delete all Shopify orders and items");
       try {
-        // Call our new service function to clean the database
+        // Call our service function to clean the database
         const success = await cleanDatabaseCompletely(debug);
         
         responseData.success = true;
@@ -91,7 +90,13 @@ serve(async (req) => {
         });
       } catch (error) {
         debug(`Error during database cleanup: ${error.message}`);
-        throw new Error(`Database cleanup failed: ${error.message}`);
+        
+        // Return specific error response with 400 status
+        responseData.error = `Database cleanup failed: ${error.message}`;
+        return new Response(JSON.stringify(responseData), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, // Changed from 500 to 400 for client errors
+        });
       }
     }
     
@@ -191,7 +196,7 @@ serve(async (req) => {
     
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: 400, // Changed from 500 to 400 for client errors
     });
   }
 });
