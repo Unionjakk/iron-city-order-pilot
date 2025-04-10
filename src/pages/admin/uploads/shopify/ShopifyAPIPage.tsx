@@ -5,6 +5,7 @@ import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useShopifyOrders } from '@/hooks/useShopifyOrders';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 import PageHeader from './components/PageHeader';
 import ApiConfigCard from './components/ApiConfigCard';
@@ -20,14 +21,26 @@ const ShopifyAPIPage = () => {
   const [maskedToken, setMaskedToken] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSchemaError, setIsSchemaError] = useState(false);
+  const [apiConnectionError, setApiConnectionError] = useState<string | null>(null);
+  const { toast } = useToast();
   
   const { 
     importedOrders, 
     archivedOrders, 
     lastImport, 
     fetchRecentOrders, 
-    isLoading: ordersLoading 
+    isLoading: ordersLoading,
+    error: ordersError
   } = useShopifyOrders();
+
+  // When ordersError changes, update the API connection error state
+  useEffect(() => {
+    if (ordersError) {
+      setApiConnectionError(ordersError);
+    } else {
+      setApiConnectionError(null);
+    }
+  }, [ordersError]);
 
   // The special value 'placeholder_token' represents no token being set
   const PLACEHOLDER_TOKEN_VALUE = 'placeholder_token';
@@ -106,6 +119,13 @@ const ShopifyAPIPage = () => {
   const handleRefresh = () => {
     fetchRecentOrders();
     checkForSchemaErrors();
+    setApiConnectionError(null);
+    
+    toast({
+      title: "Refreshing Data",
+      description: "Checking API connection and refreshing orders data...",
+      variant: "default",
+    });
   };
 
   return (
@@ -136,6 +156,7 @@ const ShopifyAPIPage = () => {
           fetchRecentOrders={fetchRecentOrders} 
           ordersLoading={ordersLoading}
           handleRefresh={handleRefresh}
+          apiError={apiConnectionError}
         />
       )}
       

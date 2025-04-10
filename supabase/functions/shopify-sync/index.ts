@@ -215,9 +215,9 @@ serve(async (req) => {
       
       // Continue fetching if there are more pages
       let pageCount = 1;
-      const maxPages = 10; // Limit to 10 pages (~500-1000 orders) to prevent timeouts
+      // Removed the hard limit of 10 pages to allow importing all unfulfilled orders
       
-      while (nextPageUrl && pageCount < maxPages) {
+      while (nextPageUrl) {
         pageCount++;
         console.log(`Fetching page ${pageCount} from ${nextPageUrl}`);
         
@@ -231,6 +231,9 @@ serve(async (req) => {
           console.error(`Error fetching page ${pageCount}:`, err);
           break; // Stop pagination on error but continue with orders we have
         }
+        
+        // Add a small delay to avoid hitting rate limits
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
       
       console.log(`Total orders retrieved: ${shopifyOrders.length}`);
@@ -407,7 +410,7 @@ async function fetchShopifyOrdersWithPagination(apiToken: string, apiEndpoint: s
     }
     
     if (!url.searchParams.has('limit')) {
-      url.searchParams.set('limit', '50'); // Reduced from 250 to a safer value
+      url.searchParams.set('limit', '50'); // Use 50 per page to balance performance and reliability
     }
     
     if (!url.searchParams.has('fields')) {

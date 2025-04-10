@@ -10,27 +10,37 @@ export const useShopifyOrders = () => {
   const [lastImport, setLastImport] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [autoImportEnabled, setAutoImportEnabled] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Function to fetch recent orders from Supabase
   const fetchRecentOrders = async () => {
     setIsLoading(true);
+    setError(null); // Clear any previous errors
+    
     try {
       // Try to get the last sync time from settings
-      const { data: lastSyncData } = await supabase.rpc('get_shopify_setting', { 
+      const { data: lastSyncData, error: syncError } = await supabase.rpc('get_shopify_setting', { 
         setting_name_param: 'last_sync_time' 
       });
       
-      if (lastSyncData && typeof lastSyncData === 'string') {
+      if (syncError) {
+        console.error('Error checking for last sync time:', syncError);
+        setError('Error retrieving sync status');
+      } else if (lastSyncData && typeof lastSyncData === 'string') {
         setLastImport(lastSyncData);
       }
       
       // Check if auto-import is enabled - make sure to check the exact string value 'true'
-      const { data: autoImportData } = await supabase.rpc('get_shopify_setting', { 
+      const { data: autoImportData, error: autoImportError } = await supabase.rpc('get_shopify_setting', { 
         setting_name_param: 'auto_import_enabled' 
       });
       
-      setAutoImportEnabled(autoImportData === 'true');
+      if (autoImportError) {
+        console.error('Error checking auto-import setting:', autoImportError);
+      } else {
+        setAutoImportEnabled(autoImportData === 'true');
+      }
       
       // Fetch active orders with all fields including shopify_order_number
       const { data: activeData, error: activeError } = await supabase
@@ -39,13 +49,13 @@ export const useShopifyOrders = () => {
       
       if (activeError) {
         console.error('Error fetching active orders:', activeError);
+        setError('Failed to fetch orders from database');
         toast({
           title: "Error",
           description: "Failed to fetch orders. Please try again later.",
           variant: "destructive",
         });
         setImportedOrders([]);
-        setIsLoading(false);
         return;
       }
       
@@ -221,6 +231,7 @@ export const useShopifyOrders = () => {
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      setError('An unexpected error occurred while fetching orders');
       toast({
         title: "Error",
         description: "Failed to fetch orders. Please try again later.",
@@ -242,6 +253,7 @@ export const useShopifyOrders = () => {
     lastImport,
     isLoading,
     autoImportEnabled,
-    fetchRecentOrders
+    fetchRecentOrders,
+    error
   };
 };
