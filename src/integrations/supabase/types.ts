@@ -177,6 +177,14 @@ export type Database = {
           status: string
         }[]
       }
+      get_shopify_setting: {
+        Args: { setting_name_param: string }
+        Returns: string
+      }
+      upsert_shopify_setting: {
+        Args: { setting_name_param: string; setting_value_param: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
