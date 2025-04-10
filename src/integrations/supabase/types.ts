@@ -134,7 +134,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_archived_shopify_orders: {
+        Args: { limit_count: number }
+        Returns: {
+          archived_at: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          imported_at: string
+          items_count: number
+          line_items: Json | null
+          metadata: Json | null
+          note: string | null
+          shipping_address: Json | null
+          shopify_order_id: string
+          status: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
