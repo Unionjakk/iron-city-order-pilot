@@ -1,19 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { Clock, Info, RefreshCw, AlertTriangle, CheckCircle, RotateCcw } from 'lucide-react';
+import { Clock, Info, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
 
 interface ImportControlsProps {
   lastImport: string | null;
@@ -24,13 +15,11 @@ interface ImportControlsProps {
 // Any changes must maintain compatibility with the live system
 const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) => {
   const [isImporting, setIsImporting] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [lastCronRun, setLastCronRun] = useState<string | null>(null);
   const [autoImportEnabled, setAutoImportEnabled] = useState(false);
   const [hasImportedOrders, setHasImportedOrders] = useState(false);
   const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
-  const [archivedUnfulfilledCount, setArchivedUnfulfilledCount] = useState(0);
   const { toast } = useToast();
 
   // The special value 'placeholder_token' represents no token being set
@@ -92,16 +81,6 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       
       // If we have any orders, set hasImportedOrders to true
       setHasImportedOrders(count !== null && count > 0);
-      
-      // Check for incorrectly archived unfulfilled orders
-      const { count: archivedUnfulfilled, error: archiveError } = await supabase
-        .from('shopify_archived_orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'unfulfilled');
-        
-      if (!archiveError && archivedUnfulfilled !== null) {
-        setArchivedUnfulfilledCount(archivedUnfulfilled);
-      }
     } catch (error) {
       console.error('Exception checking for imported orders:', error);
     }
@@ -149,7 +128,6 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       
       // Set auto-import status - make sure to do a strict comparison with the string 'true'
       setAutoImportEnabled(autoImportData === 'true');
-      console.log('Auto import status:', autoImportData, autoImportData === 'true');
     } catch (error) {
       console.error('Exception retrieving settings:', error);
     }
@@ -203,7 +181,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     }
   };
 
-  // Handle manual import
+  // Handle manual import - simplified to just one proper import function
   const handleManualImport = async () => {
     setIsImporting(true);
     
@@ -220,9 +198,9 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
         return;
       }
       
-      // Call the edge function to sync orders - note that JWT verification is now disabled
+      // Call the edge function to sync orders with the complete synchronization logic
       const { data, error } = await supabase.functions.invoke('shopify-sync', {
-        body: { apiToken: token, skipArchiving: false }
+        body: { apiToken: token }
       });
       
       if (error) {
@@ -257,46 +235,6 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       setIsImporting(false);
     }
   };
-  
-  // Handle restoring incorrectly archived orders
-  const handleRestoreArchivedOrders = async () => {
-    setIsRestoring(true);
-    
-    try {
-      // Call the edge function to restore unfulfilled orders from archive
-      const { data, error } = await supabase.functions.invoke('shopify-restore-archived', {
-        body: { onlyUnfulfilled: true }
-      });
-      
-      if (error) {
-        console.error('Error restoring orders:', error);
-        throw new Error(error.message || 'Failed to restore archived orders');
-      }
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to restore archived orders');
-      }
-      
-      // Fetch the updated orders to refresh the UI
-      await fetchRecentOrders();
-      await checkForImportedOrders();
-      
-      toast({
-        title: "Restore Completed",
-        description: `Successfully restored ${data.restored} orders from archive.`,
-        variant: "default",
-      });
-    } catch (error) {
-      console.error('Error restoring orders:', error);
-      toast({
-        title: "Restore Failed",
-        description: error.message || "Failed to restore orders. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRestoring(false);
-    }
-  };
 
   // Fetch last sync time and check for imported orders on component mount
   useEffect(() => {
@@ -329,27 +267,6 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
 
   return (
     <div className="space-y-4">
-      {archivedUnfulfilledCount > 0 && (
-        <Alert variant="warning" className="bg-amber-900/20 border-amber-500/50">
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
-          <AlertTitle>Data Integrity Issue Detected</AlertTitle>
-          <AlertDescription className="text-zinc-300">
-            There are {archivedUnfulfilledCount} unfulfilled orders that have been incorrectly archived.
-            <div className="mt-2">
-              <Button 
-                onClick={handleRestoreArchivedOrders} 
-                size="sm" 
-                className="bg-amber-500 hover:bg-amber-600"
-                disabled={isRestoring}
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                {isRestoring ? "Restoring..." : "Restore Unfulfilled Orders"}
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-    
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center text-zinc-400">
@@ -409,113 +326,23 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
             )}
           </Button>
           
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button 
-                className="bg-orange-500 hover:bg-orange-600"
-              >
+          <Button 
+            onClick={handleManualImport} 
+            className="bg-orange-500 hover:bg-orange-600"
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Import Options
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-zinc-900 border-zinc-800">
-              <DialogHeader>
-                <DialogTitle className="text-orange-500">Import Options</DialogTitle>
-                <DialogDescription className="text-zinc-400">
-                  Choose how to import orders from Shopify.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-white">Standard Import</h4>
-                  <p className="text-zinc-400 text-sm">
-                    Import new unfulfilled orders from Shopify and archive orders that have been fulfilled.
-                  </p>
-                  <Button 
-                    onClick={handleManualImport} 
-                    className="w-full bg-orange-500 hover:bg-orange-600 mt-2"
-                    disabled={isImporting}
-                  >
-                    {isImporting ? (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        Importing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Import Orders Now
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium text-white">Import Without Archiving</h4>
-                  <p className="text-zinc-400 text-sm">
-                    Only import new orders without archiving any existing orders. Use this if you're having issues with orders being incorrectly archived.
-                  </p>
-                  <Button 
-                    onClick={async () => {
-                      setIsImporting(true);
-                      try {
-                        const token = await getTokenFromDatabase();
-                        if (!token) {
-                          toast({
-                            title: "Error",
-                            description: "No API token found in database.",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-                        
-                        const { data, error } = await supabase.functions.invoke('shopify-sync', {
-                          body: { apiToken: token, skipArchiving: true }
-                        });
-                        
-                        if (error || !data.success) {
-                          throw new Error(error?.message || data?.error || "Failed to import");
-                        }
-                        
-                        await fetchRecentOrders();
-                        await fetchLastSyncTime();
-                        
-                        toast({
-                          title: "Import Completed",
-                          description: `Successfully imported ${data.imported} new orders. No orders were archived.`,
-                          variant: "default",
-                        });
-                      } catch (error) {
-                        console.error(error);
-                        toast({
-                          title: "Import Failed",
-                          description: error.message || "Failed to import orders",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setIsImporting(false);
-                      }
-                    }}
-                    className="w-full bg-zinc-700 hover:bg-zinc-600 mt-2"
-                    disabled={isImporting}
-                  >
-                    {isImporting ? (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        Importing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Import Without Archiving
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+                Import Orders Now
+              </>
+            )}
+          </Button>
         </div>
       </div>
       
