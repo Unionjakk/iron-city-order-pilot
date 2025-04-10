@@ -42,7 +42,7 @@ export const useShopifyOrders = () => {
         return;
       }
       
-      // Fetch line items for each active order
+      // Fetch line items for each active order from the new shopify_order_items table
       if (activeData && activeData.length > 0) {
         const orderIds = activeData.map(order => order.id);
         
@@ -105,7 +105,7 @@ export const useShopifyOrders = () => {
         console.error('Error fetching archived orders:', archivedError);
       }
       
-      // If we have archived orders, fetch their line items
+      // If we have archived orders, fetch their line items from the new shopify_archived_order_items table
       if (archivedData && archivedData.length > 0) {
         const archivedOrderIds = archivedData.map(order => order.id);
         
