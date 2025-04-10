@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,10 +23,15 @@ const PinnacleUpload = () => {
         .rpc('execute_sql', { sql: 'SELECT COUNT(*) as count FROM pinnacle_stock' });
       
       if (countError) throw countError;
-      if (countData && countData.length > 0) {
-        // Access 'count' from the first row of the result
-        const countValue = countData[0]?.count;
-        setStockCount(typeof countValue === 'number' ? countValue : parseInt(countValue));
+      
+      // Safely extract count value with proper type checking
+      if (countData && Array.isArray(countData) && countData.length > 0) {
+        // The count will be in the first object of the array, in a property named 'count'
+        const countObj = countData[0] as Record<string, any>;
+        const countValue = countObj?.count;
+        
+        // Convert to number if it's a string
+        setStockCount(typeof countValue === 'number' ? countValue : parseInt(String(countValue)) || 0);
       } else {
         setStockCount(0);
       }
@@ -37,10 +43,14 @@ const PinnacleUpload = () => {
         });
       
       if (historyError) throw historyError;
-      if (uploadHistory && uploadHistory.length > 0) {
-        const timestamp = uploadHistory[0]?.upload_timestamp;
+      
+      // Safely extract timestamp with proper type checking
+      if (uploadHistory && Array.isArray(uploadHistory) && uploadHistory.length > 0) {
+        const historyObj = uploadHistory[0] as Record<string, any>;
+        const timestamp = historyObj?.upload_timestamp;
+        
         if (timestamp) {
-          setLastUpload(new Date(timestamp).toLocaleString());
+          setLastUpload(new Date(String(timestamp)).toLocaleString());
         }
       }
     } catch (error) {
