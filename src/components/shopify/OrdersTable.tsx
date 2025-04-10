@@ -1,7 +1,15 @@
 
-import { AlertCircle, Archive, MapPin } from 'lucide-react';
+import { AlertCircle, Archive, MapPin, Package } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // Order interface that matches our database schema
 export interface ShopifyOrder {
@@ -16,6 +24,13 @@ export interface ShopifyOrder {
   archived_at?: string;
   location_id?: string;
   location_name?: string;
+  line_items?: Array<{
+    id?: string;
+    sku?: string;
+    title: string;
+    quantity: number;
+    price?: number;
+  }>;
 }
 
 interface OrdersTableProps {
@@ -54,6 +69,68 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
       minute: '2-digit'
     }).format(date);
   };
+
+  // Function to render the line items dialog
+  const renderLineItemsDialog = (order: ShopifyOrder) => {
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <button className="flex items-center text-orange-400 hover:text-orange-300 transition-colors text-sm">
+            <Package className="h-3.5 w-3.5 mr-1" />
+            {order.items_count} item{order.items_count !== 1 ? 's' : ''}
+          </button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[600px] bg-zinc-900 border-zinc-800">
+          <DialogHeader>
+            <DialogTitle className="text-orange-500">
+              Order #{order.shopify_order_number || order.shopify_order_id.substring(order.shopify_order_id.length - 6)} Items
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              {order.customer_name} - {formatDate(order.created_at)}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="mt-4 max-h-[400px] overflow-y-auto pr-2">
+            <Table>
+              <TableHeader className="bg-zinc-800/50">
+                <TableRow>
+                  <TableHead className="text-zinc-400">SKU</TableHead>
+                  <TableHead className="text-zinc-400">Item</TableHead>
+                  <TableHead className="text-zinc-400 text-right">Qty</TableHead>
+                  <TableHead className="text-zinc-400 text-right">Price</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {order.line_items && order.line_items.map((item, index) => (
+                  <TableRow key={item.id || index} className="border-zinc-800 hover:bg-zinc-800/30">
+                    <TableCell className="font-mono text-sm text-zinc-300">
+                      {item.sku || 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-zinc-300">
+                      {item.title}
+                    </TableCell>
+                    <TableCell className="text-zinc-300 text-right">
+                      {item.quantity}
+                    </TableCell>
+                    <TableCell className="text-zinc-300 text-right">
+                      {item.price ? `$${parseFloat(item.price.toString()).toFixed(2)}` : 'N/A'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {(!order.line_items || order.line_items.length === 0) && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-zinc-500 py-4">
+                      No line items available for this order
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   if (orders.length === 0) {
     return (
@@ -102,7 +179,7 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
                 {order.customer_name}
               </TableCell>
               <TableCell className="text-zinc-300">
-                {order.items_count}
+                {renderLineItemsDialog(order)}
               </TableCell>
               <TableCell className="text-zinc-300">
                 {order.location_name ? (

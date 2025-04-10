@@ -30,10 +30,10 @@ export const useShopifyOrders = () => {
       
       setAutoImportEnabled(autoImportData === 'true');
       
-      // Fetch active orders - now including location information
+      // Fetch active orders with basic information
       const { data: activeData, error: activeError } = await supabase
         .from('shopify_orders')
-        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, location_id, location_name')
+        .select('id, shopify_order_id, shopify_order_number, created_at, customer_name, items_count, status, imported_at, location_id, location_name')
         .order('imported_at', { ascending: false })
         .limit(10);
       
@@ -42,16 +42,46 @@ export const useShopifyOrders = () => {
         return;
       }
       
-      // Fetch archived orders - using the RPC function to avoid type issues
-      const { data: archivedData, error: archivedError } = await supabase
-        .rpc('get_archived_shopify_orders', { limit_count: 10 });
+      // Fetch line items for each active order
+      if (activeData && activeData.length > 0) {
+        const orderIds = activeData.map(order => order.id);
         
-      if (archivedError) {
-        console.error('Error fetching archived orders:', archivedError);
-      }
-      
-      if (activeData) {
-        setImportedOrders(activeData as ShopifyOrder[]);
+        // Fetch line items for all orders in one query
+        const { data: lineItemsData, error: lineItemsError } = await supabase
+          .from('shopify_order_items')
+          .select('order_id, shopify_line_item_id, sku, title, quantity, price')
+          .in('order_id', orderIds);
+        
+        if (lineItemsError) {
+          console.error('Error fetching line items:', lineItemsError);
+        }
+        
+        // Map line items to their respective orders
+        if (lineItemsData) {
+          const lineItemsByOrderId = lineItemsData.reduce((acc, item) => {
+            if (!acc[item.order_id]) {
+              acc[item.order_id] = [];
+            }
+            acc[item.order_id].push({
+              id: item.shopify_line_item_id,
+              sku: item.sku,
+              title: item.title,
+              quantity: item.quantity,
+              price: item.price
+            });
+            return acc;
+          }, {});
+          
+          // Add line items to each order
+          const ordersWithLineItems = activeData.map(order => ({
+            ...order,
+            line_items: lineItemsByOrderId[order.id] || []
+          }));
+          
+          setImportedOrders(ordersWithLineItems as ShopifyOrder[]);
+        } else {
+          setImportedOrders(activeData as ShopifyOrder[]);
+        }
         
         // Set last import time if we have orders and no last sync time
         if (activeData.length > 0 && !lastSyncData) {
@@ -63,10 +93,58 @@ export const useShopifyOrders = () => {
           
           setLastImport(latestOrder.imported_at || null);
         }
+      } else {
+        setImportedOrders([]);
       }
       
-      if (archivedData) {
-        setArchivedOrders(archivedData as ShopifyOrder[]);
+      // Fetch archived orders - using the RPC function to avoid type issues
+      const { data: archivedData, error: archivedError } = await supabase
+        .rpc('get_archived_shopify_orders', { limit_count: 10 });
+        
+      if (archivedError) {
+        console.error('Error fetching archived orders:', archivedError);
+      }
+      
+      // If we have archived orders, fetch their line items
+      if (archivedData && archivedData.length > 0) {
+        const archivedOrderIds = archivedData.map(order => order.id);
+        
+        // Fetch archived line items
+        const { data: archivedLineItemsData, error: archivedLineItemsError } = await supabase
+          .from('shopify_archived_order_items')
+          .select('archived_order_id, shopify_line_item_id, sku, title, quantity, price')
+          .in('archived_order_id', archivedOrderIds);
+        
+        if (archivedLineItemsError) {
+          console.error('Error fetching archived line items:', archivedLineItemsError);
+        }
+        
+        // Map archived line items to their respective orders
+        if (archivedLineItemsData) {
+          const lineItemsByOrderId = archivedLineItemsData.reduce((acc, item) => {
+            if (!acc[item.archived_order_id]) {
+              acc[item.archived_order_id] = [];
+            }
+            acc[item.archived_order_id].push({
+              id: item.shopify_line_item_id,
+              sku: item.sku,
+              title: item.title,
+              quantity: item.quantity,
+              price: item.price
+            });
+            return acc;
+          }, {});
+          
+          // Add line items to each archived order
+          const archivedOrdersWithLineItems = archivedData.map(order => ({
+            ...order,
+            line_items: lineItemsByOrderId[order.id] || []
+          }));
+          
+          setArchivedOrders(archivedOrdersWithLineItems as ShopifyOrder[]);
+        } else {
+          setArchivedOrders(archivedData as ShopifyOrder[]);
+        }
       } else {
         setArchivedOrders([]);
       }

@@ -168,6 +168,25 @@ function transformShopifyOrder(order: any) {
   };
 }
 
+// Extract line items from a Shopify order to insert into our line_items table
+function extractLineItems(orderId: string, lineItems: any[]) {
+  if (!lineItems || !Array.isArray(lineItems)) {
+    return [];
+  }
+  
+  return lineItems.map(item => ({
+    order_id: orderId,
+    shopify_line_item_id: item.id?.toString() || '0',
+    sku: item.sku || null,
+    product_id: item.product_id?.toString() || null,
+    variant_id: item.variant_id?.toString() || null,
+    title: item.title || 'Unknown Product',
+    quantity: parseInt(item.quantity, 10) || 0,
+    price: item.price ? parseFloat(item.price) : null,
+    properties: item.properties || null
+  }));
+}
+
 // Function to check for fulfilled orders and archive them
 async function archiveFulfilledOrders(apiToken: string) {
   console.log("Checking for orders to archive...");
@@ -276,16 +295,65 @@ async function archiveOrder(shopifyOrderId: string) {
     }
     
     // Insert into archive table
-    const { error: insertError } = await supabase
+    const { data: archivedOrderData, error: insertError } = await supabase
       .from('shopify_archived_orders')
       .insert({
         ...orderData,
         archived_at: new Date().toISOString(),
-      });
+      })
+      .select('id')
+      .single();
       
     if (insertError) {
       console.error(`Error inserting archived order ${shopifyOrderId}:`, insertError);
       return false;
+    }
+    
+    // Now fetch and archive the line items
+    const { data: lineItems, error: lineItemsError } = await supabase
+      .from('shopify_order_items')
+      .select('*')
+      .eq('order_id', orderData.id);
+      
+    if (lineItemsError) {
+      console.error(`Error fetching line items for order ${shopifyOrderId}:`, lineItemsError);
+      // Continue with order deletion, don't return false here as the order was archived
+    }
+    
+    // If we have line items, archive them
+    if (lineItems && lineItems.length > 0) {
+      // Prepare line items for archiving by changing order_id to archived_order_id
+      const archivedLineItems = lineItems.map(item => ({
+        archived_order_id: archivedOrderData.id,
+        shopify_line_item_id: item.shopify_line_item_id,
+        sku: item.sku,
+        product_id: item.product_id,
+        variant_id: item.variant_id,
+        title: item.title,
+        quantity: item.quantity,
+        price: item.price,
+        properties: item.properties,
+        created_at: item.created_at,
+        archived_at: new Date().toISOString()
+      }));
+      
+      const { error: archiveItemsError } = await supabase
+        .from('shopify_archived_order_items')
+        .insert(archivedLineItems);
+        
+      if (archiveItemsError) {
+        console.error(`Error archiving line items for order ${shopifyOrderId}:`, archiveItemsError);
+      }
+    }
+    
+    // Delete line items for the order
+    const { error: deleteItemsError } = await supabase
+      .from('shopify_order_items')
+      .delete()
+      .eq('order_id', orderData.id);
+      
+    if (deleteItemsError) {
+      console.error(`Error deleting line items for order ${shopifyOrderId}:`, deleteItemsError);
     }
     
     // Delete from active orders
@@ -299,7 +367,7 @@ async function archiveOrder(shopifyOrderId: string) {
       return false;
     }
     
-    console.log(`Successfully archived order ${shopifyOrderId}`);
+    console.log(`Successfully archived order ${shopifyOrderId} and its line items`);
     return true;
   } catch (error) {
     console.error(`Error in archive process for order ${shopifyOrderId}:`, error);
@@ -341,23 +409,46 @@ async function syncShopifyOrders(apiToken: string) {
     
     console.log(`Found ${ordersToInsert.length} new orders to insert`);
     
-    // Insert new orders in batches
+    // Insert new orders in batches and track their IDs
     const batchSize = 50;
     let insertedCount = 0;
+    let insertedOrderIds = [];
     
     for (let i = 0; i < ordersToInsert.length; i += batchSize) {
       const batch = ordersToInsert.slice(i, i + batchSize);
       
       if (batch.length > 0) {
-        const { error: insertError } = await supabase
+        const { data: insertedOrders, error: insertError } = await supabase
           .from('shopify_orders')
-          .insert(batch);
+          .insert(batch)
+          .select('id, shopify_order_id, line_items');
           
         if (insertError) {
           console.error(`Error inserting batch ${i}/${ordersToInsert.length}:`, insertError);
-        } else {
-          insertedCount += batch.length;
-          console.log(`Inserted batch ${i}/${ordersToInsert.length} (${batch.length} orders)`);
+        } else if (insertedOrders) {
+          insertedCount += insertedOrders.length;
+          console.log(`Inserted batch ${i}/${ordersToInsert.length} (${insertedOrders.length} orders)`);
+          
+          // For each inserted order, extract and insert its line items
+          for (const order of insertedOrders) {
+            if (order.line_items && Array.isArray(order.line_items)) {
+              const lineItems = extractLineItems(order.id, order.line_items);
+              
+              if (lineItems.length > 0) {
+                const { error: lineItemError } = await supabase
+                  .from('shopify_order_items')
+                  .insert(lineItems);
+                  
+                if (lineItemError) {
+                  console.error(`Error inserting line items for order ${order.shopify_order_id}:`, lineItemError);
+                } else {
+                  console.log(`Inserted ${lineItems.length} line items for order ${order.shopify_order_id}`);
+                }
+              }
+            }
+          }
+          
+          insertedOrderIds = insertedOrderIds.concat(insertedOrders.map(o => o.id));
         }
       }
     }

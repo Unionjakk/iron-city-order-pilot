@@ -9,6 +9,59 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      shopify_archived_order_items: {
+        Row: {
+          archived_at: string
+          archived_order_id: string
+          created_at: string
+          id: string
+          price: number | null
+          product_id: string | null
+          properties: Json | null
+          quantity: number
+          shopify_line_item_id: string
+          sku: string | null
+          title: string
+          variant_id: string | null
+        }
+        Insert: {
+          archived_at?: string
+          archived_order_id: string
+          created_at?: string
+          id?: string
+          price?: number | null
+          product_id?: string | null
+          properties?: Json | null
+          quantity: number
+          shopify_line_item_id: string
+          sku?: string | null
+          title: string
+          variant_id?: string | null
+        }
+        Update: {
+          archived_at?: string
+          archived_order_id?: string
+          created_at?: string
+          id?: string
+          price?: number | null
+          product_id?: string | null
+          properties?: Json | null
+          quantity?: number
+          shopify_line_item_id?: string
+          sku?: string | null
+          title?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopify_archived_order_items_archived_order_id_fkey"
+            columns: ["archived_order_id"]
+            isOneToOne: false
+            referencedRelation: "shopify_archived_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shopify_archived_orders: {
         Row: {
           archived_at: string
@@ -65,6 +118,56 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      shopify_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          price: number | null
+          product_id: string | null
+          properties: Json | null
+          quantity: number
+          shopify_line_item_id: string
+          sku: string | null
+          title: string
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          price?: number | null
+          product_id?: string | null
+          properties?: Json | null
+          quantity: number
+          shopify_line_item_id: string
+          sku?: string | null
+          title: string
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          price?: number | null
+          product_id?: string | null
+          properties?: Json | null
+          quantity?: number
+          shopify_line_item_id?: string
+          sku?: string | null
+          title?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopify_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "shopify_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shopify_orders: {
         Row: {
@@ -194,6 +297,10 @@ export type Database = {
       get_shopify_setting: {
         Args: { setting_name_param: string }
         Returns: string
+      }
+      migrate_existing_order_items: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       upsert_shopify_setting: {
         Args: { setting_name_param: string; setting_value_param: string }
