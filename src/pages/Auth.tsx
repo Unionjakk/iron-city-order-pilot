@@ -61,32 +61,32 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-black to-zinc-900">
       <div className="absolute inset-0 bg-[url('/placeholder.svg')] bg-cover opacity-5 pointer-events-none"></div>
       
       <main className="flex-grow flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-orange-800">Iron City Shopify</h1>
-            <p className="text-orange-600 mt-2">Order Management System</p>
+            <h1 className="text-3xl font-bold text-orange-500">Iron City Shopify</h1>
+            <p className="text-orange-300 mt-2">Order Management System</p>
           </div>
           
-          <Card className="border-orange-200 shadow-lg">
+          <Card className="border-zinc-800 bg-zinc-900/80 backdrop-blur-sm shadow-xl">
             <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-orange-50">
-                <TabsTrigger value="signin" className="data-[state=active]:bg-white">Sign In</TabsTrigger>
-                <TabsTrigger value="signup" className="data-[state=active]:bg-white">Sign Up</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-zinc-800/50">
+                <TabsTrigger value="signin" className="data-[state=active]:bg-zinc-700 data-[state=active]:text-orange-400">Sign In</TabsTrigger>
+                <TabsTrigger value="signup" className="data-[state=active]:bg-zinc-700 data-[state=active]:text-orange-400">Sign Up</TabsTrigger>
               </TabsList>
               
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn}>
                   <CardHeader>
-                    <CardTitle className="text-orange-800">Welcome back</CardTitle>
-                    <CardDescription>Enter your credentials to access your account</CardDescription>
+                    <CardTitle className="text-orange-500">Welcome back</CardTitle>
+                    <CardDescription className="text-zinc-400">Enter your credentials to access your account</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email" className="text-zinc-300">Email</Label>
                       <Input 
                         id="email" 
                         type="email" 
@@ -94,18 +94,18 @@ const Auth = () => {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="your@email.com" 
                         required 
-                        className="border-orange-200 focus-visible:ring-orange-500"
+                        className="bg-zinc-800/50 border-zinc-700 focus-visible:ring-orange-500 text-zinc-300"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="password" className="text-zinc-300">Password</Label>
                       <Input 
                         id="password" 
                         type="password" 
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required 
-                        className="border-orange-200 focus-visible:ring-orange-500"
+                        className="bg-zinc-800/50 border-zinc-700 focus-visible:ring-orange-500 text-zinc-300"
                       />
                     </div>
                   </CardContent>
@@ -113,7 +113,7 @@ const Auth = () => {
                     <Button 
                       type="submit" 
                       disabled={loading}
-                      className="w-full bg-orange-600 hover:bg-orange-700"
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-white"
                     >
                       {loading ? 'Signing In...' : 'Sign In'}
                     </Button>
@@ -124,23 +124,23 @@ const Auth = () => {
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp}>
                   <CardHeader>
-                    <CardTitle className="text-orange-800">Create an account</CardTitle>
-                    <CardDescription>Enter your details to create your account</CardDescription>
+                    <CardTitle className="text-orange-500">Create an account</CardTitle>
+                    <CardDescription className="text-zinc-400">Enter your details to create your account</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
+                      <Label htmlFor="fullName" className="text-zinc-300">Full Name</Label>
                       <Input 
                         id="fullName" 
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         placeholder="John Doe" 
                         required 
-                        className="border-orange-200 focus-visible:ring-orange-500"
+                        className="bg-zinc-800/50 border-zinc-700 focus-visible:ring-orange-500 text-zinc-300"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="signupEmail">Email</Label>
+                      <Label htmlFor="signupEmail" className="text-zinc-300">Email</Label>
                       <Input 
                         id="signupEmail" 
                         type="email" 
@@ -148,18 +148,18 @@ const Auth = () => {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="your@email.com" 
                         required 
-                        className="border-orange-200 focus-visible:ring-orange-500"
+                        className="bg-zinc-800/50 border-zinc-700 focus-visible:ring-orange-500 text-zinc-300"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="signupPassword">Password</Label>
+                      <Label htmlFor="signupPassword" className="text-zinc-300">Password</Label>
                       <Input 
                         id="signupPassword" 
                         type="password" 
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required 
-                        className="border-orange-200 focus-visible:ring-orange-500"
+                        className="bg-zinc-800/50 border-zinc-700 focus-visible:ring-orange-500 text-zinc-300"
                       />
                     </div>
                   </CardContent>
@@ -167,7 +167,7 @@ const Auth = () => {
                     <Button 
                       type="submit" 
                       disabled={loading}
-                      className="w-full bg-orange-600 hover:bg-orange-700"
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-white"
                     >
                       {loading ? 'Creating Account...' : 'Sign Up'}
                     </Button>
@@ -179,7 +179,7 @@ const Auth = () => {
         </div>
       </main>
       
-      <footer className="py-4 text-center text-orange-600 bg-orange-50 border-t border-orange-200">
+      <footer className="py-4 text-center text-zinc-500 bg-zinc-900/80 border-t border-zinc-800">
         <p>© {new Date().getFullYear()} Iron City Shopify. All rights reserved.</p>
       </footer>
     </div>
