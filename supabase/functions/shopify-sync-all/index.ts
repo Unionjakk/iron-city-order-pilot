@@ -108,12 +108,28 @@ serve(async (req) => {
       
       debug(`Total orders retrieved: ${shopifyOrders.length}`);
 
+      // Count total line items for logging
+      let totalLineItems = 0;
+      shopifyOrders.forEach(order => {
+        if (order.line_items && Array.isArray(order.line_items)) {
+          totalLineItems += order.line_items.length;
+        }
+      });
+      debug(`Total line items to import: ${totalLineItems}`);
+
       // STEP 2: Import all orders regardless of fulfillment status
       for (const shopifyOrder of shopifyOrders) {
         const orderNumber = shopifyOrder.name;
         const orderId = shopifyOrder.id;
         
-        debug(`Processing order: ${orderId} (${orderNumber}) - Status: ${shopifyOrder.fulfillment_status || "unfulfilled"}`);
+        // Log line items count for debugging
+        const lineItemsCount = shopifyOrder.line_items?.length || 0;
+        debug(`Processing order: ${orderId} (${orderNumber}) - Status: ${shopifyOrder.fulfillment_status || "unfulfilled"} - Has ${lineItemsCount} line items`);
+
+        if (!shopifyOrder.line_items || !Array.isArray(shopifyOrder.line_items) || shopifyOrder.line_items.length === 0) {
+          debug(`WARNING: Order ${orderId} (${orderNumber}) has no line items or invalid line_items format`);
+          debug(`line_items value: ${JSON.stringify(shopifyOrder.line_items)}`);
+        }
 
         // Import all orders into the active orders table
         const success = await importOrder(shopifyOrder, orderId, orderNumber, debug);
