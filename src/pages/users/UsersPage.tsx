@@ -38,7 +38,7 @@ const UsersPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
-  const [domains, setDomains] = useState<string[]>(['opusmotorgroup.co.uk']);
+  const [domains, setDomains] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState('');
   const [loading, setLoading] = useState(true);
   
@@ -53,28 +53,44 @@ const UsersPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.admin.listUsers();
       
-      if (error) throw error;
+      // Instead of using admin API, get users from auth table that Supabase allows access to
+      const { data: { users: authUsers }, error } = await supabase.auth.admin.listUsers();
       
-      if (data) {
-        console.log("Users data:", data.users);
-        setUsers(data.users);
+      if (error) {
+        console.error("Error fetching users:", error);
+        throw error;
+      }
+      
+      if (authUsers) {
+        console.log("Users data:", authUsers);
+        setUsers(authUsers);
       }
     } catch (error: any) {
+      console.error("Error in fetchUsers:", error);
       toast({
         title: "Error fetching users",
-        description: error.message,
+        description: error.message || "User not allowed",
         variant: "destructive"
       });
+      // Set empty array to avoid showing loading state indefinitely
+      setUsers([]);
     } finally {
       setLoading(false);
     }
   };
   
-  const fetchAllowedDomains = async () => {
-    // In a real app, we would fetch this from a table
-    // For this demo, we'll use the state default and any added domains
+  const fetchAllowedDomains = () => {
+    // Retrieve domains from localStorage for persistence
+    const storedDomains = localStorage.getItem('allowedDomains');
+    if (storedDomains) {
+      setDomains(JSON.parse(storedDomains));
+    } else {
+      // Initialize with default domain and store in localStorage
+      const defaultDomains = ['opusmotorgroup.co.uk'];
+      setDomains(defaultDomains);
+      localStorage.setItem('allowedDomains', JSON.stringify(defaultDomains));
+    }
     console.log("Allowed domains:", domains);
   };
   
@@ -128,8 +144,10 @@ const UsersPage = () => {
       return;
     }
     
-    // Add domain to list (in a real app, we would store this in the database)
-    setDomains([...domains, newDomain]);
+    // Add domain to list and persist in localStorage
+    const updatedDomains = [...domains, newDomain];
+    setDomains(updatedDomains);
+    localStorage.setItem('allowedDomains', JSON.stringify(updatedDomains));
     setNewDomain('');
     
     toast({
@@ -148,8 +166,10 @@ const UsersPage = () => {
       return;
     }
     
-    // Remove domain from list
-    setDomains(domains.filter(d => d !== domain));
+    // Remove domain from list and update localStorage
+    const updatedDomains = domains.filter(d => d !== domain);
+    setDomains(updatedDomains);
+    localStorage.setItem('allowedDomains', JSON.stringify(updatedDomains));
     
     toast({
       title: "Domain removed",

@@ -22,9 +22,6 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Allowed email domains - in a real app this would be fetched from the database
-const ALLOWED_DOMAINS = ['opusmotorgroup.co.uk'];
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -87,9 +84,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
+    // Get allowed domains from localStorage
+    const storedDomains = localStorage.getItem('allowedDomains');
+    const allowedDomains = storedDomains ? JSON.parse(storedDomains) : ['opusmotorgroup.co.uk'];
+    
     // Check if email domain is allowed
     const domain = email.split('@')[1];
-    const isDomainAllowed = ALLOWED_DOMAINS.includes(domain);
+    const isDomainAllowed = allowedDomains.includes(domain);
     
     if (!isDomainAllowed) {
       toast({
