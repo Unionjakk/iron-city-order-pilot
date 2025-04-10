@@ -135,13 +135,58 @@ serve(async (req) => {
     // STEP 1: DELETE any incorrectly archived unfulfilled orders
     // This completely removes orders that were archived while still having unfulfilled status
     console.log("Checking for incorrectly archived unfulfilled orders to delete");
-    // ... keep existing code (archive cleanup logic)
+    const { data: incorrectlyArchived, error: archiveCheckError } = await supabase
+      .from("shopify_archived_orders")
+      .select("id, shopify_order_id, shopify_order_number")
+      .neq("status", "fulfilled");
+
+    if (archiveCheckError) {
+      console.error("Error checking for incorrectly archived orders:", archiveCheckError);
+    } else if (incorrectlyArchived && incorrectlyArchived.length > 0) {
+      console.log(`Found ${incorrectlyArchived.length} incorrectly archived orders - deleting`);
+      for (const order of incorrectlyArchived) {
+        const { error: deleteError } = await supabase
+          .from("shopify_archived_orders")
+          .delete()
+          .eq("id", order.id);
+
+        if (deleteError) {
+          console.error(`Error deleting incorrectly archived order ${order.shopify_order_id}:`, deleteError);
+        } else {
+          console.log(`Deleted incorrectly archived order ${order.shopify_order_id} (${order.shopify_order_number})`);
+          responseData.cleaned++;
+        }
+      }
+    }
 
     try {
       // STEP 2: Check for duplicate orders (exist in both active and archive)
       // and delete them from the archive
       console.log("Checking for duplicate orders");
-      // ... keep existing code (duplicate checks and cleanup)
+      const { data: duplicateOrders, error: duplicateCheckError } = await supabase.from('shopify_orders')
+        .select('shopify_order_id')
+        .in('shopify_order_id',
+          supabase.from('shopify_archived_orders')
+            .select('shopify_order_id')
+        );
+
+      if (duplicateCheckError) {
+        console.error("Error checking for duplicate orders:", duplicateCheckError);
+      } else if (duplicateOrders && duplicateOrders.length > 0) {
+        console.log(`Found ${duplicateOrders.length} duplicate orders - deleting from archive`);
+        for (const order of duplicateOrders) {
+          const { error: deleteError } = await supabase
+            .from("shopify_archived_orders")
+            .delete()
+            .eq("shopify_order_id", order.shopify_order_id);
+
+          if (deleteError) {
+            console.error(`Error deleting duplicate order ${order.shopify_order_id} from archive:`, deleteError);
+          } else {
+            console.log(`Deleted duplicate order ${order.shopify_order_id} from archive`);
+          }
+        }
+      }
 
       // Get API endpoint from database
       const { data: endpointData, error: endpointError } = await supabase.rpc("get_shopify_setting", { 
@@ -157,23 +202,35 @@ serve(async (req) => {
       const apiEndpoint = endpointData || "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json";
       console.log(`Using Shopify API endpoint: ${apiEndpoint}`);
 
-      // STEP 3: Fetch ALL unfulfilled orders from Shopify using pagination
-      console.log("Fetching unfulfilled orders from Shopify with pagination");
+      // STEP 3: Fetch ALL unfulfilled orders from Shopify with proper pagination
+      console.log("Fetching unfulfilled orders from Shopify");
       let shopifyOrders: ShopifyOrder[] = [];
-      let currentPage = 1;
-      let hasMorePages = true;
+      let nextPageUrl: string | null = null;
+      
+      // First page of orders
+      const firstPageResult = await fetchShopifyOrdersWithPagination(apiToken, apiEndpoint);
+      shopifyOrders = firstPageResult.orders;
+      nextPageUrl = firstPageResult.nextPageUrl;
+      
+      console.log(`Retrieved ${shopifyOrders.length} orders from first page`);
+      
+      // Continue fetching if there are more pages
+      let pageCount = 1;
       const maxPages = 10; // Limit to 10 pages (~500-1000 orders) to prevent timeouts
       
-      // Fetch orders page by page using the endpoint from database
-      while (hasMorePages && currentPage <= maxPages) {
-        const pageOrders = await fetchShopifyOrdersPage(apiToken, currentPage, 100, apiEndpoint);
-        console.log(`Retrieved ${pageOrders.length} orders from Shopify on page ${currentPage}`);
+      while (nextPageUrl && pageCount < maxPages) {
+        pageCount++;
+        console.log(`Fetching page ${pageCount} from ${nextPageUrl}`);
         
-        if (pageOrders.length > 0) {
-          shopifyOrders = [...shopifyOrders, ...pageOrders];
-          currentPage++;
-        } else {
-          hasMorePages = false;
+        try {
+          const nextPageResult = await fetchNextPage(apiToken, nextPageUrl);
+          shopifyOrders = [...shopifyOrders, ...nextPageResult.orders];
+          nextPageUrl = nextPageResult.nextPageUrl;
+          
+          console.log(`Retrieved ${nextPageResult.orders.length} more orders from page ${pageCount}`);
+        } catch (err) {
+          console.error(`Error fetching page ${pageCount}:`, err);
+          break; // Stop pagination on error but continue with orders we have
         }
       }
       
@@ -339,23 +396,24 @@ serve(async (req) => {
   }
 });
 
-async function fetchShopifyOrdersPage(apiToken: string, page: number = 1, limit: number = 100, apiEndpoint: string): Promise<ShopifyOrder[]> {
-  // Fetch unfulfilled orders from Shopify with pagination
+// Updated function to use Shopify pagination pattern for consistency
+async function fetchShopifyOrdersWithPagination(apiToken: string, apiEndpoint: string): Promise<{ orders: ShopifyOrder[], nextPageUrl: string | null }> {
   try {
-    // Parse the base URL and add pagination parameters
+    // Parse the base URL and add query parameters
     const url = new URL(apiEndpoint);
     
-    // Add query parameters if they don't exist
+    // Add query parameters if they don't exist (but don't override existing ones)
     if (!url.searchParams.has('status')) {
-      url.searchParams.append('status', 'open');
-    }
-    if (!url.searchParams.has('fulfillment_status')) {
-      url.searchParams.append('fulfillment_status', 'unfulfilled');
+      url.searchParams.set('status', 'unfulfilled');
     }
     
-    // Always set pagination parameters
-    url.searchParams.set('limit', limit.toString());
-    url.searchParams.set('page', page.toString());
+    if (!url.searchParams.has('limit')) {
+      url.searchParams.set('limit', '250');
+    }
+    
+    if (!url.searchParams.has('fields')) {
+      url.searchParams.set('fields', 'id,created_at,customer,line_items,shipping_address,note,fulfillment_status');
+    }
     
     console.log(`Fetching orders from: ${url.toString()}`);
     
@@ -380,7 +438,7 @@ async function fetchShopifyOrdersPage(apiToken: string, page: number = 1, limit:
         console.warn("Rate limit hit, waiting and retrying...");
         // Wait for 2 seconds and retry
         await new Promise(resolve => setTimeout(resolve, 2000));
-        return fetchShopifyOrdersPage(apiToken, page, limit, apiEndpoint);
+        return fetchShopifyOrdersWithPagination(apiToken, apiEndpoint);
       } else {
         throw new Error(`Shopify API error: ${response.status} - ${errorText || "Unknown error"}`);
       }
@@ -391,9 +449,95 @@ async function fetchShopifyOrdersPage(apiToken: string, page: number = 1, limit:
       console.error("Unexpected Shopify API response format:", data);
       throw new Error("Received unexpected data format from Shopify API");
     }
-    return data.orders;
+    
+    // Get the Link header for pagination
+    const linkHeader = response.headers.get('Link');
+    let nextPageUrl: string | null = null;
+    
+    if (linkHeader) {
+      // Parse the Link header to find the next page URL
+      const links = linkHeader.split(',');
+      for (const link of links) {
+        const parts = link.split(';');
+        if (parts.length === 2 && parts[1].trim() === 'rel="next"') {
+          // Extract URL from <url> format
+          const urlMatch = parts[0].trim().match(/<(.+)>/);
+          if (urlMatch && urlMatch[1]) {
+            nextPageUrl = urlMatch[1];
+            break;
+          }
+        }
+      }
+    }
+    
+    return { 
+      orders: data.orders, 
+      nextPageUrl 
+    };
   } catch (error) {
-    console.error(`Exception in fetchShopifyOrdersPage (page ${page}):`, error);
+    console.error(`Exception in fetchShopifyOrdersWithPagination:`, error);
+    throw error;
+  }
+}
+
+// Function to fetch subsequent pages using the Link header URLs
+async function fetchNextPage(apiToken: string, nextPageUrl: string): Promise<{ orders: ShopifyOrder[], nextPageUrl: string | null }> {
+  try {
+    console.log(`Fetching next page from: ${nextPageUrl}`);
+    
+    const response = await fetch(nextPageUrl, {
+      headers: {
+        "X-Shopify-Access-Token": apiToken,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Shopify API error (${response.status}):`, errorText);
+      
+      if (response.status === 429) {
+        console.warn("Rate limit hit, waiting and retrying...");
+        // Wait for 2 seconds and retry
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return fetchNextPage(apiToken, nextPageUrl);
+      } else {
+        throw new Error(`Shopify API error: ${response.status} - ${errorText || "Unknown error"}`);
+      }
+    }
+
+    const data = await response.json();
+    if (!data.orders || !Array.isArray(data.orders)) {
+      console.error("Unexpected Shopify API response format:", data);
+      throw new Error("Received unexpected data format from Shopify API");
+    }
+    
+    // Get the Link header for pagination
+    const linkHeader = response.headers.get('Link');
+    let newNextPageUrl: string | null = null;
+    
+    if (linkHeader) {
+      // Parse the Link header to find the next page URL
+      const links = linkHeader.split(',');
+      for (const link of links) {
+        const parts = link.split(';');
+        if (parts.length === 2 && parts[1].trim() === 'rel="next"') {
+          // Extract URL from <url> format
+          const urlMatch = parts[0].trim().match(/<(.+)>/);
+          if (urlMatch && urlMatch[1]) {
+            newNextPageUrl = urlMatch[1];
+            break;
+          }
+        }
+      }
+    }
+    
+    return { 
+      orders: data.orders, 
+      nextPageUrl: newNextPageUrl 
+    };
+  } catch (error) {
+    console.error(`Exception in fetchNextPage:`, error);
     throw error;
   }
 }
