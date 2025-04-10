@@ -25,12 +25,11 @@ export const useShopifyOrders = () => {
         return;
       }
       
-      // Fetch archived orders
+      // Fetch archived orders - using a raw query to avoid type issues
+      // with tables not defined in the TypeScript types
       const { data: archivedData, error: archivedError } = await supabase
-        .from('shopify_archived_orders')
-        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, archived_at')
-        .order('archived_at', { ascending: false })
-        .limit(10);
+        .rpc('get_archived_shopify_orders', { limit_count: 10 })
+        .select();
         
       if (archivedError) {
         console.error('Error fetching archived orders:', archivedError);
@@ -53,6 +52,8 @@ export const useShopifyOrders = () => {
       
       if (archivedData) {
         setArchivedOrders(archivedData as ShopifyOrder[]);
+      } else {
+        setArchivedOrders([]);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
