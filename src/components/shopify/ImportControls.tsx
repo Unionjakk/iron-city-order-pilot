@@ -116,7 +116,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       
       toast({
         title: "Import Completed",
-        description: `Successfully imported ${result.imported} new orders, archived ${result.archived} fulfilled orders, and fixed ${result.fixed} incorrectly archived orders.`,
+        description: `Successfully imported ${result.imported} new orders, archived ${result.archived} fulfilled orders, and cleaned ${result.cleaned} incorrectly archived orders.`,
         variant: "default",
       });
     } catch (error) {

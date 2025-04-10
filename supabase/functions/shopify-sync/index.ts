@@ -5,7 +5,7 @@
 // 1. Importing new unfulfilled orders
 // 2. Checking current orders for fulfillment status changes
 // 3. Archiving fulfilled orders
-// 4. Fixing any incorrectly archived unfulfilled orders (moving them back to active)
+// 4. Deleting any incorrectly archived unfulfilled orders
 
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
@@ -58,7 +58,7 @@ serve(async (req) => {
     error: null,
     imported: 0,
     archived: 0,
-    fixed: 0,
+    cleaned: 0,
     autoImport: false,
   };
 
@@ -133,124 +133,43 @@ serve(async (req) => {
       throw new Error("No API token provided");
     }
     
-    // STEP 1: Fix any incorrectly archived unfulfilled orders
-    // This fixes orders that were archived while still having unfulfilled status
-    console.log("Checking for incorrectly archived unfulfilled orders");
+    // STEP 1: DELETE any incorrectly archived unfulfilled orders
+    // This completely removes orders that were archived while still having unfulfilled status
+    console.log("Checking for incorrectly archived unfulfilled orders to delete");
     const { data: archivedUnfulfilled, error: archivedError } = await supabase
       .from("shopify_archived_orders")
-      .select("*")
+      .select("id, shopify_order_id, shopify_order_number")
       .eq("status", "unfulfilled");
 
     if (archivedError) {
       console.error("Error checking for archived unfulfilled orders:", archivedError);
     } else if (archivedUnfulfilled && archivedUnfulfilled.length > 0) {
-      console.log(`Found ${archivedUnfulfilled.length} incorrectly archived unfulfilled orders to fix`);
+      console.log(`Found ${archivedUnfulfilled.length} incorrectly archived unfulfilled orders to delete`);
       
       for (const order of archivedUnfulfilled) {
-        console.log(`Fixing incorrectly archived order: ${order.shopify_order_id} (${order.shopify_order_number || order.shopify_order_id})`);
+        console.log(`Deleting incorrectly archived order: ${order.shopify_order_id} (${order.shopify_order_number || order.shopify_order_id})`);
         
-        // Check if order already exists in active table (avoid duplication)
-        const { data: existingOrder } = await supabase
-          .from("shopify_orders")
-          .select("id")
-          .eq("shopify_order_id", order.shopify_order_id)
-          .maybeSingle();
+        // First delete line items
+        const { error: deleteLineItemsError } = await supabase
+          .from("shopify_archived_order_items")
+          .delete()
+          .eq("archived_order_id", order.id);
         
-        if (existingOrder) {
-          console.log(`Order ${order.shopify_order_id} already exists in active orders, just removing from archive`);
-          // Order exists in active table, just delete from archive
-          const { error: deleteError } = await supabase
-            .from("shopify_archived_orders")
-            .delete()
-            .eq("id", order.id);
-          
-          if (deleteError) {
-            console.error(`Error deleting archived order ${order.shopify_order_id}:`, deleteError);
-          } else {
-            responseData.fixed++;
-          }
+        if (deleteLineItemsError) {
+          console.error(`Error deleting archived line items for order ${order.shopify_order_id}:`, deleteLineItemsError);
+          continue;
+        }
+        
+        // Then delete the order
+        const { error: deleteError } = await supabase
+          .from("shopify_archived_orders")
+          .delete()
+          .eq("id", order.id);
+        
+        if (deleteError) {
+          console.error(`Error deleting archived order ${order.shopify_order_id}:`, deleteError);
         } else {
-          console.log(`Moving order ${order.shopify_order_id} from archive to active table`);
-          // Order doesn't exist in active table, move it
-          
-          // 1. Insert order into shopify_orders
-          const { data: insertedOrder, error: insertError } = await supabase
-            .from("shopify_orders")
-            .insert({
-              shopify_order_id: order.shopify_order_id,
-              shopify_order_number: order.shopify_order_number,
-              created_at: order.created_at,
-              customer_name: order.customer_name,
-              customer_email: order.customer_email,
-              customer_phone: order.customer_phone,
-              status: order.status,
-              items_count: order.items_count,
-              imported_at: new Date().toISOString(),
-              note: order.note,
-              shipping_address: order.shipping_address,
-              location_id: order.location_id,
-              location_name: order.location_name
-            })
-            .select()
-            .single();
-          
-          if (insertError) {
-            console.error(`Error inserting active order ${order.shopify_order_id}:`, insertError);
-            continue;
-          }
-          
-          // 2. Get line items for the archived order
-          const { data: archivedLineItems, error: lineItemsError } = await supabase
-            .from("shopify_archived_order_items")
-            .select("*")
-            .eq("archived_order_id", order.id);
-          
-          if (lineItemsError) {
-            console.error(`Error getting archived line items for order ${order.shopify_order_id}:`, lineItemsError);
-          } else if (archivedLineItems && archivedLineItems.length > 0) {
-            // 3. Insert line items into shopify_order_items
-            const lineItemsToInsert = archivedLineItems.map(item => ({
-              order_id: insertedOrder.id,
-              shopify_line_item_id: item.shopify_line_item_id,
-              title: item.title,
-              sku: item.sku,
-              quantity: item.quantity,
-              price: item.price,
-              product_id: item.product_id,
-              variant_id: item.variant_id,
-              properties: item.properties
-            }));
-            
-            const { error: insertLineItemsError } = await supabase
-              .from("shopify_order_items")
-              .insert(lineItemsToInsert);
-            
-            if (insertLineItemsError) {
-              console.error(`Error inserting line items for order ${order.shopify_order_id}:`, insertLineItemsError);
-            }
-          }
-          
-          // 4. Delete from shopify_archived_orders
-          const { error: deleteError } = await supabase
-            .from("shopify_archived_orders")
-            .delete()
-            .eq("id", order.id);
-          
-          if (deleteError) {
-            console.error(`Error deleting archived order ${order.shopify_order_id}:`, deleteError);
-          } else {
-            // 5. Delete archived line items
-            const { error: deleteLineItemsError } = await supabase
-              .from("shopify_archived_order_items")
-              .delete()
-              .eq("archived_order_id", order.id);
-            
-            if (deleteLineItemsError) {
-              console.error(`Error deleting archived line items for order ${order.shopify_order_id}:`, deleteLineItemsError);
-            }
-            
-            responseData.fixed++;
-          }
+          responseData.cleaned++;
         }
       }
     } else {
@@ -258,12 +177,73 @@ serve(async (req) => {
     }
 
     try {
-      // STEP 2: Fetch new orders from Shopify
+      // STEP 2: Check for duplicate orders (exist in both active and archive)
+      // and delete them from the archive
+      console.log("Checking for duplicate orders");
+      const { data: duplicateData, error: duplicateError } = await supabase
+        .from("shopify_archived_orders")
+        .select("id, shopify_order_id, shopify_order_number");
+      
+      if (duplicateError) {
+        console.error("Error fetching archived order IDs:", duplicateError);
+      } else if (duplicateData && duplicateData.length > 0) {
+        const archivedOrderIds = duplicateData.map(order => order.shopify_order_id);
+        
+        // Check which of these IDs exist in the active orders table
+        const { data: activeMatches, error: activeMatchError } = await supabase
+          .from("shopify_orders")
+          .select("shopify_order_id")
+          .in("shopify_order_id", archivedOrderIds);
+          
+        if (activeMatchError) {
+          console.error("Error checking for duplicates:", activeMatchError);
+        } else if (activeMatches && activeMatches.length > 0) {
+          console.log(`Found ${activeMatches.length} duplicate orders to clean up`);
+          
+          // Get the list of duplicate Shopify order IDs
+          const duplicateIds = activeMatches.map(order => order.shopify_order_id);
+          
+          // Find the corresponding archived orders
+          const duplicateArchived = duplicateData.filter(order => 
+            duplicateIds.includes(order.shopify_order_id)
+          );
+          
+          // Delete them from the archive
+          for (const order of duplicateArchived) {
+            console.log(`Deleting duplicate archived order: ${order.shopify_order_id} (${order.shopify_order_number || order.shopify_order_id})`);
+            
+            // First delete line items
+            const { error: deleteLineItemsError } = await supabase
+              .from("shopify_archived_order_items")
+              .delete()
+              .eq("archived_order_id", order.id);
+            
+            if (deleteLineItemsError) {
+              console.error(`Error deleting archived line items for duplicate order ${order.shopify_order_id}:`, deleteLineItemsError);
+              continue;
+            }
+            
+            // Then delete the order
+            const { error: deleteError } = await supabase
+              .from("shopify_archived_orders")
+              .delete()
+              .eq("id", order.id);
+            
+            if (deleteError) {
+              console.error(`Error deleting duplicate archived order ${order.shopify_order_id}:`, deleteError);
+            } else {
+              responseData.cleaned++;
+            }
+          }
+        }
+      }
+
+      // STEP 3: Fetch new orders from Shopify
       console.log("Fetching unfulfilled orders from Shopify");
       const shopifyOrders = await fetchShopifyOrders(apiToken);
       console.log(`Retrieved ${shopifyOrders.length} orders from Shopify`);
 
-      // STEP 3: Check for each Shopify order
+      // STEP 4: Check for each Shopify order
       for (const shopifyOrder of shopifyOrders) {
         const orderNumber = shopifyOrder.name;
         const orderId = shopifyOrder.id;
@@ -347,7 +327,7 @@ serve(async (req) => {
         }
       }
 
-      // STEP 4: Check existing orders in database for fulfillment status changes
+      // STEP 5: Check existing orders in database for fulfillment status changes
       console.log("Checking existing orders in database for fulfillment status changes");
       const { data: activeOrders, error: activeOrdersError } = await supabase
         .from("shopify_orders")
@@ -391,7 +371,7 @@ serve(async (req) => {
       throw error;
     }
 
-    // STEP 5: Update last sync time in settings
+    // STEP 6: Update last sync time in settings
     const { error: updateError } = await supabase.rpc("upsert_shopify_setting", {
       setting_name_param: "last_sync_time",
       setting_value_param: new Date().toISOString()

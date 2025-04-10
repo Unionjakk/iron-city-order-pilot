@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { AlertCircle, RefreshCw, FileWarning, FileCheck, RotateCcw } from 'lucide-react';
+import { AlertCircle, RefreshCw, FileWarning, FileCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -25,7 +25,7 @@ const DatabaseHealthCheck = () => {
     mismatched_line_items: 0,
     last_check: null
   });
-  const [isRestoringItems, setIsRestoringItems] = useState(false);
+  const [isCleaningDatabase, setIsCleaningDatabase] = useState(false);
   const { toast } = useToast();
 
   // Format date for display
@@ -153,43 +153,63 @@ const DatabaseHealthCheck = () => {
     }
   };
   
-  // Handle restoring unfulfilled orders from archive
-  const handleRestoreUnfulfilled = async () => {
-    setIsRestoringItems(true);
+  // Handle cleaning the database
+  const handleCleanDatabase = async () => {
+    setIsCleaningDatabase(true);
     
     try {
-      // Call the edge function to restore unfulfilled orders from archive
-      const { data, error } = await supabase.functions.invoke('shopify-restore-archived', {
-        body: { onlyUnfulfilled: true }
+      // Call the shopify-sync function which now has improved cleaning logic
+      const token = await getToken();
+      
+      if (!token) {
+        throw new Error("Shopify API token not found. Please add your token first.");
+      }
+      
+      const { data, error } = await supabase.functions.invoke('shopify-sync', {
+        body: { apiToken: token }
       });
       
       if (error) {
-        console.error('Error restoring orders:', error);
-        throw new Error(error.message || 'Failed to restore archived orders');
+        console.error('Error cleaning database:', error);
+        throw new Error(`Failed to clean database: ${error.message || 'Unknown error'}`);
       }
       
       if (!data.success) {
-        throw new Error(data.error || 'Failed to restore archived orders');
+        throw new Error(data.error || 'Failed to clean database');
       }
       
       // Run health check again to update stats
       await runHealthCheck();
       
       toast({
-        title: "Restore Completed",
-        description: `Successfully restored ${data.restored} unfulfilled orders from archive.`,
+        title: "Database Cleaned",
+        description: `Successfully cleaned ${data.cleaned || 0} problematic records from the database.`,
         variant: "default",
       });
     } catch (error) {
-      console.error('Error restoring orders:', error);
+      console.error('Error cleaning database:', error);
       toast({
-        title: "Restore Failed",
-        description: error.message || "Failed to restore orders. Please try again.",
+        title: "Clean Failed",
+        description: error.message || "Failed to clean database. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsRestoringItems(false);
+      setIsCleaningDatabase(false);
     }
+  };
+  
+  // Get token for API calls
+  const getToken = async () => {
+    const { data, error } = await supabase.rpc('get_shopify_setting', { 
+      setting_name_param: 'shopify_token' 
+    });
+    
+    if (error || !data) {
+      console.error('Error retrieving token:', error);
+      return null;
+    }
+    
+    return data;
   };
 
   // Determine overall health status
@@ -233,25 +253,49 @@ const DatabaseHealthCheck = () => {
           </CardDescription>
         </div>
         
-        <Button 
-          onClick={runHealthCheck} 
-          variant="outline" 
-          size="sm"
-          disabled={healthState.isChecking}
-          className="whitespace-nowrap"
-        >
-          {healthState.isChecking ? (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Checking...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Run Health Check
-            </>
+        <div className="flex gap-2">
+          {(healthState.unfulfilled_in_archive > 0 || healthState.duplicate_orders > 0) && (
+            <Button 
+              onClick={handleCleanDatabase} 
+              variant="destructive" 
+              size="sm"
+              disabled={isCleaningDatabase}
+              className="whitespace-nowrap bg-amber-600 hover:bg-amber-700"
+            >
+              {isCleaningDatabase ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Cleaning...
+                </>
+              ) : (
+                <>
+                  <FileCheck className="mr-2 h-4 w-4" />
+                  Clean Database
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+          
+          <Button 
+            onClick={runHealthCheck} 
+            variant="outline" 
+            size="sm"
+            disabled={healthState.isChecking}
+            className="whitespace-nowrap"
+          >
+            {healthState.isChecking ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Run Health Check
+              </>
+            )}
+          </Button>
+        </div>
       </CardHeader>
       
       <CardContent className="space-y-4">
@@ -291,18 +335,7 @@ const DatabaseHealthCheck = () => {
                 <span className="text-amber-400">{healthState.unfulfilled_in_archive}</span>
               </AlertTitle>
               <AlertDescription className="text-zinc-300">
-                There are unfulfilled orders in the archived table that should be active.
-                <div className="mt-2">
-                  <Button 
-                    onClick={handleRestoreUnfulfilled} 
-                    size="sm" 
-                    className="bg-amber-500 hover:bg-amber-600"
-                    disabled={isRestoringItems}
-                  >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    {isRestoringItems ? "Restoring..." : "Restore Orders"}
-                  </Button>
-                </div>
+                There are unfulfilled orders in the archived table that will be automatically deleted during the next import.
               </AlertDescription>
             </Alert>
           )}
@@ -315,7 +348,7 @@ const DatabaseHealthCheck = () => {
                 <span className="text-amber-400">{healthState.duplicate_orders}</span>
               </AlertTitle>
               <AlertDescription className="text-zinc-300">
-                Some orders exist in both active and archived tables. This can cause confusion.
+                Some orders exist in both active and archived tables. These duplicates will be automatically deleted from the archive during the next import.
               </AlertDescription>
             </Alert>
           )}

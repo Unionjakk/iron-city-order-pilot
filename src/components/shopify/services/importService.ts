@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 // The special value 'placeholder_token' represents no token being set
@@ -149,7 +150,7 @@ export const executeManualImport = async () => {
     return {
       imported: data.imported || 0,
       archived: data.archived || 0,
-      fixed: data.fixed || 0
+      cleaned: data.cleaned || 0
     };
   } catch (error) {
     console.error('Error importing orders:', error);
