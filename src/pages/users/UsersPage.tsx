@@ -30,8 +30,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
-import { Trash2, UserX } from 'lucide-react';
+import { Trash2, UserX, Check, X } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 const UsersPage = () => {
   const { user } = useAuth();
@@ -57,6 +58,7 @@ const UsersPage = () => {
       if (error) throw error;
       
       if (data) {
+        console.log("Users data:", data.users);
         setUsers(data.users);
       }
     } catch (error: any) {
@@ -72,7 +74,8 @@ const UsersPage = () => {
   
   const fetchAllowedDomains = async () => {
     // In a real app, we would fetch this from a table
-    // For this demo, we'll just use the state default
+    // For this demo, we'll use the state default and any added domains
+    console.log("Allowed domains:", domains);
   };
   
   const deleteUser = async (userId: string) => {
@@ -177,6 +180,7 @@ const UsersPage = () => {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Created At</TableHead>
                   {isAdmin && <TableHead className="w-[100px]">Actions</TableHead>}
                 </TableRow>
@@ -186,6 +190,17 @@ const UsersPage = () => {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.user_metadata?.full_name || '-'}</TableCell>
                     <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      {user.email_confirmed_at ? (
+                        <Badge className="bg-green-600 flex items-center gap-1 text-white">
+                          <Check className="h-3 w-3" /> Verified
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="flex items-center gap-1">
+                          <X className="h-3 w-3" /> Unverified
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
                     {isAdmin && (
                       <TableCell>
@@ -223,7 +238,7 @@ const UsersPage = () => {
                 ))}
                 {users.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={isAdmin ? 4 : 3} className="text-center py-6 text-zinc-500">
+                    <TableCell colSpan={isAdmin ? 5 : 4} className="text-center py-6 text-zinc-500">
                       No users found
                     </TableCell>
                   </TableRow>
