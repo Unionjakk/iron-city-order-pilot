@@ -43,41 +43,33 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
         return;
       }
       
-      // Simulate a successful import after a delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Call the edge function to sync orders
+      const { data, error } = await supabase.functions.invoke('shopify-sync', {
+        body: { apiToken: token }
+      });
       
-      // In a real implementation, you would insert the order data into Supabase here
-      // For now, let's simulate adding an order for demonstration purposes
-      const mockOrderData = {
-        shopify_order_id: 'SHO' + Math.floor(Math.random() * 10000),
-        created_at: new Date().toISOString(),
-        customer_name: 'Simulated Customer',
-        items_count: Math.floor(Math.random() * 5) + 1,
-        status: 'imported',
-      };
-      
-      const { error } = await supabase
-        .from('shopify_orders')
-        .insert([mockOrderData]);
-        
       if (error) {
-        console.error('Error inserting order:', error);
-        throw new Error('Failed to insert demo order');
+        console.error('Error importing orders:', error);
+        throw new Error(error.message || 'Failed to sync with Shopify');
       }
       
-      // Fetch the updated orders
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to sync with Shopify');
+      }
+      
+      // Fetch the updated orders to refresh the UI
       await fetchRecentOrders();
       
       toast({
         title: "Import Completed",
-        description: "Successfully imported orders from Shopify.",
+        description: `Successfully imported ${data.imported} new orders and archived ${data.archived} fulfilled orders.`,
         variant: "default",
       });
     } catch (error) {
       console.error('Error importing orders:', error);
       toast({
         title: "Import Failed",
-        description: "Failed to import orders. Please try again.",
+        description: error.message || "Failed to import orders. Please try again.",
         variant: "destructive",
       });
     } finally {

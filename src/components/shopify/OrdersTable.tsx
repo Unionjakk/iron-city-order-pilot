@@ -1,5 +1,5 @@
 
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Archive } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
@@ -12,6 +12,7 @@ export interface ShopifyOrder {
   items_count: number;
   status: string;
   imported_at?: string;
+  archived_at?: string;
 }
 
 interface OrdersTableProps {
@@ -32,6 +33,8 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
         return <Badge className="bg-red-500 hover:bg-red-600">Backordered</Badge>;
       case 'fulfilled':
         return <Badge className="bg-green-500 hover:bg-green-600">Fulfilled</Badge>;
+      case 'archived':
+        return <Badge className="bg-purple-500 hover:bg-purple-600">Archived</Badge>;
       default:
         return <Badge className="bg-zinc-500 hover:bg-zinc-600">{status}</Badge>;
     }
@@ -53,9 +56,11 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
     return (
       <div className="text-center py-8">
         <AlertCircle className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
-        <h3 className="text-lg font-medium text-zinc-400">No orders imported yet</h3>
+        <h3 className="text-lg font-medium text-zinc-400">No orders to display</h3>
         <p className="text-zinc-500 mt-1">
-          When you import orders from Shopify, they will appear here.
+          {orders.some(o => o.archived_at) 
+            ? "No archived orders found. Orders are archived when they're fulfilled in Shopify."
+            : "When you import orders from Shopify, they will appear here."}
         </p>
       </div>
     );
@@ -71,6 +76,9 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
             <TableHead className="text-zinc-400">Customer</TableHead>
             <TableHead className="text-zinc-400">Items</TableHead>
             <TableHead className="text-zinc-400">Status</TableHead>
+            {orders.some(o => o.archived_at) && (
+              <TableHead className="text-zinc-400">Archived</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -91,6 +99,11 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
               <TableCell>
                 {renderStatusBadge(order.status)}
               </TableCell>
+              {orders.some(o => o.archived_at) && (
+                <TableCell className="text-zinc-400">
+                  {order.archived_at ? formatDate(order.archived_at) : '-'}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

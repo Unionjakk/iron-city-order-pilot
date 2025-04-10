@@ -5,6 +5,7 @@ import { ShopifyOrder } from '@/components/shopify/OrdersTable';
 
 export const useShopifyOrders = () => {
   const [importedOrders, setImportedOrders] = useState<ShopifyOrder[]>([]);
+  const [archivedOrders, setArchivedOrders] = useState<ShopifyOrder[]>([]);
   const [lastImport, setLastImport] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -12,30 +13,46 @@ export const useShopifyOrders = () => {
   const fetchRecentOrders = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch active orders
+      const { data: activeData, error: activeError } = await supabase
         .from('shopify_orders')
         .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at')
         .order('imported_at', { ascending: false })
         .limit(10);
       
-      if (error) {
-        console.error('Error fetching orders:', error);
+      if (activeError) {
+        console.error('Error fetching active orders:', activeError);
         return;
       }
       
-      if (data) {
-        setImportedOrders(data as ShopifyOrder[]);
+      // Fetch archived orders
+      const { data: archivedData, error: archivedError } = await supabase
+        .from('shopify_archived_orders')
+        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, archived_at')
+        .order('archived_at', { ascending: false })
+        .limit(10);
+        
+      if (archivedError) {
+        console.error('Error fetching archived orders:', archivedError);
+      }
+      
+      if (activeData) {
+        setImportedOrders(activeData as ShopifyOrder[]);
         
         // Set last import time if we have orders
-        if (data.length > 0) {
-          const latestOrder = data.reduce((latest, order) => {
+        if (activeData.length > 0) {
+          const latestOrder = activeData.reduce((latest, order) => {
             return new Date(latest.imported_at || '0') > new Date(order.imported_at || '0') 
               ? latest 
               : order;
-          }, data[0]);
+          }, activeData[0]);
           
           setLastImport(latestOrder.imported_at || null);
         }
+      }
+      
+      if (archivedData) {
+        setArchivedOrders(archivedData as ShopifyOrder[]);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -51,6 +68,7 @@ export const useShopifyOrders = () => {
 
   return {
     importedOrders,
+    archivedOrders,
     lastImport,
     isLoading,
     fetchRecentOrders

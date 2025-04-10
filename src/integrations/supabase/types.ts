@@ -9,6 +9,57 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      shopify_archived_orders: {
+        Row: {
+          archived_at: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          imported_at: string
+          items_count: number
+          line_items: Json | null
+          metadata: Json | null
+          note: string | null
+          shipping_address: Json | null
+          shopify_order_id: string
+          status: string
+        }
+        Insert: {
+          archived_at?: string
+          created_at: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          imported_at?: string
+          items_count: number
+          line_items?: Json | null
+          metadata?: Json | null
+          note?: string | null
+          shipping_address?: Json | null
+          shopify_order_id: string
+          status: string
+        }
+        Update: {
+          archived_at?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          imported_at?: string
+          items_count?: number
+          line_items?: Json | null
+          metadata?: Json | null
+          note?: string | null
+          shipping_address?: Json | null
+          shopify_order_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       shopify_orders: {
         Row: {
           created_at: string

@@ -1,17 +1,18 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ShoppingCart, Shield } from 'lucide-react';
+import { ShoppingCart, Shield, Archive } from 'lucide-react';
 import { useShopifyOrders } from '@/hooks/useShopifyOrders';
 import ApiTokenFormComponent from '@/components/shopify/ApiTokenForm';
 import ImportControls from '@/components/shopify/ImportControls';
 import OrdersTable from '@/components/shopify/OrdersTable';
 import ApiDocumentation from '@/components/shopify/ApiDocumentation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const ShopifyAPI = () => {
   const [hasToken, setHasToken] = useState(false);
   const [maskedToken, setMaskedToken] = useState('');
-  const { importedOrders, lastImport, fetchRecentOrders } = useShopifyOrders();
+  const { importedOrders, archivedOrders, lastImport, fetchRecentOrders } = useShopifyOrders();
 
   // Check for existing token on component mount
   useEffect(() => {
@@ -78,25 +79,49 @@ const ShopifyAPI = () => {
         </Card>
       )}
       
-      {/* Recent Imports */}
+      {/* Orders with Tabs for Active and Archived */}
       {hasToken && (
         <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-orange-500">Recent Imported Orders</CardTitle>
+            <CardTitle className="text-orange-500">Shopify Orders</CardTitle>
             <CardDescription className="text-zinc-400">
-              View and manage your recently imported orders from Shopify
+              View and manage your orders from Shopify
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <OrdersTable orders={importedOrders} />
+            <Tabs defaultValue="active" className="w-full">
+              <TabsList className="w-full mb-4 bg-zinc-800">
+                <TabsTrigger value="active" className="flex-1">
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Active Orders
+                </TabsTrigger>
+                <TabsTrigger value="archived" className="flex-1">
+                  <Archive className="mr-2 h-4 w-4" />
+                  Archived Orders
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="active">
+                <OrdersTable orders={importedOrders} />
+                
+                <div className="mt-4 text-sm text-zinc-500">
+                  {importedOrders.length > 0 
+                    ? `Showing ${importedOrders.length} active orders. Orders will automatically progress through the fulfillment workflow.`
+                    : 'No active orders to display. Import orders from Shopify to begin the fulfillment process.'}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="archived">
+                <OrdersTable orders={archivedOrders} />
+                
+                <div className="mt-4 text-sm text-zinc-500">
+                  {archivedOrders.length > 0 
+                    ? `Showing ${archivedOrders.length} archived orders. These orders have been fulfilled or removed from the active workflow.`
+                    : 'No archived orders to display yet. Orders are archived when they are fulfilled in Shopify.'}
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
-          <CardFooter className="border-t border-zinc-800 bg-zinc-900/30 px-6 py-3">
-            <div className="text-sm text-zinc-500">
-              {importedOrders.length > 0 
-                ? `Showing ${importedOrders.length} orders. Orders will automatically progress through the fulfillment workflow.`
-                : 'No orders to display. Import orders from Shopify to begin the fulfillment process.'}
-            </div>
-          </CardFooter>
         </Card>
       )}
       
