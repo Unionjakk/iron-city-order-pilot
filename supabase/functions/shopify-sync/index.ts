@@ -1,3 +1,4 @@
+
 // Supabase Edge Function
 // This function handles synchronizing orders with Shopify
 // It performs:
@@ -133,7 +134,6 @@ serve(async (req) => {
     }
     
     // STEP 1: DELETE any incorrectly archived unfulfilled orders
-    // This completely removes orders that were archived while still having unfulfilled status
     console.log("Checking for incorrectly archived unfulfilled orders to delete");
     const { data: incorrectlyArchived, error: archiveCheckError } = await supabase
       .from("shopify_archived_orders")
@@ -161,7 +161,6 @@ serve(async (req) => {
 
     try {
       // STEP 2: Check for duplicate orders (exist in both active and archive)
-      // and delete them from the archive
       console.log("Checking for duplicate orders");
       const { data: duplicateOrders, error: duplicateCheckError } = await supabase.from('shopify_orders')
         .select('shopify_order_id')
@@ -207,7 +206,7 @@ serve(async (req) => {
       let shopifyOrders: ShopifyOrder[] = [];
       let nextPageUrl: string | null = null;
       
-      // First page of orders
+      // First page of orders - use fetchShopifyOrdersWithPagination function
       const firstPageResult = await fetchShopifyOrdersWithPagination(apiToken, apiEndpoint);
       shopifyOrders = firstPageResult.orders;
       nextPageUrl = firstPageResult.nextPageUrl;
@@ -408,11 +407,11 @@ async function fetchShopifyOrdersWithPagination(apiToken: string, apiEndpoint: s
     }
     
     if (!url.searchParams.has('limit')) {
-      url.searchParams.set('limit', '250');
+      url.searchParams.set('limit', '50'); // Reduced from 250 to a safer value
     }
     
     if (!url.searchParams.has('fields')) {
-      url.searchParams.set('fields', 'id,created_at,customer,line_items,shipping_address,note,fulfillment_status');
+      url.searchParams.set('fields', 'id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status');
     }
     
     console.log(`Fetching orders from: ${url.toString()}`);
@@ -459,7 +458,7 @@ async function fetchShopifyOrdersWithPagination(apiToken: string, apiEndpoint: s
       const links = linkHeader.split(',');
       for (const link of links) {
         const parts = link.split(';');
-        if (parts.length === 2 && parts[1].trim() === 'rel="next"') {
+        if (parts.length === 2 && parts[1].trim().includes('rel="next"')) {
           // Extract URL from <url> format
           const urlMatch = parts[0].trim().match(/<(.+)>/);
           if (urlMatch && urlMatch[1]) {
@@ -469,6 +468,8 @@ async function fetchShopifyOrdersWithPagination(apiToken: string, apiEndpoint: s
         }
       }
     }
+    
+    console.log(`Fetched ${data.orders.length} orders, next page URL: ${nextPageUrl || 'none'}`);
     
     return { 
       orders: data.orders, 
@@ -521,7 +522,7 @@ async function fetchNextPage(apiToken: string, nextPageUrl: string): Promise<{ o
       const links = linkHeader.split(',');
       for (const link of links) {
         const parts = link.split(';');
-        if (parts.length === 2 && parts[1].trim() === 'rel="next"') {
+        if (parts.length === 2 && parts[1].trim().includes('rel="next"')) {
           // Extract URL from <url> format
           const urlMatch = parts[0].trim().match(/<(.+)>/);
           if (urlMatch && urlMatch[1]) {
@@ -531,6 +532,8 @@ async function fetchNextPage(apiToken: string, nextPageUrl: string): Promise<{ o
         }
       }
     }
+    
+    console.log(`Fetched ${data.orders.length} orders, next page URL: ${newNextPageUrl || 'none'}`);
     
     return { 
       orders: data.orders, 
