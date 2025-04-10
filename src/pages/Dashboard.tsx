@@ -2,9 +2,17 @@
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
+import { LayoutDashboard, Settings, Menu as MenuIcon } from 'lucide-react';
+import { useState } from 'react';
 
 const Dashboard = () => {
   const { signOut, user } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(prev => !prev);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black to-zinc-900">
@@ -13,7 +21,22 @@ const Dashboard = () => {
           <div className="flex items-center space-x-2">
             <h1 className="text-xl font-bold text-orange-500">Iron City Shopify</h1>
           </div>
-          <div className="flex items-center space-x-4">
+          
+          <div className="md:hidden">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleMobileMenu}
+              className="text-orange-400 hover:bg-zinc-800 hover:text-orange-300"
+            >
+              <MenuIcon className="h-5 w-5" />
+            </Button>
+          </div>
+          
+          <div className="hidden md:flex items-center space-x-4">
+            <Link to="/admin" className="text-orange-400 hover:text-orange-300 px-3 py-2">
+              Admin
+            </Link>
             <span className="text-sm text-orange-300">
               Welcome, {user?.user_metadata.full_name || 'User'}
             </span>
@@ -25,9 +48,52 @@ const Dashboard = () => {
         </div>
       </header>
 
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={toggleMobileMenu}>
+          <div className="h-full w-64 bg-zinc-900 border-r border-zinc-800 p-4" onClick={e => e.stopPropagation()}>
+            <div className="flex flex-col space-y-4">
+              <span className="text-sm text-orange-300">
+                Welcome, {user?.user_metadata.full_name || 'User'}
+              </span>
+              
+              <nav className="space-y-2">
+                <Link 
+                  to="/" 
+                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-zinc-800 text-orange-400 font-medium"
+                  onClick={toggleMobileMenu}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </Link>
+                
+                <Link 
+                  to="/admin" 
+                  className="flex items-center gap-2 px-4 py-2 rounded-md text-zinc-400 hover:bg-zinc-800/70 hover:text-orange-300"
+                  onClick={toggleMobileMenu}
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Admin</span>
+                </Link>
+              </nav>
+              
+              <Button variant="outline" onClick={signOut} 
+                className="w-full border-zinc-700 text-orange-400 hover:bg-zinc-800 hover:text-orange-300">
+                Sign Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="container mx-auto px-4 py-8">
         <section className="mb-10">
-          <h2 className="text-2xl font-bold text-orange-500 mb-6">Coming Soon: Iron City Shopify Order System</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-orange-500">Coming Soon: Iron City Shopify Order System</h2>
+            <Link to="/admin" className="hidden md:block bg-zinc-800 hover:bg-zinc-700 text-orange-400 px-4 py-2 rounded-md transition-colors">
+              Go to Admin
+            </Link>
+          </div>
           
           <Card className="mb-6 border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
             <CardHeader>
