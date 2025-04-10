@@ -15,10 +15,14 @@ const NavBar = () => {
   return (
     <header className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <Logo />
-        <DesktopMenu isActive={isActive} />
-        <MobileMenu isActive={isActive} />
-        <UserMenu />
+        <div className="flex items-center">
+          <Logo />
+          <DesktopMenu isActive={isActive} />
+        </div>
+        <div className="flex items-center gap-2">
+          <UserMenu />
+          <MobileMenu isActive={isActive} />
+        </div>
       </div>
     </header>
   );

@@ -1,5 +1,5 @@
 
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Users, CheckSquare, List, Clock, ShoppingCart } from 'lucide-react';
 import {
@@ -17,8 +17,8 @@ type DesktopMenuProps = {
 
 const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
   return (
-    <NavigationMenu className="hidden md:flex">
-      <NavigationMenuList>
+    <NavigationMenu className="hidden md:flex ml-6">
+      <NavigationMenuList className="gap-1">
         <NavigationMenuItem>
           <NavigationMenuLink
             asChild
@@ -47,22 +47,34 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
         </NavigationMenuItem>
         
         <NavigationMenuItem>
-          <Link to="/actions">
-            <NavigationMenuTrigger className={cn(
-              isActive('/actions') ? "bg-zinc-800 text-orange-400" : "text-zinc-400 hover:bg-zinc-800/70 hover:text-orange-300"
-            )}>
-              <CheckSquare className="h-4 w-4 mr-2 inline" />
-              Actions
-            </NavigationMenuTrigger>
-          </Link>
-          <NavigationMenuContent className="bg-zinc-900 border border-zinc-800 z-50">
-            <ul className="grid w-[200px] gap-2 p-2">
+          <NavigationMenuTrigger className={cn(
+            "h-9 px-4 py-2 text-sm",
+            isActive('/actions') ? "bg-zinc-800 text-orange-400" : "text-zinc-400 hover:bg-zinc-800/70 hover:text-orange-300"
+          )}>
+            <CheckSquare className="h-4 w-4 mr-2 inline" />
+            Actions
+          </NavigationMenuTrigger>
+          <NavigationMenuContent className="bg-zinc-900 border border-zinc-800">
+            <ul className="grid w-[200px] gap-1 p-2">
+              <li>
+                <NavigationMenuLink asChild>
+                  <Link
+                    to="/actions"
+                    className={cn(
+                      "block select-none rounded-md p-2 hover:bg-zinc-800/70 hover:text-orange-300",
+                      isActive('/actions') && !isActive('/actions/picklist') && !isActive('/actions/toorder') && !isActive('/actions/backorder') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
+                    )}
+                  >
+                    <div className="text-sm font-medium">Actions Dashboard</div>
+                  </Link>
+                </NavigationMenuLink>
+              </li>
               <li>
                 <NavigationMenuLink asChild>
                   <Link
                     to="/actions/picklist"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 hover:bg-zinc-800/70 hover:text-orange-300",
+                      "block select-none rounded-md p-2 hover:bg-zinc-800/70 hover:text-orange-300",
                       isActive('/actions/picklist') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
                     )}
                   >
@@ -78,7 +90,7 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
                   <Link
                     to="/actions/toorder"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 hover:bg-zinc-800/70 hover:text-orange-300",
+                      "block select-none rounded-md p-2 hover:bg-zinc-800/70 hover:text-orange-300",
                       isActive('/actions/toorder') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
                     )}
                   >
@@ -94,7 +106,7 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
                   <Link
                     to="/actions/backorder"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 hover:bg-zinc-800/70 hover:text-orange-300",
+                      "block select-none rounded-md p-2 hover:bg-zinc-800/70 hover:text-orange-300",
                       isActive('/actions/backorder') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
                     )}
                   >
@@ -110,22 +122,34 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
         </NavigationMenuItem>
         
         <NavigationMenuItem>
-          <Link to="/admin">
-            <NavigationMenuTrigger className={cn(
-              isActive('/admin') ? "bg-zinc-800 text-orange-400" : "text-zinc-400 hover:bg-zinc-800/70 hover:text-orange-300"
-            )}>
-              Admin
-            </NavigationMenuTrigger>
-          </Link>
-          <NavigationMenuContent className="bg-zinc-900 border border-zinc-800 z-50">
-            <ul className="grid w-[200px] gap-2 p-2">
+          <NavigationMenuTrigger className={cn(
+            "h-9 px-4 py-2 text-sm",
+            isActive('/admin') ? "bg-zinc-800 text-orange-400" : "text-zinc-400 hover:bg-zinc-800/70 hover:text-orange-300"
+          )}>
+            Admin
+          </NavigationMenuTrigger>
+          <NavigationMenuContent className="bg-zinc-900 border border-zinc-800">
+            <ul className="grid w-[200px] gap-1 p-2">
+              <li>
+                <NavigationMenuLink asChild>
+                  <Link
+                    to="/admin"
+                    className={cn(
+                      "block select-none rounded-md p-2 hover:bg-zinc-800/70 hover:text-orange-300",
+                      isActive('/admin') && !isActive('/admin/uploads') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
+                    )}
+                  >
+                    <div className="text-sm font-medium">Admin Dashboard</div>
+                  </Link>
+                </NavigationMenuLink>
+              </li>
               <li>
                 <NavigationMenuLink asChild>
                   <Link
                     to="/admin/uploads"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 hover:bg-zinc-800/70 hover:text-orange-300",
-                      isActive('/admin/uploads') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
+                      "block select-none rounded-md p-2 hover:bg-zinc-800/70 hover:text-orange-300",
+                      isActive('/admin/uploads') && !isActive('/admin/uploads/pinnacle') && !isActive('/admin/uploads/harley') && !isActive('/admin/uploads/shopify') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
                     )}
                   >
                     <div className="text-sm font-medium">Uploads</div>
@@ -137,7 +161,7 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
                   <Link
                     to="/admin/uploads/pinnacle"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 pl-6 hover:bg-zinc-800/70 hover:text-orange-300",
+                      "block select-none rounded-md p-2 pl-6 hover:bg-zinc-800/70 hover:text-orange-300",
                       isActive('/admin/uploads/pinnacle') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
                     )}
                   >
@@ -150,7 +174,7 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
                   <Link
                     to="/admin/uploads/harley"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 pl-6 hover:bg-zinc-800/70 hover:text-orange-300",
+                      "block select-none rounded-md p-2 pl-6 hover:bg-zinc-800/70 hover:text-orange-300",
                       isActive('/admin/uploads/harley') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
                     )}
                   >
@@ -163,7 +187,7 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
                   <Link
                     to="/admin/uploads/shopify"
                     className={cn(
-                      "block select-none space-y-1 rounded-md p-3 pl-6 hover:bg-zinc-800/70 hover:text-orange-300",
+                      "block select-none rounded-md p-2 pl-6 hover:bg-zinc-800/70 hover:text-orange-300",
                       isActive('/admin/uploads/shopify') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
                     )}
                   >

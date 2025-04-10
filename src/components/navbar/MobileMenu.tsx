@@ -1,8 +1,8 @@
 
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, CheckSquare, List, Clock, ShoppingCart } from 'lucide-react';
+import { Users, CheckSquare, List, Clock, ShoppingCart, Menu } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,10 +23,10 @@ const MobileMenu = ({ isActive }: MobileMenuProps) => {
         <DropdownMenuTrigger asChild>
           <Button 
             variant="ghost" 
-            size="sm"
+            size="icon"
             className="text-orange-400 hover:bg-zinc-800 hover:text-orange-300"
           >
-            Menu
+            <Menu className="h-5 w-5" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56 bg-zinc-900 border-zinc-800 z-50">
@@ -108,6 +108,8 @@ const MobileMenu = ({ isActive }: MobileMenuProps) => {
             </Link>
           </DropdownMenuItem>
           
+          <DropdownMenuLabel className="text-orange-400 pt-2">Admin</DropdownMenuLabel>
+          <DropdownMenuSeparator className="bg-zinc-800" />
           <DropdownMenuItem asChild>
             <Link 
               to="/admin" 
@@ -116,11 +118,9 @@ const MobileMenu = ({ isActive }: MobileMenuProps) => {
                 isActive('/admin') && !isActive('/admin/uploads') ? "text-orange-400" : "text-zinc-400 hover:text-orange-300"
               )}
             >
-              Admin
+              Admin Dashboard
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuLabel className="text-orange-400 pt-2">Admin</DropdownMenuLabel>
-          <DropdownMenuSeparator className="bg-zinc-800" />
           <DropdownMenuItem asChild>
             <Link 
               to="/admin/uploads" 
