@@ -8,9 +8,29 @@ import { formatDate } from '@/components/shopify/utils/dateUtils';
 import HarleyStatsCard from './components/HarleyStatsCard';
 import { toast } from 'sonner';
 
+// Type definition for HD stats
+type HDStats = {
+  totalOrders: number;
+  ordersWithoutLineItems: number;
+  backorderItems: number;
+  lastOpenOrdersUpload: string | null;
+  lastLineItemsUpload: string | null;
+  lastBackordersUpload: string | null;
+};
+
+// Type definition for upload history
+type HDUploadHistory = {
+  id: string;
+  upload_type: string;
+  filename: string;
+  upload_date: string;
+  items_count: number;
+  status: string;
+}
+
 const HarleyUploadDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<HDStats>({
     totalOrders: 0,
     ordersWithoutLineItems: 0,
     backorderItems: 0,
@@ -26,7 +46,11 @@ const HarleyUploadDashboard = () => {
         setIsLoading(true);
         console.log("Fetching Harley Davidson statistics...");
         
-        const { data, error } = await supabase.rpc('get_hd_stats');
+        // Use execute_sql to run a custom query that calls our function
+        const { data, error } = await supabase
+          .rpc('execute_sql', { 
+            sql: 'SELECT get_hd_stats()' 
+          });
         
         if (error) {
           console.error('Error fetching Harley Davidson stats:', error);
@@ -37,15 +61,20 @@ const HarleyUploadDashboard = () => {
         
         console.log('Received HD stats:', data);
         
-        // Update stats with data from database
-        setStats({
-          totalOrders: data.totalOrders || 0,
-          ordersWithoutLineItems: data.ordersWithoutLineItems || 0,
-          backorderItems: data.backorderItems || 0,
-          lastOpenOrdersUpload: data.lastOpenOrdersUpload,
-          lastLineItemsUpload: data.lastLineItemsUpload,
-          lastBackordersUpload: data.lastBackordersUpload
-        });
+        // Parse the JSON result from the function
+        if (data && data.length > 0) {
+          const statsData = data[0].get_hd_stats;
+          
+          // Update stats with data from database
+          setStats({
+            totalOrders: statsData.totalOrders || 0,
+            ordersWithoutLineItems: statsData.ordersWithoutLineItems || 0,
+            backorderItems: statsData.backorderItems || 0,
+            lastOpenOrdersUpload: statsData.lastOpenOrdersUpload,
+            lastLineItemsUpload: statsData.lastLineItemsUpload,
+            lastBackordersUpload: statsData.lastBackordersUpload
+          });
+        }
         
         setIsLoading(false);
       } catch (error) {
@@ -59,7 +88,7 @@ const HarleyUploadDashboard = () => {
   }, []);
   
   // Get recent uploads for the activity log
-  const [recentUploads, setRecentUploads] = useState([]);
+  const [recentUploads, setRecentUploads] = useState<HDUploadHistory[]>([]);
   const [isLoadingUploads, setIsLoadingUploads] = useState(true);
   
   useEffect(() => {
@@ -67,11 +96,13 @@ const HarleyUploadDashboard = () => {
       try {
         setIsLoadingUploads(true);
         
+        // Use execute_sql to fetch the recent uploads
         const { data, error } = await supabase
-          .from('hd_upload_history')
-          .select('*')
-          .order('upload_date', { ascending: false })
-          .limit(5);
+          .rpc('execute_sql', {
+            sql: `SELECT id, upload_type, filename, upload_date, items_count, status
+                  FROM hd_upload_history
+                  ORDER BY upload_date DESC LIMIT 5`
+          });
         
         if (error) {
           console.error('Error fetching recent uploads:', error);
@@ -219,7 +250,7 @@ const HarleyUploadDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {recentUploads.map((upload: any) => (
+                    {recentUploads.map((upload) => (
                       <tr key={upload.id} className="border-b border-zinc-800 hover:bg-zinc-800/30">
                         <td className="py-2 px-2">
                           <span className="capitalize">{upload.upload_type?.replace('_', ' ')}</span>

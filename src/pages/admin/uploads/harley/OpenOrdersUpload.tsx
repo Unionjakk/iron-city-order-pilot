@@ -70,10 +70,9 @@ const OpenOrdersUpload = () => {
       // Step 2: Clear existing open orders (if this is a full replacement)
       // In a real implementation, you might want to ask for confirmation first
       console.log('Clearing existing open orders...');
+      const clearOrdersQuery = `DELETE FROM hd_orders`;
       const { error: clearError } = await supabase
-        .from('hd_orders')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // This will delete all rows
+        .rpc('execute_sql', { sql: clearOrdersQuery });
       
       if (clearError) {
         console.error('Error clearing existing orders:', clearError);
@@ -85,19 +84,29 @@ const OpenOrdersUpload = () => {
       
       // Step 3: Insert new order data
       console.log('Inserting new order data...');
+      
+      // Build the SQL insert query for multiple rows
+      const insertValues = parsedData.map(order => {
+        return `('${order.hd_order_number}', 
+                 '${order.dealer_po_number || ''}', 
+                 '${order.order_date || null}', 
+                 ${order.total_price || 0}, 
+                 '${order.ship_to || ''}', 
+                 '${order.order_type || ''}', 
+                 '${order.terms || ''}', 
+                 '${order.notes || ''}', 
+                 false)`; // has_line_items
+      }).join(', ');
+      
+      const insertOrdersQuery = `
+        INSERT INTO hd_orders (
+          hd_order_number, dealer_po_number, order_date, total_price, 
+          ship_to, order_type, terms, notes, has_line_items
+        ) VALUES ${insertValues}
+      `;
+      
       const { error: insertError } = await supabase
-        .from('hd_orders')
-        .insert(parsedData.map(order => ({
-          hd_order_number: order.hd_order_number,
-          dealer_po_number: order.dealer_po_number,
-          order_date: order.order_date,
-          total_price: order.total_price,
-          ship_to: order.ship_to,
-          order_type: order.order_type,
-          terms: order.terms,
-          notes: order.notes,
-          has_line_items: false // Initially, no orders have line items
-        })));
+        .rpc('execute_sql', { sql: insertOrdersQuery });
       
       if (insertError) {
         console.error('Error inserting orders:', insertError);
@@ -109,15 +118,16 @@ const OpenOrdersUpload = () => {
       
       // Step 4: Record the upload in history
       console.log('Recording upload history...');
+      const insertHistoryQuery = `
+        INSERT INTO hd_upload_history (
+          upload_type, filename, items_count, status, replaced_previous
+        ) VALUES (
+          'open_orders', '${file.name}', ${parsedData.length}, 'success', true
+        )
+      `;
+      
       const { error: historyError } = await supabase
-        .from('hd_upload_history')
-        .insert({
-          upload_type: 'open_orders',
-          filename: file.name,
-          items_count: parsedData.length,
-          status: 'success',
-          replaced_previous: true
-        });
+        .rpc('execute_sql', { sql: insertHistoryQuery });
       
       if (historyError) {
         console.error('Error recording upload history:', historyError);
