@@ -1,32 +1,12 @@
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { Link } from 'react-router-dom';
-import { ArrowRight, FileSpreadsheet, UploadCloud, AlertTriangle, FileText, Truck, Loader, Clock } from 'lucide-react';
-import { formatDate } from '@/components/shopify/utils/dateUtils';
-import HarleyStatsCard from './components/HarleyStatsCard';
 import { toast } from 'sonner';
-
-// Type definition for HD stats
-type HDStats = {
-  totalOrders: number;
-  ordersWithoutLineItems: number;
-  backorderItems: number;
-  lastOpenOrdersUpload: string | null;
-  lastLineItemsUpload: string | null;
-  lastBackordersUpload: string | null;
-};
-
-// Type definition for upload history
-type HDUploadHistory = {
-  id: string;
-  upload_type: string;
-  filename: string;
-  upload_date: string;
-  items_count: number;
-  status: string;
-};
+import HarleyStatsCard from './components/HarleyStatsCard';
+import HarleyUploadTiles from './components/HarleyUploadTiles';
+import HarleyUploadInstructions from './components/HarleyUploadInstructions';
+import HarleyActivityLog from './components/HarleyActivityLog';
+import { HDStats, HDUploadHistory } from './types/harleyTypes';
 
 const HarleyUploadDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -152,157 +132,13 @@ const HarleyUploadDashboard = () => {
       <HarleyStatsCard stats={stats} isLoading={isLoading} />
       
       {/* Upload Tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Open Orders Upload */}
-        <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center text-orange-500">
-              <FileSpreadsheet className="mr-2 h-5 w-5" />
-              Open Orders Upload
-            </CardTitle>
-            <CardDescription className="text-zinc-400">Import order information from H-D NET</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-zinc-300">
-              Upload Open Orders list exports from H-D NET to initialize order tracking.
-            </p>
-            <Link to="/admin/uploads/harley/open-orders" className="inline-flex items-center text-orange-500 hover:text-orange-400">
-              Go to Open Orders Upload <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </CardContent>
-        </Card>
-        
-        {/* Order Line Items Upload */}
-        <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center text-orange-500">
-              <FileText className="mr-2 h-5 w-5" />
-              Order Line Items Upload
-            </CardTitle>
-            <CardDescription className="text-zinc-400">Import detailed part information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-zinc-300">
-              Upload Order Line Items exports to add detailed part information to orders.
-            </p>
-            <Link to="/admin/uploads/harley/order-lines" className="inline-flex items-center text-orange-500 hover:text-orange-400">
-              Go to Line Items Upload <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </CardContent>
-        </Card>
-        
-        {/* Backorder Report Upload */}
-        <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center text-orange-500">
-              <Truck className="mr-2 h-5 w-5" />
-              Backorder Report Upload
-            </CardTitle>
-            <CardDescription className="text-zinc-400">Update backorder status information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-zinc-300">
-              Upload Backorder Reports to update status and projected shipping dates.
-            </p>
-            <Link to="/admin/uploads/harley/backorders" className="inline-flex items-center text-orange-500 hover:text-orange-400">
-              Go to Backorder Upload <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <HarleyUploadTiles />
       
       {/* Processing Instructions */}
-      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center text-orange-500">
-            <AlertTriangle className="mr-2 h-5 w-5" />
-            Upload Instructions
-          </CardTitle>
-          <CardDescription className="text-zinc-400">How to use the Harley Davidson import system</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-orange-400">Recommended Workflow:</h3>
-            <ol className="list-decimal list-inside space-y-2 text-zinc-300">
-              <li>Start with uploading the <span className="text-orange-400 font-medium">Open Orders List</span> to identify all current orders</li>
-              <li>Next, upload <span className="text-orange-400 font-medium">Order Line Items</span> for each order (either individually or in batch)</li>
-              <li>Finally, upload the <span className="text-orange-400 font-medium">Backorder Report</span> to update backorder status</li>
-              <li>Check the dashboard for any orders missing line items or other issues</li>
-              <li>Repeat this process daily to keep data current</li>
-            </ol>
-            
-            <div className="mt-6 p-4 bg-zinc-800/60 rounded-lg border border-zinc-700">
-              <h3 className="font-medium text-orange-400 mb-2">Note:</h3>
-              <p className="text-sm text-zinc-300">
-                All files should be exported directly from H-D NET in Excel (.xls) format. Each upload interface provides specific instructions for downloading the correct reports.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <HarleyUploadInstructions />
       
       {/* Recent Activity Log */}
-      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center text-orange-500">
-            <Clock className="mr-2 h-5 w-5" />
-            Recent Activity Log
-          </CardTitle>
-          <CardDescription className="text-zinc-400">Recent upload activity</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingUploads ? (
-            <div className="flex justify-center py-6">
-              <Loader className="h-6 w-6 animate-spin text-orange-500" />
-            </div>
-          ) : recentUploads.length > 0 ? (
-            <div className="space-y-4">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-zinc-700">
-                      <th className="text-left py-2 px-2 text-zinc-400">Type</th>
-                      <th className="text-left py-2 px-2 text-zinc-400">Filename</th>
-                      <th className="text-left py-2 px-2 text-zinc-400">Date</th>
-                      <th className="text-left py-2 px-2 text-zinc-400">Items</th>
-                      <th className="text-left py-2 px-2 text-zinc-400">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentUploads.map((upload) => (
-                      <tr key={upload.id} className="border-b border-zinc-800 hover:bg-zinc-800/30">
-                        <td className="py-2 px-2">
-                          <span className="capitalize">{upload.upload_type?.replace('_', ' ')}</span>
-                        </td>
-                        <td className="py-2 px-2 text-xs text-zinc-400">{upload.filename}</td>
-                        <td className="py-2 px-2">{formatDate(upload.upload_date)}</td>
-                        <td className="py-2 px-2">{upload.items_count}</td>
-                        <td className="py-2 px-2">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            upload.status === 'success' 
-                              ? 'bg-green-900/30 text-green-400' 
-                              : upload.status === 'partial_success'
-                                ? 'bg-yellow-900/30 text-yellow-400'
-                                : 'bg-red-900/30 text-red-400'
-                          }`}>
-                            {upload.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <p className="text-zinc-400">
-                Recent upload activity will be displayed here once data imports begin.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <HarleyActivityLog uploads={recentUploads} isLoading={isLoadingUploads} />
     </div>
   );
 };
