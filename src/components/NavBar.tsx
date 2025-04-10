@@ -73,7 +73,7 @@ const NavBar = () => {
                           isActive('/admin') && !isActive('/admin/uploads') ? "bg-zinc-800 text-orange-400" : "text-zinc-400"
                         )}
                       >
-                        <div className="text-sm font-medium">Dashboard</div>
+                        <div className="text-sm font-medium">Admin Dashboard</div>
                       </Link>
                     </NavigationMenuLink>
                   </li>
