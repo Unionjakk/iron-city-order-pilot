@@ -33,9 +33,7 @@ export const useShopifyOrders = () => {
       // Fetch active orders with basic information
       const { data: activeData, error: activeError } = await supabase
         .from('shopify_orders')
-        .select('id, shopify_order_id, shopify_order_number, created_at, customer_name, items_count, status, imported_at, location_id, location_name')
-        .order('imported_at', { ascending: false })
-        .limit(10);
+        .select('id, shopify_order_id, shopify_order_number, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
       
       if (activeError) {
         console.error('Error fetching active orders:', activeError);
