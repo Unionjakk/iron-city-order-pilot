@@ -79,6 +79,7 @@ export type Database = {
           note: string | null
           shipping_address: Json | null
           shopify_order_id: string
+          shopify_order_number: string | null
           status: string
         }
         Insert: {
@@ -97,6 +98,7 @@ export type Database = {
           note?: string | null
           shipping_address?: Json | null
           shopify_order_id: string
+          shopify_order_number?: string | null
           status: string
         }
         Update: {
@@ -115,6 +117,7 @@ export type Database = {
           note?: string | null
           shipping_address?: Json | null
           shopify_order_id?: string
+          shopify_order_number?: string | null
           status?: string
         }
         Relationships: []
@@ -185,6 +188,7 @@ export type Database = {
           note: string | null
           shipping_address: Json | null
           shopify_order_id: string
+          shopify_order_number: string | null
           status: string
         }
         Insert: {
@@ -202,6 +206,7 @@ export type Database = {
           note?: string | null
           shipping_address?: Json | null
           shopify_order_id: string
+          shopify_order_number?: string | null
           status?: string
         }
         Update: {
@@ -219,6 +224,7 @@ export type Database = {
           note?: string | null
           shipping_address?: Json | null
           shopify_order_id?: string
+          shopify_order_number?: string | null
           status?: string
         }
         Relationships: []
@@ -299,6 +305,7 @@ export type Database = {
           note: string | null
           shipping_address: Json | null
           shopify_order_id: string
+          shopify_order_number: string | null
           status: string
         }[]
       }

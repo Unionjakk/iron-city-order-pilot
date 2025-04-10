@@ -161,7 +161,6 @@ export const useShopifyOrders = () => {
           
           // Add line items to each order and transform to ShopifyOrder type
           const ordersWithLineItems = activeData.map(order => {
-            // Create the order object with all base properties
             const orderObj: ShopifyOrder = {
               id: order.id,
               shopify_order_id: order.shopify_order_id,
@@ -189,7 +188,6 @@ export const useShopifyOrders = () => {
           setImportedOrders(ordersWithLineItems);
         } else {
           const ordersWithoutLineItems = activeData.map(order => {
-            // Create the order object with all base properties
             const orderObj: ShopifyOrder = {
               id: order.id,
               shopify_order_id: order.shopify_order_id,
