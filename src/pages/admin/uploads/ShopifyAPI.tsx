@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingCart, Shield, Archive } from 'lucide-react';
 import { useShopifyOrders } from '@/hooks/useShopifyOrders';
 import ApiTokenFormComponent from '@/components/shopify/ApiTokenForm';
@@ -14,27 +14,20 @@ const ShopifyAPI = () => {
   const [maskedToken, setMaskedToken] = useState('');
   const { importedOrders, archivedOrders, lastImport, fetchRecentOrders } = useShopifyOrders();
 
-  // Check for existing token on component mount
-  useEffect(() => {
-    const checkExistingToken = () => {
-      const hasExistingToken = localStorage.getItem('shopify_token') !== null;
-      
-      if (hasExistingToken) {
-        const token = localStorage.getItem('shopify_token') || '';
-        const masked = maskToken(token);
-        setMaskedToken(masked);
-        setHasToken(true);
-      }
-    };
-    
-    checkExistingToken();
-  }, []);
-
   // Function to mask the token for display
   const maskToken = (token: string) => {
-    if (token.length <= 8) return '********';
+    if (!token || token.length <= 8) return '********';
     return token.substring(0, 4) + '********' + token.substring(token.length - 4);
   };
+
+  // Check for existing token on component mount
+  useEffect(() => {
+    const token = localStorage.getItem('shopify_token');
+    if (token) {
+      setHasToken(true);
+      setMaskedToken(maskToken(token));
+    }
+  }, []);
 
   return (
     <div className="space-y-6">

@@ -1,15 +1,14 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Key, RefreshCw, Shield } from 'lucide-react';
+import { Key, RefreshCw, Shield, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle } from 'lucide-react';
 
 // Define the form schema
 const apiTokenSchema = z.object({
@@ -37,9 +36,18 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
 
   // Function to mask the token for display
   const maskToken = (token: string) => {
-    if (token.length <= 8) return '********';
+    if (!token || token.length <= 8) return '********';
     return token.substring(0, 4) + '********' + token.substring(token.length - 4);
   };
+
+  // Check for token in localStorage on mount
+  useEffect(() => {
+    const storedToken = localStorage.getItem('shopify_token');
+    if (storedToken) {
+      setHasToken(true);
+      setMaskedToken(maskToken(storedToken));
+    }
+  }, [setHasToken, setMaskedToken]);
 
   // Handle form submission
   const onSubmit = (data: ApiTokenForm) => {
