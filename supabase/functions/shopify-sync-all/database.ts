@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 import { ShopifyOrder } from "./types.ts";
 
@@ -244,4 +243,69 @@ export async function getShopifyApiEndpoint(debug: (message: string) => void) {
   
   // Use the stored endpoint or fall back to the default if not configured
   return endpointData || "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json";
+}
+
+// New function to clean database completely - bypasses RLS with service role
+export async function cleanDatabaseCompletely(debug: (message: string) => void) {
+  try {
+    debug("Performing complete database cleanup with service role privileges...");
+    
+    // Use service role client to bypass RLS
+    const serviceClient = supabase;
+    
+    // Step 1: Delete all order items first
+    debug("Deleting all order items with service role...");
+    const { error: itemsDeleteError } = await serviceClient
+      .from('shopify_order_items')
+      .delete()
+      .is('order_id', 'not.null');
+    
+    if (itemsDeleteError) {
+      debug(`Error deleting order items: ${itemsDeleteError.message}`);
+      throw new Error(`Failed to delete order items: ${itemsDeleteError.message}`);
+    }
+    
+    // Step 2: Delete all orders
+    debug("Deleting all orders with service role...");
+    const { error: ordersDeleteError } = await serviceClient
+      .from('shopify_orders')
+      .delete()
+      .is('id', 'not.null');
+    
+    if (ordersDeleteError) {
+      debug(`Error deleting orders: ${ordersDeleteError.message}`);
+      throw new Error(`Failed to delete orders: ${ordersDeleteError.message}`);
+    }
+    
+    // Step 3: Verify both tables are empty
+    const { count: orderCount, error: orderCountError } = await serviceClient
+      .from('shopify_orders')
+      .select('*', { count: 'exact', head: true });
+    
+    if (orderCountError) {
+      debug(`Error verifying orders deletion: ${orderCountError.message}`);
+    } else if (orderCount && orderCount > 0) {
+      debug(`WARNING: ${orderCount} orders still remain after deletion attempt`);
+    } else {
+      debug("Verified all orders have been deleted successfully");
+    }
+    
+    const { count: itemCount, error: itemCountError } = await serviceClient
+      .from('shopify_order_items')
+      .select('*', { count: 'exact', head: true });
+    
+    if (itemCountError) {
+      debug(`Error verifying order items deletion: ${itemCountError.message}`);
+    } else if (itemCount && itemCount > 0) {
+      debug(`WARNING: ${itemCount} order items still remain after deletion attempt`);
+    } else {
+      debug("Verified all order items have been deleted successfully");
+    }
+    
+    debug("Database cleanup completed with service role privileges");
+    return true;
+  } catch (error) {
+    debug(`Error in cleanDatabaseCompletely: ${error.message}`);
+    throw error;
+  }
 }

@@ -21,89 +21,80 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
 
   const deleteAllOrders = async () => {
     try {
-      // Improved deletion approach
-      addDebugMessage("Starting deletion of all order data...");
+      addDebugMessage("Starting deletion of all order data via edge function...");
       
-      // STEP 1: First, delete all order items (because of foreign key constraints)
-      addDebugMessage("Deleting all order items first...");
+      // Get API token (needed for the edge function)
+      const token = await getTokenFromDatabase();
       
-      // Clear all order items using direct DELETE
-      const { error: itemsDeleteError } = await supabase
-        .from('shopify_order_items')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-        
-      if (itemsDeleteError) {
-        throw new Error(`Failed to delete order items: ${itemsDeleteError.message}`);
+      if (!token) {
+        throw new Error("No API token found in database. Please add your Shopify API token first.");
       }
       
-      // Verify that all order items are deleted
-      const { count: itemsCount, error: itemsCountError } = await supabase
-        .from('shopify_order_items')
-        .select('*', { count: 'exact', head: true });
-      
-      if (itemsCountError) {
-        throw new Error(`Failed to verify order items deletion: ${itemsCountError.message}`);
-      }
-      
-      if (itemsCount && itemsCount > 0) {
-        addDebugMessage(`WARNING: ${itemsCount} order items still remain after deletion attempt`);
-      } else {
-        addDebugMessage("All order items successfully deleted");
-      }
-      
-      // STEP 2: Delete all orders with a direct approach
-      addDebugMessage("Deleting all orders...");
-      
-      // Direct DELETE all orders
-      const { error: ordersDeleteError } = await supabase
-        .from('shopify_orders')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      if (ordersDeleteError) {
-        throw new Error(`Failed to delete orders: ${ordersDeleteError.message}`);
-      }
-      
-      // STEP 3: Verify all orders are deleted
-      const { count: orderCount, error: orderCountError } = await supabase
-        .from('shopify_orders')
-        .select('*', { count: 'exact', head: true });
-      
-      if (orderCountError) {
-        throw new Error(`Failed to verify orders deletion: ${orderCountError.message}`);
-      }
-      
-      if (orderCount && orderCount > 0) {
-        // If orders still remain, try a final desperate approach with RPC
-        addDebugMessage(`WARNING: ${orderCount} orders still remain after initial deletion`);
-        addDebugMessage("Attempting alternative deletion method...");
-        
-        // Use SQL query via RPC to delete remaining orders
-        const { error: rpcError } = await supabase.rpc('execute_sql', {
-          sql: `DELETE FROM public.shopify_orders WHERE id IS NOT NULL;`
-        });
-        
-        if (rpcError) {
-          throw new Error(`Alternative deletion failed: ${rpcError.message}`);
+      // Call the edge function with clean operation
+      addDebugMessage("Calling shopify-sync-all edge function for database cleaning...");
+      const response = await supabase.functions.invoke('shopify-sync-all', {
+        body: { 
+          apiToken: token,
+          operation: "clean" // Special operation to clean the database
         }
+      });
+
+      if (response.error) {
+        console.error('Error invoking edge function for deletion:', response.error);
+        throw new Error(`Failed to delete data: ${response.error.message || 'Unknown error'}`);
+      }
+      
+      const data = response.data;
+      
+      if (!data || !data.success) {
+        const errorMsg = data?.error || 'Unknown error occurred during deletion';
+        console.error('Deletion failed:', errorMsg);
+        throw new Error(`Deletion failed: ${errorMsg}`);
+      }
+      
+      // Check response and verify if deletion was successful
+      if (data.cleaned === true) {
+        addDebugMessage("Database successfully cleaned via edge function");
+      } else {
+        addDebugMessage("WARNING: Edge function did not confirm successful deletion");
         
-        // Final verification
-        const { count: finalCount, error: finalCountError } = await supabase
+        // Perform a verification check directly
+        const { count: orderCount, error: orderCountError } = await supabase
           .from('shopify_orders')
           .select('*', { count: 'exact', head: true });
-          
-        if (finalCountError) {
-          throw new Error(`Failed to verify final deletion: ${finalCountError.message}`);
-        }
         
-        if (finalCount && finalCount > 0) {
-          throw new Error(`Deletion failed: ${finalCount} orders still remain in database after multiple deletion attempts`);
+        if (orderCountError) {
+          addDebugMessage(`Error verifying deletion: ${orderCountError.message}`);
+        } else if (orderCount && orderCount > 0) {
+          addDebugMessage(`WARNING: ${orderCount} orders still exist in database`);
+          
+          // Try to use RPC as a last resort
+          addDebugMessage("Attempting final deletion via RPC...");
+          
+          // Use an RPC to delete with elevated privileges
+          const { error: rpcOrdersError } = await supabase.rpc('execute_sql', {
+            sql: `DELETE FROM public.shopify_order_items;
+                  DELETE FROM public.shopify_orders;`
+          });
+          
+          if (rpcOrdersError) {
+            addDebugMessage(`Error in RPC deletion: ${rpcOrdersError.message}`);
+            throw new Error(`Failed to delete data via RPC: ${rpcOrdersError.message}`);
+          }
+          
+          // Final verification
+          const { count: finalCount } = await supabase
+            .from('shopify_orders')
+            .select('*', { count: 'exact', head: true });
+            
+          if (finalCount && finalCount > 0) {
+            throw new Error(`Deletion failed: ${finalCount} orders still remain after multiple deletion attempts`);
+          } else {
+            addDebugMessage("All orders successfully deleted using RPC method");
+          }
         } else {
-          addDebugMessage("All orders successfully deleted using alternative method");
+          addDebugMessage("All orders successfully deleted");
         }
-      } else {
-        addDebugMessage("All orders successfully deleted");
       }
       
       addDebugMessage("Database is now clean and ready for import");
@@ -127,7 +118,10 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       
       // Call the edge function for complete refresh
       const response = await supabase.functions.invoke('shopify-sync-all', {
-        body: { apiToken: token }
+        body: { 
+          apiToken: token,
+          operation: "import" // Specify operation type
+        }
       });
 
       if (response.error) {

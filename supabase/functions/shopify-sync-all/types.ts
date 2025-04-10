@@ -1,6 +1,16 @@
 
-// Types for Shopify-Sync-All function
+// CORS Headers for browser access
+export const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
+// Request body with API token
+export interface RequestBody {
+  apiToken?: string;
+}
+
+// Shopify order interface
 export interface ShopifyOrder {
   id: string;
   order_number: string;
@@ -16,28 +26,14 @@ export interface ShopifyOrder {
   shipping_address: any;
   fulfillment_status: string | null;
   note: string | null;
-  line_item_count: number;
   location_id: string;
 }
 
-export interface RequestBody {
-  apiToken?: string;
-}
-
+// Response data structure
 export interface SyncResponse {
   success: boolean;
   error: string | null;
   imported: number;
   debugMessages: string[];
+  cleaned?: boolean;
 }
-
-export interface PaginatedOrdersResponse {
-  orders: ShopifyOrder[];
-  nextPageUrl: string | null;
-}
-
-// CORS headers for all responses
-export const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};

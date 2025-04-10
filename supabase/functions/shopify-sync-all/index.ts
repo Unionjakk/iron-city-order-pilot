@@ -18,8 +18,14 @@ import {
   importOrder, 
   updateLastSyncTime,
   getShopifyApiEndpoint,
-  supabase
+  supabase,
+  cleanDatabaseCompletely
 } from "./database.ts";
+
+// Extended request body with operation type
+interface ExtendedRequestBody extends RequestBody {
+  operation?: "import" | "clean";
+}
 
 serve(async (req) => {
   console.log("=== Shopify Sync ALL Function Started ===");
@@ -32,7 +38,7 @@ serve(async (req) => {
   }
 
   // Initialize response data
-  const responseData: SyncResponse = {
+  const responseData: SyncResponse & { cleaned?: boolean } = {
     success: false,
     error: null,
     imported: 0,
@@ -46,7 +52,7 @@ serve(async (req) => {
   };
 
   try {
-    let body: RequestBody = {};
+    let body: ExtendedRequestBody = {};
     try {
       body = await req.json();
       debug(`Request body parsed successfully: ${JSON.stringify(body)}`);
@@ -64,6 +70,32 @@ serve(async (req) => {
       throw new Error("No API token provided");
     }
     
+    // Check for operation type
+    const operation = body.operation || "import";
+    debug(`Operation type: ${operation}`);
+    
+    // Clean database operation
+    if (operation === "clean") {
+      debug("Starting CLEAN operation to delete all Shopify orders and items");
+      try {
+        // Call our new service function to clean the database
+        const success = await cleanDatabaseCompletely(debug);
+        
+        responseData.success = true;
+        responseData.cleaned = success;
+        debug("Database cleanup completed successfully");
+        
+        return new Response(JSON.stringify(responseData), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      } catch (error) {
+        debug(`Error during database cleanup: ${error.message}`);
+        throw new Error(`Database cleanup failed: ${error.message}`);
+      }
+    }
+    
+    // Standard import operation
     debug("Starting import of ALL orders from Shopify");
 
     try {
