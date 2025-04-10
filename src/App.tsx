@@ -23,6 +23,12 @@ import ShopifyAPI from "@/pages/admin/uploads/ShopifyAPI";
 // User Pages
 import UsersPage from "@/pages/users/UsersPage";
 
+// Action Pages
+import ActionsIndex from "@/pages/actions/ActionsIndex";
+import PicklistPage from "@/pages/actions/PicklistPage";
+import ToOrderPage from "@/pages/actions/ToOrderPage";
+import BackorderPage from "@/pages/actions/BackorderPage";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -44,6 +50,12 @@ const App = () => (
                 
                 {/* Users management */}
                 <Route path="/users" element={<UsersPage />} />
+                
+                {/* Actions routes */}
+                <Route path="/actions" element={<ActionsIndex />} />
+                <Route path="/actions/picklist" element={<PicklistPage />} />
+                <Route path="/actions/toorder" element={<ToOrderPage />} />
+                <Route path="/actions/backorder" element={<BackorderPage />} />
                 
                 {/* Admin routes */}
                 <Route path="/admin" element={<AdminDashboard />} />
