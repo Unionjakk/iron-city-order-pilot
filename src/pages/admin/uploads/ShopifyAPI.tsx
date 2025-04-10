@@ -20,33 +20,15 @@ const apiTokenSchema = z.object({
 
 type ApiTokenForm = z.infer<typeof apiTokenSchema>;
 
-// Mock data for demonstration
-const mockOrders = [
-  {
-    id: 'SH1001',
-    shopify_order_id: '4501234567',
-    created_at: '2025-04-09T15:30:00Z',
-    customer_name: 'John Smith',
-    items_count: 3,
-    status: 'imported'
-  },
-  {
-    id: 'SH1002',
-    shopify_order_id: '4501234568',
-    created_at: '2025-04-09T16:45:00Z',
-    customer_name: 'Jane Doe',
-    items_count: 1,
-    status: 'stock_checked'
-  },
-  {
-    id: 'SH1003',
-    shopify_order_id: '4501234569',
-    created_at: '2025-04-10T09:15:00Z',
-    customer_name: 'Robert Johnson',
-    items_count: 5,
-    status: 'partial_pick'
-  }
-];
+// Order interface
+interface ShopifyOrder {
+  id: string;
+  shopify_order_id: string;
+  created_at: string;
+  customer_name: string;
+  items_count: number;
+  status: string;
+}
 
 const ShopifyAPI = () => {
   const [hasToken, setHasToken] = useState(false);
@@ -54,7 +36,7 @@ const ShopifyAPI = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [lastImport, setLastImport] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [importedOrders, setImportedOrders] = useState(mockOrders);
+  const [importedOrders, setImportedOrders] = useState<ShopifyOrder[]>([]);
   const { toast } = useToast();
 
   const form = useForm<ApiTokenForm>({
@@ -138,7 +120,7 @@ const ShopifyAPI = () => {
       
       toast({
         title: "Import Completed",
-        description: "Successfully imported 3 new orders from Shopify.",
+        description: "Successfully imported orders from Shopify.",
         variant: "default",
       });
     }, 2000);
@@ -362,7 +344,9 @@ const ShopifyAPI = () => {
           </CardContent>
           <CardFooter className="border-t border-zinc-800 bg-zinc-900/30 px-6 py-3">
             <div className="text-sm text-zinc-500">
-              Showing {importedOrders.length} orders. Orders will automatically progress through the fulfillment workflow.
+              {importedOrders.length > 0 
+                ? `Showing ${importedOrders.length} orders. Orders will automatically progress through the fulfillment workflow.`
+                : 'No orders to display. Import orders from Shopify to begin the fulfillment process.'}
             </div>
           </CardFooter>
         </Card>
