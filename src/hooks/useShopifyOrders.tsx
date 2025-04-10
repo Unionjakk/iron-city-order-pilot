@@ -130,7 +130,7 @@ export const useShopifyOrders = () => {
       }
       
       // Fetch archived orders - using the RPC function to avoid type issues
-      // The get_archived_shopify_orders function returns all fields including shopify_order_number
+      // Try using the updated RPC function that includes shopify_order_number
       const { data: archivedData, error: archivedError } = await supabase
         .rpc('get_archived_shopify_orders', { limit_count: 10 });
         
@@ -168,22 +168,53 @@ export const useShopifyOrders = () => {
               return acc;
             }, {});
             
-            // Add line items to each archived order
-            const archivedOrdersWithLineItems = archivedData.map(order => ({
-              ...order,
-              // Add shopify_order_number if it exists, otherwise use empty string
-              shopify_order_number: order.shopify_order_number || '',
-              line_items: lineItemsByOrderId[order.id] || []
-            })) as ShopifyOrder[];
+            // Process each archived order - with safe access to shopify_order_number
+            const archivedOrdersWithLineItems = archivedData.map(order => {
+              // First create a properly typed order object with the properties we know exist
+              const typedOrder: ShopifyOrder = {
+                id: order.id,
+                shopify_order_id: order.shopify_order_id,
+                created_at: order.created_at,
+                customer_name: order.customer_name,
+                items_count: order.items_count,
+                status: order.status,
+                // Add the optional properties safely
+                shopify_order_number: (order as any).shopify_order_number || '',
+                imported_at: order.imported_at,
+                archived_at: order.archived_at,
+                location_id: order.location_id,
+                location_name: order.location_name,
+                line_items: lineItemsByOrderId[order.id] || []
+              };
+              
+              return typedOrder;
+            });
             
             setArchivedOrders(archivedOrdersWithLineItems);
           } else {
-            setArchivedOrders(archivedData.map(order => ({
-              ...order,
-              // Add shopify_order_number if it exists, otherwise use empty string
-              shopify_order_number: order.shopify_order_number || '',
-              line_items: []
-            })) as ShopifyOrder[]);
+            // Process each archived order without line items
+            const archivedOrdersWithoutLineItems = archivedData.map(order => {
+              // First create a properly typed order object with the properties we know exist
+              const typedOrder: ShopifyOrder = {
+                id: order.id,
+                shopify_order_id: order.shopify_order_id,
+                created_at: order.created_at,
+                customer_name: order.customer_name,
+                items_count: order.items_count,
+                status: order.status,
+                // Add the optional properties safely
+                shopify_order_number: (order as any).shopify_order_number || '',
+                imported_at: order.imported_at,
+                archived_at: order.archived_at,
+                location_id: order.location_id,
+                location_name: order.location_name,
+                line_items: []
+              };
+              
+              return typedOrder;
+            });
+            
+            setArchivedOrders(archivedOrdersWithoutLineItems);
           }
         } else {
           setArchivedOrders([]);
