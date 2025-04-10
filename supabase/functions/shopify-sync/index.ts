@@ -422,9 +422,9 @@ serve(async (req) => {
 async function fetchShopifyOrders(apiToken: string): Promise<ShopifyOrder[]> {
   // Fetch unfulfilled orders from Shopify
   try {
-    // Updated URL to use the current API version and your store's URL
+    // Updated URL to use the correct store URL and API version
     const response = await fetch(
-      "https://iron-city-hardware.myshopify.com/admin/api/2023-10/orders.json?status=open&fulfillment_status=unfulfilled",
+      "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json?status=open&fulfillment_status=unfulfilled",
       {
         headers: {
           "X-Shopify-Access-Token": apiToken,
@@ -463,9 +463,9 @@ async function fetchShopifyOrders(apiToken: string): Promise<ShopifyOrder[]> {
 async function fetchSingleOrder(apiToken: string, orderId: string): Promise<any> {
   // Fetch a single order by ID to check its current status
   try {
-    // Updated URL to use the current API version
+    // Updated URL to use the correct store URL and API version
     const response = await fetch(
-      `https://iron-city-hardware.myshopify.com/admin/api/2023-10/orders/${orderId}.json`,
+      `https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders/${orderId}.json`,
       {
         headers: {
           "X-Shopify-Access-Token": apiToken,
