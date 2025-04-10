@@ -19,20 +19,23 @@ export const useShopifyOrders = () => {
     setError(null); // Clear any previous errors
     
     try {
+      console.log("Fetching Shopify orders data from database...");
+      
       // Try to get the last sync time from settings
-      const { data: lastSyncData, error: syncError } = await supabase.rpc('get_shopify_setting', { 
+      const { data: lastSyncData, error: syncError } = await supabase.rpc("get_shopify_setting", { 
         setting_name_param: 'last_sync_time' 
       });
       
       if (syncError) {
         console.error('Error checking for last sync time:', syncError);
-        setError('Error retrieving sync status');
+        setError(`Error retrieving sync status: ${syncError.message}`);
       } else if (lastSyncData && typeof lastSyncData === 'string') {
+        console.log(`Last sync time: ${lastSyncData}`);
         setLastImport(lastSyncData);
       }
       
       // Check if auto-import is enabled - make sure to check the exact string value 'true'
-      const { data: autoImportData, error: autoImportError } = await supabase.rpc('get_shopify_setting', { 
+      const { data: autoImportData, error: autoImportError } = await supabase.rpc("get_shopify_setting", { 
         setting_name_param: 'auto_import_enabled' 
       });
       
@@ -40,6 +43,34 @@ export const useShopifyOrders = () => {
         console.error('Error checking auto-import setting:', autoImportError);
       } else {
         setAutoImportEnabled(autoImportData === 'true');
+        console.log(`Auto import enabled: ${autoImportData === 'true'}`);
+      }
+      
+      try {
+        // Test API connection by getting token and endpoint
+        const tokenPromise = supabase.rpc("get_shopify_setting", { 
+          setting_name_param: 'shopify_token' 
+        });
+        
+        const endpointPromise = supabase.rpc("get_shopify_setting", { 
+          setting_name_param: 'shopify_api_endpoint' 
+        });
+        
+        const [tokenResult, endpointResult] = await Promise.all([tokenPromise, endpointPromise]);
+        
+        if (tokenResult.error) {
+          throw new Error(`Failed to retrieve API token: ${tokenResult.error.message}`);
+        }
+        
+        if (endpointResult.error) {
+          throw new Error(`Failed to retrieve API endpoint: ${endpointResult.error.message}`);
+        }
+        
+        console.log(`API token: ${tokenResult.data ? 'Present' : 'Missing'}`);
+        console.log(`API endpoint: ${endpointResult.data}`);
+      } catch (apiError: any) {
+        console.error('API connection test failed:', apiError);
+        setError(`API configuration error: ${apiError.message}`);
       }
       
       // Fetch active orders with all fields including shopify_order_number
@@ -49,7 +80,7 @@ export const useShopifyOrders = () => {
       
       if (activeError) {
         console.error('Error fetching active orders:', activeError);
-        setError('Failed to fetch orders from database');
+        setError(`Failed to fetch orders from database: ${activeError.message}`);
         toast({
           title: "Error",
           description: "Failed to fetch orders. Please try again later.",
@@ -58,6 +89,8 @@ export const useShopifyOrders = () => {
         setImportedOrders([]);
         return;
       }
+      
+      console.log(`Retrieved ${activeData?.length || 0} active orders from database`);
       
       // If we have active orders, fetch their line items
       if (activeData && activeData.length > 0) {
@@ -71,6 +104,8 @@ export const useShopifyOrders = () => {
         
         if (lineItemsError) {
           console.error('Error fetching line items:', lineItemsError);
+        } else {
+          console.log(`Retrieved ${lineItemsData?.length || 0} line items for active orders`);
         }
         
         // Map line items to their respective orders
@@ -153,6 +188,8 @@ export const useShopifyOrders = () => {
         console.error('Error fetching archived orders:', archivedError);
         setArchivedOrders([]);
       } else if (archivedData) {
+        console.log(`Retrieved ${archivedData.length} archived orders from database`);
+        
         // If we have archived orders, fetch their line items
         if (archivedData.length > 0) {
           const archivedOrderIds = archivedData.map(order => order.id);
@@ -165,6 +202,8 @@ export const useShopifyOrders = () => {
           
           if (archivedLineItemsError) {
             console.error('Error fetching archived line items:', archivedLineItemsError);
+          } else {
+            console.log(`Retrieved ${archivedLineItemsData?.length || 0} line items for archived orders`);
           }
           
           // Map archived line items to their respective orders
@@ -229,12 +268,12 @@ export const useShopifyOrders = () => {
       } else {
         setArchivedOrders([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching orders:', error);
-      setError('An unexpected error occurred while fetching orders');
+      setError(`An unexpected error occurred while fetching orders: ${error.message}`);
       toast({
         title: "Error",
-        description: "Failed to fetch orders. Please try again later.",
+        description: "Failed to fetch orders. Please check console for details.",
         variant: "destructive",
       });
     } finally {

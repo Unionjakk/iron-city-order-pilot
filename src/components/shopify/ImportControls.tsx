@@ -32,15 +32,19 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   // Load settings and check for orders
   const loadSettingsAndOrders = async () => {
     try {
-      const { lastSyncTime, lastCronRun, autoImportEnabled } = await fetchShopifySettings();
+      console.log("Loading Shopify integration settings...");
+      const { lastSyncTime, lastCronRun, autoImportEnabled, apiEndpoint } = await fetchShopifySettings();
       setLastSyncTime(lastSyncTime);
       setLastCronRun(lastCronRun);
       setAutoImportEnabled(autoImportEnabled);
+      console.log(`Settings loaded: lastSync=${lastSyncTime}, lastCron=${lastCronRun}, autoImport=${autoImportEnabled}, endpoint=${apiEndpoint}`);
       
       const hasOrders = await checkForImportedOrders();
       setHasImportedOrders(hasOrders);
-    } catch (error) {
+      console.log(`Has imported orders: ${hasOrders}`);
+    } catch (error: any) {
       console.error('Error loading settings and orders:', error);
+      setImportError(`Error loading configuration: ${error.message}`);
     }
   };
 
@@ -49,14 +53,16 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     setIsRefreshingStatus(true);
     setImportError(null);
     try {
+      console.log("Manual refresh of Shopify settings requested");
       await loadSettingsAndOrders();
       toast({
         title: "Status Refreshed",
         description: "Auto-import status has been refreshed.",
         variant: "default",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error refreshing status:', error);
+      setImportError(`Failed to refresh status: ${error.message}`);
       toast({
         title: "Refresh Failed",
         description: "Failed to refresh auto-import status.",
@@ -73,6 +79,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     setImportError(null);
     try {
       const newValue = !autoImportEnabled;
+      console.log(`Toggling auto-import to: ${newValue}`);
       await toggleAutoImport(newValue);
       setAutoImportEnabled(newValue);
       
@@ -83,8 +90,9 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
           : "Automatic importing has been disabled. You can still import manually.",
         variant: "default",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling auto-import:', error);
+      setImportError(`Failed to update auto-import setting: ${error.message}`);
       toast({
         title: "Setting Change Failed",
         description: "Failed to update auto-import setting.",
@@ -106,6 +114,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     setImportError(null);
     
     try {
+      console.log("Starting manual Shopify order import");
       toast({
         title: "Import Started",
         description: "Importing all unfulfilled orders. This may take a few minutes for large order sets...",
@@ -113,6 +122,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       });
       
       const result = await executeManualImport();
+      console.log("Import completed successfully:", result);
       
       // Fetch the updated orders to refresh the UI
       await fetchRecentOrders();
@@ -125,12 +135,14 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
         description: `Successfully imported ${result.imported} new orders, archived ${result.archived} fulfilled orders, and cleaned ${result.cleaned} incorrectly archived orders.`,
         variant: "default",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error importing orders:', error);
-      setImportError(error.message || "Unknown error occurred");
+      const errorMessage = error.message || "Unknown error occurred";
+      console.log("Setting import error:", errorMessage);
+      setImportError(errorMessage);
       toast({
         title: "Import Failed",
-        description: error.message || "Failed to import orders. Please try again.",
+        description: "Failed to import orders. See error details for more information.",
         variant: "destructive",
       });
     } finally {

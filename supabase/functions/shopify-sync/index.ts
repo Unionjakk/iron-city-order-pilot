@@ -42,8 +42,12 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  console.log("=== Shopify Sync Function Started ===");
+  console.log(`Request method: ${req.method}`);
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
+    console.log("Handling CORS preflight request");
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -66,8 +70,9 @@ serve(async (req) => {
     let body: RequestBody = {};
     try {
       body = await req.json();
+      console.log("Request body parsed successfully:", JSON.stringify(body));
     } catch (err) {
-      console.error("Error parsing request body:", err);
+      console.log("Empty or invalid request body - this is expected for cron jobs");
       // For cron jobs with empty body, this is expected
       // We'll try to get the API token from the database
     }
@@ -125,6 +130,7 @@ serve(async (req) => {
       }
       
       apiToken = tokenData;
+      console.log("Successfully retrieved API token from database");
     }
 
     // Validate the API token
@@ -157,34 +163,65 @@ serve(async (req) => {
           responseData.cleaned++;
         }
       }
+    } else {
+      console.log("No incorrectly archived orders found");
     }
 
     try {
       // STEP 2: Check for duplicate orders (exist in both active and archive)
       console.log("Checking for duplicate orders");
-      const { data: duplicateOrders, error: duplicateCheckError } = await supabase.from('shopify_orders')
-        .select('shopify_order_id')
-        .in('shopify_order_id',
-          supabase.from('shopify_archived_orders')
-            .select('shopify_order_id')
-        );
+      
+      try {
+        // Use a different query approach to avoid the map issue
+        const { data: activeOrderIds, error: activeError } = await supabase
+          .from('shopify_orders')
+          .select('shopify_order_id');
+          
+        if (activeError) {
+          console.error("Error getting active order IDs:", activeError);
+          throw activeError;
+        }
+        
+        if (!activeOrderIds || !Array.isArray(activeOrderIds)) {
+          console.log("No active orders found or result is not an array");
+          // Continue with the sync even if there are no active orders
+        } else {
+          // Convert array of objects to array of IDs
+          const orderIds = activeOrderIds.map(o => o.shopify_order_id);
+          console.log(`Found ${orderIds.length} active order IDs to check for duplicates`);
+          
+          if (orderIds.length > 0) {
+            // Check for these IDs in the archived orders table
+            const { data: duplicateOrders, error: duplicateError } = await supabase
+              .from('shopify_archived_orders')
+              .select('id, shopify_order_id')
+              .in('shopify_order_id', orderIds);
+              
+            if (duplicateError) {
+              console.error("Error checking for duplicate orders:", duplicateError);
+            } else if (duplicateOrders && duplicateOrders.length > 0) {
+              console.log(`Found ${duplicateOrders.length} duplicate orders - deleting from archive`);
+              for (const order of duplicateOrders) {
+                const { error: deleteError } = await supabase
+                  .from("shopify_archived_orders")
+                  .delete()
+                  .eq("id", order.id);
 
-      if (duplicateCheckError) {
-        console.error("Error checking for duplicate orders:", duplicateCheckError);
-      } else if (duplicateOrders && duplicateOrders.length > 0) {
-        console.log(`Found ${duplicateOrders.length} duplicate orders - deleting from archive`);
-        for (const order of duplicateOrders) {
-          const { error: deleteError } = await supabase
-            .from("shopify_archived_orders")
-            .delete()
-            .eq("shopify_order_id", order.shopify_order_id);
-
-          if (deleteError) {
-            console.error(`Error deleting duplicate order ${order.shopify_order_id} from archive:`, deleteError);
-          } else {
-            console.log(`Deleted duplicate order ${order.shopify_order_id} from archive`);
+                if (deleteError) {
+                  console.error(`Error deleting duplicate order ${order.shopify_order_id} from archive:`, deleteError);
+                } else {
+                  console.log(`Deleted duplicate order ${order.shopify_order_id} from archive`);
+                  responseData.cleaned++;
+                }
+              }
+            } else {
+              console.log("No duplicate orders found");
+            }
           }
         }
+      } catch (error) {
+        console.error("Error in duplicate order check:", error);
+        // Continue with the sync even if the duplicate check fails
       }
 
       // Get API endpoint from database
@@ -215,7 +252,7 @@ serve(async (req) => {
       
       // Continue fetching if there are more pages
       let pageCount = 1;
-      // Removed the hard limit of 10 pages to allow importing all unfulfilled orders
+      // No page limit - fetch all unfulfilled orders
       
       while (nextPageUrl) {
         pageCount++;
@@ -382,6 +419,7 @@ serve(async (req) => {
 
     responseData.success = true;
     console.log("Shopify sync completed successfully");
+    console.log(`Summary: Imported ${responseData.imported}, Archived ${responseData.archived}, Cleaned ${responseData.cleaned}`);
 
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -410,7 +448,7 @@ async function fetchShopifyOrdersWithPagination(apiToken: string, apiEndpoint: s
     }
     
     if (!url.searchParams.has('limit')) {
-      url.searchParams.set('limit', '50'); // Use 50 per page to balance performance and reliability
+      url.searchParams.set('limit', '250'); // Increased from 50 to 250 (Shopify API max)
     }
     
     if (!url.searchParams.has('fields')) {
@@ -425,6 +463,10 @@ async function fetchShopifyOrdersWithPagination(apiToken: string, apiEndpoint: s
         "Content-Type": "application/json",
       },
     });
+
+    // Log detailed response information
+    console.log(`Response status: ${response.status} ${response.statusText}`);
+    console.log(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -447,6 +489,8 @@ async function fetchShopifyOrdersWithPagination(apiToken: string, apiEndpoint: s
     }
 
     const data = await response.json();
+    console.log(`Received data structure: ${Object.keys(data).join(', ')}`);
+    
     if (!data.orders || !Array.isArray(data.orders)) {
       console.error("Unexpected Shopify API response format:", data);
       throw new Error("Received unexpected data format from Shopify API");
@@ -457,6 +501,7 @@ async function fetchShopifyOrdersWithPagination(apiToken: string, apiEndpoint: s
     let nextPageUrl: string | null = null;
     
     if (linkHeader) {
+      console.log(`Link header: ${linkHeader}`);
       // Parse the Link header to find the next page URL
       const links = linkHeader.split(',');
       for (const link of links) {
@@ -495,6 +540,9 @@ async function fetchNextPage(apiToken: string, nextPageUrl: string): Promise<{ o
         "Content-Type": "application/json",
       },
     });
+
+    // Log detailed response information
+    console.log(`Response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -590,6 +638,9 @@ async function fetchSingleOrder(apiToken: string, orderId: string): Promise<any>
         "Content-Type": "application/json",
       },
     });
+
+    // Log detailed response information
+    console.log(`Response status for order ${orderId}: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       const errorText = await response.text();

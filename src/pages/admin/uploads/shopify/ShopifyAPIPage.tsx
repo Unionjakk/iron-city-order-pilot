@@ -36,6 +36,7 @@ const ShopifyAPIPage = () => {
   // When ordersError changes, update the API connection error state
   useEffect(() => {
     if (ordersError) {
+      console.log("Setting API connection error:", ordersError);
       setApiConnectionError(ordersError);
     } else {
       setApiConnectionError(null);
@@ -61,8 +62,9 @@ const ShopifyAPIPage = () => {
   const checkForToken = async () => {
     setIsLoading(true);
     try {
+      console.log("Checking for API token in database...");
       // Using RPC for type safety
-      const { data, error } = await supabase.rpc('get_shopify_setting', { 
+      const { data, error } = await supabase.rpc("get_shopify_setting", { 
         setting_name_param: 'shopify_token' 
       });
       
@@ -77,7 +79,9 @@ const ShopifyAPIPage = () => {
       if (data && typeof data === 'string' && data !== PLACEHOLDER_TOKEN_VALUE) {
         setHasToken(true);
         setMaskedToken(maskToken(data));
+        console.log("API token found in database");
       } else {
+        console.log("No valid API token found in database");
         setHasToken(false);
         setMaskedToken('');
       }
@@ -117,6 +121,7 @@ const ShopifyAPIPage = () => {
 
   // Handle refresh button click
   const handleRefresh = () => {
+    console.log("Manual refresh requested by user");
     fetchRecentOrders();
     checkForSchemaErrors();
     setApiConnectionError(null);
