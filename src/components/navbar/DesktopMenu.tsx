@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Users, CheckSquare, List, Clock, ShoppingCart, ChevronDown } from 'lucide-react';
+import { Users, CheckSquare, List, Clock, ShoppingCart, ChevronDown, Settings } from 'lucide-react';
 
 type DesktopMenuProps = {
   isActive: (path: string) => boolean;
@@ -202,6 +202,20 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
                   )}
                 >
                   Shopify API
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/admin/settings"
+                  className={cn(
+                    "flex items-center px-4 py-2 text-sm transition-colors",
+                    isActive('/admin/settings')
+                      ? "text-orange-400"
+                      : "text-zinc-400 hover:bg-zinc-800 hover:text-orange-300"
+                  )}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
                 </Link>
               </li>
             </ul>

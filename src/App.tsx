@@ -19,6 +19,7 @@ import UploadsIndex from "@/pages/admin/uploads/UploadsIndex";
 import PinnacleUpload from "@/pages/admin/uploads/PinnacleUpload";
 import HarleyUpload from "@/pages/admin/uploads/HarleyUpload";
 import ShopifyAPI from "@/pages/admin/uploads/ShopifyAPI";
+import AdminSettings from "@/pages/admin/AdminSettings";
 
 // User Pages
 import UsersPage from "@/pages/users/UsersPage";
@@ -63,6 +64,7 @@ const App = () => (
                 <Route path="/admin/uploads/pinnacle" element={<PinnacleUpload />} />
                 <Route path="/admin/uploads/harley" element={<HarleyUpload />} />
                 <Route path="/admin/uploads/shopify" element={<ShopifyAPI />} />
+                <Route path="/admin/settings" element={<AdminSettings />} />
               </Route>
             </Route>
             
