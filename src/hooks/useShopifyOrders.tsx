@@ -14,7 +14,7 @@ export const useShopifyOrders = () => {
   // Check if a column exists in a table using raw SQL query
   const checkColumnExists = async (tableName: string, columnName: string): Promise<boolean> => {
     try {
-      // Use raw SQL query to check if column exists
+      // Check if we have cached the column existence result
       const { data, error } = await supabase
         .from('shopify_settings')
         .select('setting_value')
@@ -32,28 +32,40 @@ export const useShopifyOrders = () => {
       }
       
       // Otherwise, use a direct SQL query to check
-      const { data: exists, error: sqlError } = await supabase
-        .rpc('column_exists', { 
-          table_name: tableName,
-          column_name: columnName
-        });
+      const query = `
+        SELECT EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = '${tableName}'
+            AND column_name = '${columnName}'
+        ) as exists
+      `;
+      
+      const { data: existsData, error: sqlError } = await supabase.rpc('execute_sql', { 
+        sql: query 
+      });
       
       if (sqlError) {
         console.error(`Error with SQL check for column ${columnName} in ${tableName}:`, sqlError);
         
         // Fallback: try to manually check using a select query
         try {
-          const query = `SELECT * FROM ${tableName} LIMIT 1`;
-          const { data: rowData, error: rowError } = await supabase.rpc('execute_sql', { sql: query });
+          // Try to query the table with a limit of 1 row
+          // If the column doesn't exist, we'll get an error
+          const { data: tableData, error: tableError } = await supabase
+            .from(tableName)
+            .select('*')
+            .limit(1);
           
-          if (rowError) {
-            console.error('Error with fallback query:', rowError);
+          if (tableError) {
+            console.error('Error with fallback query:', tableError);
             return false;
           }
           
           // If we got a row, check if the column exists in the first row
-          if (rowData && rowData.length > 0) {
-            return columnName in rowData[0];
+          if (tableData && tableData.length > 0) {
+            return columnName in tableData[0];
           }
           
           return false;
@@ -62,6 +74,8 @@ export const useShopifyOrders = () => {
           return false;
         }
       }
+      
+      const exists = existsData && existsData[0] && existsData[0].exists === true;
       
       // Cache the result for future checks
       await supabase
@@ -72,7 +86,7 @@ export const useShopifyOrders = () => {
           updated_at: new Date().toISOString()
         });
       
-      return !!exists;
+      return exists;
     } catch (error) {
       console.error(`Exception checking if column ${columnName} exists:`, error);
       return false;
@@ -103,18 +117,16 @@ export const useShopifyOrders = () => {
       const hasOrderNumberColumn = await checkColumnExists('shopify_orders', 'shopify_order_number');
       
       // Fetch active orders with basic information based on column availability
-      let activeQuery = supabase
-        .from('shopify_orders')
-        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
+      let query = 'id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, location_id, location_name';
       
       // Add shopify_order_number to the query if the column exists
       if (hasOrderNumberColumn) {
-        activeQuery = supabase
-          .from('shopify_orders')
-          .select('id, shopify_order_id, shopify_order_number, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
+        query += ', shopify_order_number';
       }
       
-      const { data: activeData, error: activeError } = await activeQuery;
+      const { data: activeData, error: activeError } = await supabase
+        .from('shopify_orders')
+        .select(query);
       
       if (activeError) {
         console.error('Error fetching active orders:', activeError);
@@ -227,10 +239,17 @@ export const useShopifyOrders = () => {
       // Check if shopify_order_number column exists in the archived orders table
       const hasArchivedOrderNumberColumn = await checkColumnExists('shopify_archived_orders', 'shopify_order_number');
       
-      // Fetch archived orders - modify the RPC call or use direct query based on column availability
+      // Fetch archived orders - modify selection based on column availability
+      let archivedQuery = 'id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, archived_at, location_id, location_name';
+      
+      // Add shopify_order_number to the query if the column exists
+      if (hasArchivedOrderNumberColumn) {
+        archivedQuery += ', shopify_order_number';
+      }
+      
       const { data: archivedData, error: archivedError } = await supabase
         .from('shopify_archived_orders')
-        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, archived_at, location_id, location_name')
+        .select(archivedQuery)
         .order('archived_at', { ascending: false })
         .limit(10);
         

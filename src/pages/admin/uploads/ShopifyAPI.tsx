@@ -49,12 +49,20 @@ const ShopifyAPI = () => {
         return data.setting_value === 'true';
       }
       
-      // Otherwise, use a direct SQL query through RPC to check
-      const { data: exists, error: sqlError } = await supabase
-        .rpc('column_exists', { 
-          table_name: tableName,
-          column_name: columnName
-        });
+      // Otherwise, use a direct SQL query to check
+      const query = `
+        SELECT EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = '${tableName}'
+            AND column_name = '${columnName}'
+        ) as exists
+      `;
+      
+      const { data: existsData, error: sqlError } = await supabase.rpc('execute_sql', { 
+        sql: query 
+      });
       
       if (sqlError) {
         console.error(`Error with SQL check for column ${columnName} in ${tableName}:`, sqlError);
@@ -85,6 +93,8 @@ const ShopifyAPI = () => {
         }
       }
       
+      const exists = existsData && existsData[0] && existsData[0].exists === true;
+      
       // Cache the result for future checks
       await supabase
         .from('shopify_settings')
@@ -94,7 +104,7 @@ const ShopifyAPI = () => {
           updated_at: new Date().toISOString()
         });
       
-      return !!exists;
+      return exists;
     } catch (error) {
       console.error(`Exception checking if column ${columnName} exists:`, error);
       return false;

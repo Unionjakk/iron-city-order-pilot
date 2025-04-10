@@ -273,6 +273,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      column_exists: {
+        Args: { table_name: string; column_name: string }
+        Returns: boolean
+      }
       get_archived_shopify_orders: {
         Args: { limit_count: number }
         Returns: {
