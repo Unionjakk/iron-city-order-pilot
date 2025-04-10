@@ -1,5 +1,5 @@
 
-import { AlertCircle, Archive } from 'lucide-react';
+import { AlertCircle, Archive, MapPin } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
@@ -7,13 +7,15 @@ import { Badge } from '@/components/ui/badge';
 export interface ShopifyOrder {
   id: string;
   shopify_order_id: string;
-  shopify_order_number?: string; // Added to store the customer-facing order number
+  shopify_order_number?: string;
   created_at: string;
   customer_name: string;
   items_count: number;
   status: string;
   imported_at?: string;
   archived_at?: string;
+  location_id?: string;
+  location_name?: string;
 }
 
 interface OrdersTableProps {
@@ -77,6 +79,7 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
             <TableHead className="text-zinc-400">Created</TableHead>
             <TableHead className="text-zinc-400">Customer</TableHead>
             <TableHead className="text-zinc-400">Items</TableHead>
+            <TableHead className="text-zinc-400">Location</TableHead>
             <TableHead className="text-zinc-400">Status</TableHead>
             {orders.some(o => o.archived_at) && (
               <TableHead className="text-zinc-400">Archived</TableHead>
@@ -100,6 +103,16 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
               </TableCell>
               <TableCell className="text-zinc-300">
                 {order.items_count}
+              </TableCell>
+              <TableCell className="text-zinc-300">
+                {order.location_name ? (
+                  <div className="flex items-center">
+                    <MapPin className="h-3.5 w-3.5 mr-1 text-orange-400" />
+                    {order.location_name}
+                  </div>
+                ) : (
+                  <span className="text-zinc-500">Not specified</span>
+                )}
               </TableCell>
               <TableCell>
                 {renderStatusBadge(order.status)}

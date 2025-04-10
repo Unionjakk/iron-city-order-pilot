@@ -30,10 +30,10 @@ export const useShopifyOrders = () => {
       
       setAutoImportEnabled(autoImportData === 'true');
       
-      // Fetch active orders
+      // Fetch active orders - now including location information
       const { data: activeData, error: activeError } = await supabase
         .from('shopify_orders')
-        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at')
+        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, location_id, location_name')
         .order('imported_at', { ascending: false })
         .limit(10);
       

@@ -20,6 +20,8 @@ export type Database = {
           imported_at: string
           items_count: number
           line_items: Json | null
+          location_id: string | null
+          location_name: string | null
           metadata: Json | null
           note: string | null
           shipping_address: Json | null
@@ -36,6 +38,8 @@ export type Database = {
           imported_at?: string
           items_count: number
           line_items?: Json | null
+          location_id?: string | null
+          location_name?: string | null
           metadata?: Json | null
           note?: string | null
           shipping_address?: Json | null
@@ -52,6 +56,8 @@ export type Database = {
           imported_at?: string
           items_count?: number
           line_items?: Json | null
+          location_id?: string | null
+          location_name?: string | null
           metadata?: Json | null
           note?: string | null
           shipping_address?: Json | null
@@ -70,6 +76,8 @@ export type Database = {
           imported_at: string
           items_count: number
           line_items: Json | null
+          location_id: string | null
+          location_name: string | null
           metadata: Json | null
           note: string | null
           shipping_address: Json | null
@@ -85,6 +93,8 @@ export type Database = {
           imported_at?: string
           items_count: number
           line_items?: Json | null
+          location_id?: string | null
+          location_name?: string | null
           metadata?: Json | null
           note?: string | null
           shipping_address?: Json | null
@@ -100,6 +110,8 @@ export type Database = {
           imported_at?: string
           items_count?: number
           line_items?: Json | null
+          location_id?: string | null
+          location_name?: string | null
           metadata?: Json | null
           note?: string | null
           shipping_address?: Json | null
@@ -170,6 +182,8 @@ export type Database = {
           imported_at: string
           items_count: number
           line_items: Json | null
+          location_id: string | null
+          location_name: string | null
           metadata: Json | null
           note: string | null
           shipping_address: Json | null

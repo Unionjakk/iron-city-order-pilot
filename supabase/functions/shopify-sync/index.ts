@@ -54,11 +54,11 @@ async function fetchShopifyOrders(apiToken: string): Promise<any> {
   const endpoint = `https://${shopifyDomain}/admin/api/${apiVersion}/orders.json`;
   
   // Parameters to filter for unfulfilled orders and limit fields
-  // Added order_number to the fields parameter to get the customer-facing order number
+  // Added order_number and location_id to the fields parameter
   const params = new URLSearchParams({
     status: "unfulfilled",
     limit: "250",
-    fields: "id,order_number,created_at,customer,line_items,shipping_address,note,fulfillment_status",
+    fields: "id,order_number,created_at,customer,line_items,shipping_address,note,fulfillment_status,location_id",
   });
 
   console.log(`Fetching orders from Shopify: ${endpoint}?${params}`);
@@ -80,7 +80,59 @@ async function fetchShopifyOrders(apiToken: string): Promise<any> {
 
     const data = await response.json();
     console.log(`Fetched ${data.orders?.length || 0} unfulfilled orders from Shopify`);
-    return data.orders || [];
+    
+    // If we have orders with location_id, fetch location details
+    const ordersWithLocations = data.orders || [];
+    const locationIds = new Set();
+    
+    // Collect unique location IDs
+    ordersWithLocations.forEach(order => {
+      if (order.location_id) {
+        locationIds.add(order.location_id.toString());
+      }
+    });
+    
+    // Create a map of location IDs to location names
+    const locationMap = new Map();
+    
+    // Fetch location details if we have any location IDs
+    if (locationIds.size > 0) {
+      console.log(`Fetching details for ${locationIds.size} locations`);
+      
+      for (const locationId of locationIds) {
+        try {
+          const locationEndpoint = `https://${shopifyDomain}/admin/api/${apiVersion}/locations/${locationId}.json`;
+          const locationResponse = await fetch(locationEndpoint, {
+            method: "GET",
+            headers: {
+              "X-Shopify-Access-Token": apiToken,
+              "Content-Type": "application/json",
+            },
+          });
+          
+          if (locationResponse.ok) {
+            const locationData = await locationResponse.json();
+            if (locationData.location && locationData.location.name) {
+              locationMap.set(locationId, locationData.location.name);
+              console.log(`Location ${locationId} name: ${locationData.location.name}`);
+            }
+          } else {
+            console.error(`Error fetching location ${locationId}: ${locationResponse.status}`);
+          }
+        } catch (error) {
+          console.error(`Error fetching location ${locationId}:`, error);
+        }
+      }
+    }
+    
+    // Add location names to orders
+    ordersWithLocations.forEach(order => {
+      if (order.location_id) {
+        order.location_name = locationMap.get(order.location_id.toString()) || null;
+      }
+    });
+    
+    return ordersWithLocations;
   } catch (error) {
     console.error("Error fetching from Shopify API:", error);
     throw error;
@@ -104,6 +156,8 @@ function transformShopifyOrder(order: any) {
     line_items: order.line_items || null,
     shipping_address: order.shipping_address || null,
     note: order.note || null,
+    location_id: order.location_id ? order.location_id.toString() : null,
+    location_name: order.location_name || null,
     metadata: {
       fulfillment_status: order.fulfillment_status,
       tags: order.tags,
