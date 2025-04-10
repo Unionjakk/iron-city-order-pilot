@@ -91,16 +91,30 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
       }
       addDebugMessage("Successfully deleted all order items");
       
-      // Delete from shopify_orders
-      addDebugMessage("Deleting all orders...");
-      const { error: ordersError } = await supabase
-        .from('shopify_orders')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+      // Use direct RPC function to execute raw SQL for more direct control
+      // This ensures we bypass any caching or race conditions
+      addDebugMessage("Deleting all orders with direct SQL...");
+      const { error: ordersError } = await supabase.rpc('execute_sql', {
+        sql: "DELETE FROM shopify_orders"
+      });
         
       if (ordersError) {
         throw new Error(`Failed to delete orders: ${ordersError.message}`);
       }
+      
+      // Verify orders were deleted by checking count
+      const { count, error: countError } = await supabase
+        .from('shopify_orders')
+        .select('*', { count: 'exact', head: true });
+        
+      if (countError) {
+        throw new Error(`Failed to verify order deletion: ${countError.message}`);
+      }
+      
+      if (count && count > 0) {
+        throw new Error(`Order deletion failed: ${count} orders still remain in database`);
+      }
+      
       addDebugMessage("Successfully deleted all orders");
     } catch (error) {
       console.error("Error deleting orders:", error);
@@ -137,7 +151,28 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
         throw new Error(`Shopify sync failed: ${errorMsg}`);
       }
       
-      addDebugMessage(`Successfully imported ${data.imported || 0} orders`);
+      // Verify that orders were imported with line items
+      const { count: orderCount, error: orderCountError } = await supabase
+        .from('shopify_orders')
+        .select('*', { count: 'exact', head: true });
+      
+      if (orderCountError) {
+        console.error('Error checking imported order count:', orderCountError);
+      } else if (!orderCount || orderCount === 0) {
+        throw new Error('No orders were imported from Shopify');
+      }
+      
+      const { count: lineItemCount, error: lineItemCountError } = await supabase
+        .from('shopify_order_items')
+        .select('*', { count: 'exact', head: true });
+      
+      if (lineItemCountError) {
+        console.error('Error checking imported line item count:', lineItemCountError);
+      } else if (!lineItemCount || lineItemCount === 0) {
+        throw new Error('Orders were imported but no line items were created');
+      }
+      
+      addDebugMessage(`Successfully imported ${data.imported || 0} orders with ${lineItemCount || 0} line items`);
       return data;
     } catch (error) {
       console.error("Error importing orders:", error);

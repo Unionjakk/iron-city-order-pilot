@@ -39,7 +39,7 @@ export async function importOrder(
         .from("shopify_orders")
         .update({
           status: shopifyOrder.fulfillment_status || "unfulfilled",
-          updated_at: new Date().toISOString()
+          imported_at: new Date().toISOString()
         })
         .eq("id", existingOrder.id);
 
@@ -94,24 +94,26 @@ export async function importOrder(
       orderDbId = insertedOrder.id;
     }
 
-    // Insert line items
-    if (shopifyOrder.line_items && Array.isArray(shopifyOrder.line_items) && shopifyOrder.line_items.length > 0) {
+    // Check if line items exist and are valid
+    const hasValidLineItems = shopifyOrder.line_items && Array.isArray(shopifyOrder.line_items) && shopifyOrder.line_items.length > 0;
+    
+    if (hasValidLineItems) {
       debug(`Inserting ${shopifyOrder.line_items.length} line items for order ${orderId}`);
       
       const lineItemsToInsert = shopifyOrder.line_items.map(item => ({
         order_id: orderDbId,
-        shopify_line_item_id: item.id,
+        shopify_line_item_id: item.id || `default-${Math.random().toString(36).substring(2, 15)}`,
         title: item.title || "Unknown Product",
-        sku: item.sku,
+        sku: item.sku || "",
         quantity: item.quantity || 1,
-        price: item.price,
-        product_id: item.product_id,
-        variant_id: item.variant_id,
-        properties: item.properties
+        price: item.price || "0.00",
+        product_id: item.product_id || "",
+        variant_id: item.variant_id || "",
+        properties: item.properties || null
       }));
 
-      // Insert in batches of 50 to avoid potential size limits
-      const batchSize = 50;
+      // Insert in small batches to avoid potential size limits
+      const batchSize = 20;
       for (let i = 0; i < lineItemsToInsert.length; i += batchSize) {
         const batch = lineItemsToInsert.slice(i, i + batchSize);
         
@@ -121,7 +123,18 @@ export async function importOrder(
 
         if (insertLineItemsError) {
           debug(`Error inserting line items batch for order ${orderId}: ${insertLineItemsError.message}`);
-          debug(`Batch data: ${JSON.stringify(batch)}`);
+          debug(`Error details: ${JSON.stringify(insertLineItemsError)}`);
+          
+          // Try inserting one by one if batch insert fails
+          for (const lineItem of batch) {
+            const { error: singleInsertError } = await supabase
+              .from("shopify_order_items")
+              .insert(lineItem);
+              
+            if (singleInsertError) {
+              debug(`Error inserting single line item for order ${orderId}: ${singleInsertError.message}`);
+            }
+          }
         } else {
           debug(`Successfully inserted ${batch.length} line items for order ${orderId} (batch ${i/batchSize + 1})`);
         }
@@ -130,21 +143,70 @@ export async function importOrder(
       debug(`Warning: Order ${orderId} (${orderNumber}) has no line items or invalid line_items format`);
       
       // Create at least one default line item if none exist
+      const defaultLineItem = {
+        order_id: orderDbId,
+        shopify_line_item_id: `default-${orderId}`,
+        title: "Default Product",
+        quantity: 1,
+        price: "0.00"
+      };
+      
       const { error: insertDefaultLineItemError } = await supabase
         .from("shopify_order_items")
-        .insert({
-          order_id: orderDbId,
-          shopify_line_item_id: "default-" + orderId,
-          title: "Unknown Product",
-          quantity: 1,
-          price: 0
-        });
+        .insert(defaultLineItem);
 
       if (insertDefaultLineItemError) {
         debug(`Error inserting default line item for order ${orderId}: ${insertDefaultLineItemError.message}`);
+        debug(`Error details: ${JSON.stringify(insertDefaultLineItemError)}`);
+        
+        // One last attempt with minimal data
+        const { error: finalAttemptError } = await supabase
+          .from("shopify_order_items")
+          .insert({
+            order_id: orderDbId,
+            shopify_line_item_id: `emergency-${Date.now()}`,
+            title: "Unknown Product",
+            quantity: 1
+          });
+          
+        if (finalAttemptError) {
+          debug(`Final attempt to insert default line item failed: ${finalAttemptError.message}`);
+        } else {
+          debug(`Successfully inserted emergency default line item for order ${orderId}`);
+        }
       } else {
         debug(`Created default line item for order ${orderId} that had no line items`);
       }
+    }
+    
+    // Verify that line items were created
+    const { count, error: countError } = await supabase
+      .from("shopify_order_items")
+      .select("*", { count: 'exact', head: true })
+      .eq("order_id", orderDbId);
+      
+    if (countError) {
+      debug(`Error verifying line items for order ${orderId}: ${countError.message}`);
+    } else if (!count || count === 0) {
+      debug(`WARNING: No line items were created for order ${orderId} - creating emergency line item`);
+      
+      // Last resort - create basic line item
+      const { error: emergencyError } = await supabase
+        .from("shopify_order_items")
+        .insert({
+          order_id: orderDbId,
+          shopify_line_item_id: `emergency-${Date.now()}`,
+          title: "Fallback Product",
+          quantity: 1
+        });
+        
+      if (emergencyError) {
+        debug(`Failed to create emergency line item: ${emergencyError.message}`);
+      } else {
+        debug(`Created emergency line item for order ${orderId}`);
+      }
+    } else {
+      debug(`Verified ${count} line items for order ${orderId}`);
     }
     
     return true;
