@@ -14,17 +14,18 @@ const PinnacleUpload = () => {
   const fetchStockStats = async () => {
     try {
       setIsLoading(true);
+      console.log("Fetching stock stats...");
       
       // First, get count of stock items
-      const { data: countData, error: countError } = await supabase
+      const { count, error: countError } = await supabase
         .from('pinnacle_stock')
-        .select('id', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true });
       
       if (countError) {
         console.error('Error fetching stock count:', countError);
       } else {
-        // Get the count from the response
-        setStockCount(countData?.length !== undefined ? countData.length : null);
+        console.log("Stock count from database:", count);
+        setStockCount(count);
       }
       
       // Then, get most recent upload timestamp
@@ -37,6 +38,7 @@ const PinnacleUpload = () => {
       if (uploadError) {
         console.error('Error fetching last upload:', uploadError);
       } else if (uploadData && uploadData.length > 0) {
+        console.log("Last upload timestamp:", uploadData[0].upload_timestamp);
         setLastUpload(uploadData[0].upload_timestamp);
       }
     } catch (error) {

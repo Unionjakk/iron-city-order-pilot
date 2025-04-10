@@ -15,6 +15,8 @@ const PinnacleStatsCard = ({ stockCount, lastUpload, isLoading }: PinnacleStatsC
   // Format the upload date for better display if available
   const formattedDate = lastUpload ? formatDate(lastUpload) : 'None';
   
+  console.log('PinnacleStatsCard rendering with:', { stockCount, lastUpload, isLoading });
+  
   return (
     <div className="mt-8 p-4 bg-zinc-800/60 rounded-lg border border-zinc-700">
       <h3 className="font-medium text-orange-400 mb-2">Current Data Status</h3>
