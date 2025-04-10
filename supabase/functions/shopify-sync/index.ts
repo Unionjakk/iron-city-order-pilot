@@ -36,7 +36,9 @@ interface ShopifyOrder {
 }
 
 interface RequestBody {
-  apiToken: string;
+  apiToken?: string;
+  autoImport?: boolean;
+  timestamp?: number;
 }
 
 serve(async (req) => {
@@ -57,24 +59,79 @@ serve(async (req) => {
     imported: 0,
     archived: 0,
     fixed: 0,
+    autoImport: false,
   };
 
   try {
-    let body: RequestBody;
+    let body: RequestBody = {};
     try {
       body = await req.json();
     } catch (err) {
       console.error("Error parsing request body:", err);
-      throw new Error("Invalid request body");
+      // For cron jobs with empty body, this is expected
+      // We'll try to get the API token from the database
+    }
+
+    // Mark if this is an auto-import from cron
+    responseData.autoImport = !!body.autoImport;
+    
+    console.log(`Starting Shopify sync process. Auto import: ${responseData.autoImport}`);
+    
+    // Check auto-import setting if this is a cron job
+    if (responseData.autoImport) {
+      const { data: autoImportSetting } = await supabase.rpc("get_shopify_setting", { 
+        setting_name_param: "auto_import_enabled" 
+      });
+      
+      if (autoImportSetting !== "true") {
+        console.log("Auto-import is disabled in settings. Skipping sync.");
+        return new Response(JSON.stringify({
+          success: true,
+          skipped: true,
+          message: "Auto-import is disabled in settings"
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      console.log("Auto-import is enabled. Proceeding with sync.");
+      
+      // Update the last_cron_run timestamp if this is a cron job
+      await supabase.rpc("upsert_shopify_setting", {
+        setting_name_param: "last_cron_run",
+        setting_value_param: new Date().toISOString()
+      });
+    }
+
+    // Get API token - either from request or from database
+    let apiToken = body.apiToken;
+    
+    // If no token in request (like in cron jobs), get from database
+    if (!apiToken) {
+      console.log("No API token in request, retrieving from database");
+      const { data: tokenData, error: tokenError } = await supabase.rpc("get_shopify_setting", { 
+        setting_name_param: "shopify_token" 
+      });
+      
+      if (tokenError) {
+        console.error("Error retrieving token from database:", tokenError);
+        throw new Error("Failed to retrieve API token");
+      }
+      
+      if (!tokenData || tokenData === "placeholder_token") {
+        console.error("No valid API token found in database");
+        throw new Error("No valid API token configured");
+      }
+      
+      apiToken = tokenData;
     }
 
     // Validate the API token
-    if (!body.apiToken) {
+    if (!apiToken) {
       console.error("No API token provided");
       throw new Error("No API token provided");
     }
-
-    console.log("Starting Shopify sync process");
     
     // STEP 1: Fix any incorrectly archived unfulfilled orders
     // This fixes orders that were archived while still having unfulfilled status
@@ -202,7 +259,7 @@ serve(async (req) => {
 
     // STEP 2: Fetch new orders from Shopify
     console.log("Fetching unfulfilled orders from Shopify");
-    const shopifyOrders = await fetchShopifyOrders(body.apiToken);
+    const shopifyOrders = await fetchShopifyOrders(apiToken);
     console.log(`Retrieved ${shopifyOrders.length} orders from Shopify`);
 
     // STEP 3: Check for each Shopify order
@@ -311,7 +368,7 @@ serve(async (req) => {
           
           // If not in unfulfilled list, check the order status directly
           try {
-            const orderDetails = await fetchSingleOrder(body.apiToken, order.shopify_order_id);
+            const orderDetails = await fetchSingleOrder(apiToken, order.shopify_order_id);
             
             if (orderDetails.fulfillment_status === "fulfilled") {
               console.log(`Confirmed that order ${order.shopify_order_id} is now fulfilled - archiving`);

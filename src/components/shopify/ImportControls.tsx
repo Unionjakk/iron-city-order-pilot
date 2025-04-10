@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface ImportControlsProps {
   lastImport: string | null;
@@ -20,6 +22,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   const [autoImportEnabled, setAutoImportEnabled] = useState(false);
   const [hasImportedOrders, setHasImportedOrders] = useState(false);
   const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
+  const [isSwitchingAutoImport, setIsSwitchingAutoImport] = useState(false);
   const { toast } = useToast();
 
   // The special value 'placeholder_token' represents no token being set
@@ -156,6 +159,44 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     }
   };
 
+  // Toggle auto-import setting
+  const handleToggleAutoImport = async () => {
+    setIsSwitchingAutoImport(true);
+    try {
+      const newValue = !autoImportEnabled;
+      
+      // Update the setting in the database
+      const { error } = await supabase.rpc('upsert_shopify_setting', {
+        setting_name_param: 'auto_import_enabled',
+        setting_value_param: newValue ? 'true' : 'false'
+      });
+      
+      if (error) {
+        console.error('Error updating auto-import setting:', error);
+        throw error;
+      }
+      
+      setAutoImportEnabled(newValue);
+      
+      toast({
+        title: newValue ? "Auto-import Enabled" : "Auto-import Disabled",
+        description: newValue 
+          ? "Orders will be automatically imported every 15 minutes." 
+          : "Automatic importing has been disabled. You can still import manually.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error toggling auto-import:', error);
+      toast({
+        title: "Setting Change Failed",
+        description: "Failed to update auto-import setting.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSwitchingAutoImport(false);
+    }
+  };
+
   // Get token from database
   const getTokenFromDatabase = async () => {
     try {
@@ -221,7 +262,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       
       toast({
         title: "Import Completed",
-        description: `Successfully imported ${data.imported} new orders and archived ${data.archived} fulfilled orders.`,
+        description: `Successfully imported ${data.imported} new orders, archived ${data.archived} fulfilled orders, and fixed ${data.fixed} incorrectly archived orders.`,
         variant: "default",
       });
     } catch (error) {
@@ -281,31 +322,33 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
           </div>
           
           {autoImportEnabled ? (
-            hasImportedOrders ? (
-              <div className="flex items-center text-emerald-400">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                <span>
-                  Auto-import enabled {lastCronRun ? `(last run: ${getTimeSinceLastRun(lastCronRun)})` : '(never run yet)'}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center text-amber-400">
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                <span>
-                  Auto-import is enabled but no orders have been imported yet
-                  {lastCronRun ? ` (last attempted: ${getTimeSinceLastRun(lastCronRun)})` : ''}
-                </span>
-              </div>
-            )
+            <div className="flex items-center text-emerald-400">
+              <CheckCircle className="mr-2 h-4 w-4" />
+              <span>
+                Auto-import enabled - runs every 15 minutes {lastCronRun ? `(last run: ${getTimeSinceLastRun(lastCronRun)})` : '(never run yet)'}
+              </span>
+            </div>
           ) : (
             <div className="flex items-center text-amber-400">
               <AlertTriangle className="mr-2 h-4 w-4" />
-              <span>Auto-import is not currently active - only manual imports are available</span>
+              <span>Auto-import is disabled - only manual imports are available</span>
             </div>
           )}
         </div>
         
-        <div className="flex space-x-2">
+        <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="auto-import"
+              checked={autoImportEnabled}
+              onCheckedChange={handleToggleAutoImport}
+              disabled={isSwitchingAutoImport}
+            />
+            <Label htmlFor="auto-import" className="text-sm">
+              {isSwitchingAutoImport ? 'Updating...' : 'Auto Import'}
+            </Label>
+          </div>
+          
           <Button 
             onClick={handleRefreshStatus} 
             variant="outline"
@@ -352,10 +395,36 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
           <AlertTitle>Auto-import may be stalled</AlertTitle>
           <AlertDescription className="text-zinc-300">
             The auto-import hasn't run in over 30 minutes. This could indicate an issue with the cron job.
-            Try refreshing the status or contacting support if this persists.
+            Try refreshing the status or checking the database logs if this persists.
           </AlertDescription>
         </Alert>
       )}
+      
+      <Alert className="bg-zinc-800/50 border-zinc-700/50">
+        <Info className="h-4 w-4 text-zinc-400" />
+        <AlertDescription className="text-zinc-300">
+          <p>Auto-import runs every 15 minutes when enabled. You can manually trigger an import anytime.</p>
+          {lastCronRun && (
+            <p className="mt-1 text-sm text-zinc-400">
+              Next scheduled run: approximately {
+                (() => {
+                  if (!lastCronRun) return 'unknown';
+                  const lastRun = new Date(lastCronRun);
+                  if (isNaN(lastRun.getTime())) return 'unknown';
+                  
+                  // Calculate next run (15 minutes after last run)
+                  const nextRun = new Date(lastRun.getTime() + 15 * 60 * 1000);
+                  // Format the next run time
+                  return new Intl.DateTimeFormat('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }).format(nextRun);
+                })()
+              }
+            </p>
+          )}
+        </AlertDescription>
+      </Alert>
     </div>
   );
 };
