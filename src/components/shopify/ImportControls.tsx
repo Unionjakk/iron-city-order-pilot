@@ -151,9 +151,9 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
           </span>
         </div>
         
-        <div className="flex items-center text-zinc-400">
-          <Info className="mr-2 h-4 w-4" />
-          <span>Auto-import scheduled every 30 minutes via cron job</span>
+        <div className="flex items-center text-amber-400">
+          <AlertTriangle className="mr-2 h-4 w-4" />
+          <span>Auto-import feature is in development - currently only manual imports are available</span>
         </div>
       </div>
       

@@ -22,10 +22,10 @@ export const useShopifyOrders = () => {
         setLastImport(lastSyncData);
       }
       
-      // Fetch active orders
+      // Fetch active orders - wait for migration to complete before running this query
       const { data: activeData, error: activeError } = await supabase
         .from('shopify_orders')
-        .select('id, shopify_order_id, shopify_order_number, created_at, customer_name, items_count, status, imported_at')
+        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at')
         .order('imported_at', { ascending: false })
         .limit(10);
       
