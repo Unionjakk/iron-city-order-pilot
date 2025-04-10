@@ -6,8 +6,12 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  -- Just return the order_id as the order_number for now
-  -- This can be updated later if needed to extract a specific format
+  -- If order_id is null, return null to avoid errors
+  IF order_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+  
+  -- Just return the order_id as the order_number
   RETURN order_id;
 END;
 $$;
