@@ -54,4 +54,3 @@ verify_jwt = false
 
 [functions.shopify-restore-archived]
 verify_jwt = false
-
