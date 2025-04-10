@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Settings, Edit, Trash2, RefreshCw, Check, Plus, AlertCircle, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,8 +58,9 @@ const AdminSettings = () => {
   const fetchCorrections = async () => {
     try {
       setIsLoading(true);
+      // Using type assertion to handle the new table
       const { data, error } = await supabase
-        .from('pinnacle_sku_corrections')
+        .from('pinnacle_sku_corrections' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -68,7 +68,8 @@ const AdminSettings = () => {
         throw error;
       }
 
-      setCorrections(data || []);
+      // Assert that the data conforms to our SkuCorrection type
+      setCorrections(data as unknown as SkuCorrection[]);
     } catch (error) {
       console.error('Error fetching SKU corrections:', error);
       toast.error('Failed to load SKU corrections');
@@ -82,8 +83,9 @@ const AdminSettings = () => {
     try {
       setIsSubmitting(true);
 
+      // Using type assertion to handle the new table
       const { data, error } = await supabase
-        .from('pinnacle_sku_corrections')
+        .from('pinnacle_sku_corrections' as any)
         .insert([
           {
             original_part_no: values.original_part_no,
@@ -121,8 +123,9 @@ const AdminSettings = () => {
     try {
       setIsSubmitting(true);
 
+      // Using type assertion to handle the new table
       const { error } = await supabase
-        .from('pinnacle_sku_corrections')
+        .from('pinnacle_sku_corrections' as any)
         .update({
           original_part_no: values.original_part_no,
           corrected_part_no: values.corrected_part_no,
@@ -155,8 +158,9 @@ const AdminSettings = () => {
   // Function to delete a correction
   const deleteCorrection = async (id: string) => {
     try {
+      // Using type assertion to handle the new table
       const { error } = await supabase
-        .from('pinnacle_sku_corrections')
+        .from('pinnacle_sku_corrections' as any)
         .delete()
         .eq('id', id);
 
@@ -176,13 +180,15 @@ const AdminSettings = () => {
   const applyCorrections = async () => {
     try {
       setIsApplying(true);
+      // Using type assertion for the function call
       const { data, error } = await supabase
-        .rpc('apply_sku_corrections');
+        .rpc('apply_sku_corrections' as any);
 
       if (error) {
         throw error;
       }
 
+      // Type assertion for the response data structure
       const result = data as { success: boolean; message: string; corrections_applied: number };
       
       if (result.success) {
