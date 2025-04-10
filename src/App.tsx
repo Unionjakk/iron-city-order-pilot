@@ -20,6 +20,9 @@ import PinnacleUpload from "@/pages/admin/uploads/PinnacleUpload";
 import HarleyUpload from "@/pages/admin/uploads/HarleyUpload";
 import ShopifyAPI from "@/pages/admin/uploads/ShopifyAPI";
 
+// User Pages
+import UsersPage from "@/pages/users/UsersPage";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -38,6 +41,9 @@ const App = () => (
               <Route element={<AdminLayout />}>
                 {/* Main Dashboard */}
                 <Route path="/" element={<Dashboard />} />
+                
+                {/* Users management */}
+                <Route path="/users" element={<UsersPage />} />
                 
                 {/* Admin routes */}
                 <Route path="/admin" element={<AdminDashboard />} />

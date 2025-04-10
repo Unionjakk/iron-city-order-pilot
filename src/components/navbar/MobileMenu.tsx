@@ -2,6 +2,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Users } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,25 +37,26 @@ const MobileMenu = ({ isActive }: MobileMenuProps) => {
               to="/" 
               className={cn(
                 "cursor-pointer",
-                isActive('/') && !isActive('/admin') ? "text-orange-400" : "text-zinc-400 hover:text-orange-300"
+                isActive('/') && !isActive('/admin') && !isActive('/users') ? "text-orange-400" : "text-zinc-400 hover:text-orange-300"
               )}
             >
               Dashboard
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuLabel className="text-orange-400 pt-2">Admin</DropdownMenuLabel>
-          <DropdownMenuSeparator className="bg-zinc-800" />
           <DropdownMenuItem asChild>
             <Link 
-              to="/admin" 
+              to="/users" 
               className={cn(
-                "cursor-pointer",
-                isActive('/admin') && !isActive('/admin/uploads') ? "text-orange-400" : "text-zinc-400 hover:text-orange-300"
+                "cursor-pointer flex items-center",
+                isActive('/users') ? "text-orange-400" : "text-zinc-400 hover:text-orange-300"
               )}
             >
-              Admin Dashboard
+              <Users className="h-4 w-4 mr-2" />
+              Users
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuLabel className="text-orange-400 pt-2">Admin</DropdownMenuLabel>
+          <DropdownMenuSeparator className="bg-zinc-800" />
           <DropdownMenuItem asChild>
             <Link 
               to="/admin/uploads" 

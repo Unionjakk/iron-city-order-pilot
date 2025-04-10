@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/components/ui/use-toast';
 
 type AuthContextType = {
   user: User | null;
@@ -21,11 +22,15 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Allowed email domains - in a real app this would be fetched from the database
+const ALLOWED_DOMAINS = ['opusmotorgroup.co.uk'];
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -52,7 +57,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       password,
     });
 
-    if (response.data.session) {
+    if (response.error) {
+      toast({
+        title: "Login failed",
+        description: response.error.message,
+        variant: "destructive"
+      });
+    } else if (response.data.session) {
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${response.data.user?.user_metadata?.full_name || 'User'}!`,
+      });
       navigate('/');
     }
 
@@ -60,6 +75,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
+    // Check if email domain is allowed
+    const domain = email.split('@')[1];
+    const isDomainAllowed = ALLOWED_DOMAINS.includes(domain);
+    
+    if (!isDomainAllowed) {
+      toast({
+        title: "Registration failed",
+        description: `Email domain ${domain} is not allowed to register.`,
+        variant: "destructive"
+      });
+      
+      return {
+        error: new Error(`Email domain ${domain} is not allowed to register.`),
+        data: { user: null, session: null }
+      };
+    }
+    
     const response = await supabase.auth.signUp({
       email,
       password,
@@ -70,8 +102,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       },
     });
 
-    if (response.data.session) {
+    if (response.error) {
+      toast({
+        title: "Registration failed",
+        description: response.error.message,
+        variant: "destructive"
+      });
+    } else if (response.data.session) {
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created. Welcome!",
+      });
       navigate('/');
+    } else {
+      toast({
+        title: "Registration successful",
+        description: "Please check your email to confirm your account.",
+      });
     }
 
     return response;
@@ -79,6 +126,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out."
+    });
     navigate('/auth');
   };
 
