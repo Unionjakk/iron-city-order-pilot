@@ -29,18 +29,16 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   // Get token from database
   const getTokenFromDatabase = async () => {
     try {
+      // Using custom query for type safety
       const { data, error } = await supabase
-        .from('shopify_settings')
-        .select('setting_value')
-        .eq('setting_name', 'shopify_token')
-        .single();
+        .rpc('get_shopify_setting', { setting_name_param: 'shopify_token' });
       
-      if (error || !data || data.setting_value === 'placeholder_token') {
+      if (error || !data || data === 'placeholder_token') {
         console.error('Error retrieving token from database:', error);
         return null;
       }
       
-      return data.setting_value;
+      return data;
     } catch (error) {
       console.error('Exception retrieving token:', error);
       return null;

@@ -45,11 +45,9 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
   const fetchTokenFromDatabase = async () => {
     setIsLoading(true);
     try {
+      // Using RPC for type safety
       const { data, error } = await supabase
-        .from('shopify_settings')
-        .select('setting_value')
-        .eq('setting_name', 'shopify_token')
-        .single();
+        .rpc('get_shopify_setting', { setting_name_param: 'shopify_token' });
       
       if (error) {
         console.error('Error fetching token from database:', error);
@@ -58,9 +56,9 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
         return false;
       }
       
-      if (data && data.setting_value && data.setting_value !== 'placeholder_token') {
+      if (data && data !== 'placeholder_token') {
         setHasToken(true);
-        setMaskedToken(maskToken(data.setting_value));
+        setMaskedToken(maskToken(data));
         return true;
       } else {
         setHasToken(false);
@@ -106,14 +104,12 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
     setIsLoading(true);
     
     try {
-      // Save token to database
+      // Save token to database using RPC for type safety
       const { error } = await supabase
-        .from('shopify_settings')
-        .update({ 
-          setting_value: data.apiToken,
-          updated_at: new Date().toISOString()
-        })
-        .eq('setting_name', 'shopify_token');
+        .rpc('upsert_shopify_setting', { 
+          setting_name_param: 'shopify_token',
+          setting_value_param: data.apiToken
+        });
       
       if (error) {
         throw error;
@@ -145,14 +141,12 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
   const handleRemoveToken = async () => {
     setIsLoading(true);
     try {
-      // Reset token in database to placeholder
+      // Reset token in database to placeholder using RPC for type safety
       const { error } = await supabase
-        .from('shopify_settings')
-        .update({ 
-          setting_value: 'placeholder_token',
-          updated_at: new Date().toISOString()
-        })
-        .eq('setting_name', 'shopify_token');
+        .rpc('upsert_shopify_setting', { 
+          setting_name_param: 'shopify_token',
+          setting_value_param: 'placeholder_token'
+        });
       
       if (error) {
         throw error;

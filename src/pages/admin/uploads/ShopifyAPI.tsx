@@ -26,11 +26,9 @@ const ShopifyAPI = () => {
   const checkForToken = async () => {
     setIsLoading(true);
     try {
+      // Using RPC for type safety
       const { data, error } = await supabase
-        .from('shopify_settings')
-        .select('setting_value')
-        .eq('setting_name', 'shopify_token')
-        .single();
+        .rpc('get_shopify_setting', { setting_name_param: 'shopify_token' });
       
       if (error) {
         console.error('Error checking for token in database:', error);
@@ -39,9 +37,9 @@ const ShopifyAPI = () => {
         return;
       }
       
-      if (data && data.setting_value && data.setting_value !== 'placeholder_token') {
+      if (data && data !== 'placeholder_token') {
         setHasToken(true);
-        setMaskedToken(maskToken(data.setting_value));
+        setMaskedToken(maskToken(data));
       } else {
         setHasToken(false);
         setMaskedToken('');
