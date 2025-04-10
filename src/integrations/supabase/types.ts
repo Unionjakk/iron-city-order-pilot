@@ -170,6 +170,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pinnacle_sku_corrections: {
+        Row: {
+          corrected_part_no: string
+          created_at: string
+          created_by: string | null
+          id: string
+          last_applied_at: string | null
+          notes: string | null
+          original_part_no: string
+          updated_at: string
+        }
+        Insert: {
+          corrected_part_no: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_applied_at?: string | null
+          notes?: string | null
+          original_part_no: string
+          updated_at?: string
+        }
+        Update: {
+          corrected_part_no?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_applied_at?: string | null
+          notes?: string | null
+          original_part_no?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pinnacle_stock: {
         Row: {
           average_cost: number | null
@@ -518,6 +551,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_sku_corrections: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       column_exists: {
         Args: { table_name: string; column_name: string }
         Returns: boolean
