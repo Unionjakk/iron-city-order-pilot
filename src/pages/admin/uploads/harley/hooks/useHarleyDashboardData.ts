@@ -47,15 +47,19 @@ export const useHarleyDashboardData = () => {
           // The function returns an object in the first row
           const statsData = data[0];
           
-          if (statsData) {
+          if (statsData && typeof statsData === 'object') {
+            // Type assertion to help TypeScript understand the shape
+            // Extract each property safely with fallbacks
+            const statsObj = statsData as Record<string, any>;
+            
             // Update stats with data from database
             setStats({
-              totalOrders: statsData.totalOrders || 0,
-              ordersWithoutLineItems: statsData.ordersWithoutLineItems || 0,
-              backorderItems: statsData.backorderItems || 0,
-              lastOpenOrdersUpload: statsData.lastOpenOrdersUpload,
-              lastLineItemsUpload: statsData.lastLineItemsUpload,
-              lastBackordersUpload: statsData.lastBackordersUpload
+              totalOrders: typeof statsObj.totalOrders === 'number' ? statsObj.totalOrders : 0,
+              ordersWithoutLineItems: typeof statsObj.ordersWithoutLineItems === 'number' ? statsObj.ordersWithoutLineItems : 0,
+              backorderItems: typeof statsObj.backorderItems === 'number' ? statsObj.backorderItems : 0,
+              lastOpenOrdersUpload: typeof statsObj.lastOpenOrdersUpload === 'string' ? statsObj.lastOpenOrdersUpload : null,
+              lastLineItemsUpload: typeof statsObj.lastLineItemsUpload === 'string' ? statsObj.lastLineItemsUpload : null,
+              lastBackordersUpload: typeof statsObj.lastBackordersUpload === 'string' ? statsObj.lastBackordersUpload : null
             });
           }
         }
@@ -96,12 +100,12 @@ export const useHarleyDashboardData = () => {
         // Convert the data to our typed array
         if (data && Array.isArray(data)) {
           const typedUploads: HDUploadHistory[] = data.map((upload: any) => ({
-            id: upload.id,
-            upload_type: upload.upload_type,
-            filename: upload.filename,
-            upload_date: upload.upload_date,
-            items_count: upload.items_count,
-            status: upload.status
+            id: String(upload.id),
+            upload_type: String(upload.upload_type),
+            filename: String(upload.filename),
+            upload_date: String(upload.upload_date),
+            items_count: Number(upload.items_count),
+            status: String(upload.status)
           }));
           
           setRecentUploads(typedUploads);
