@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ShopifyOrder } from '@/components/shopify/OrdersTable';
@@ -15,18 +14,65 @@ export const useShopifyOrders = () => {
   // Check if a column exists in a table using raw SQL query
   const checkColumnExists = async (tableName: string, columnName: string): Promise<boolean> => {
     try {
-      // Use RPC call to check if column exists
-      const { data, error } = await supabase.rpc('column_exists', { 
-        table_name: tableName,
-        column_name: columnName
-      });
+      // Use raw SQL query to check if column exists
+      const { data, error } = await supabase
+        .from('shopify_settings')
+        .select('setting_value')
+        .filter('setting_name', 'eq', `column_exists_${tableName}_${columnName}`)
+        .maybeSingle();
       
       if (error) {
         console.error(`Error checking if column ${columnName} exists in ${tableName}:`, error);
         return false;
       }
       
-      return data === true;
+      // If we have cached data about this column, use it
+      if (data) {
+        return data.setting_value === 'true';
+      }
+      
+      // Otherwise, use a direct SQL query to check
+      const { data: exists, error: sqlError } = await supabase
+        .rpc('column_exists', { 
+          table_name: tableName,
+          column_name: columnName
+        });
+      
+      if (sqlError) {
+        console.error(`Error with SQL check for column ${columnName} in ${tableName}:`, sqlError);
+        
+        // Fallback: try to manually check using a select query
+        try {
+          const query = `SELECT * FROM ${tableName} LIMIT 1`;
+          const { data: rowData, error: rowError } = await supabase.rpc('execute_sql', { sql: query });
+          
+          if (rowError) {
+            console.error('Error with fallback query:', rowError);
+            return false;
+          }
+          
+          // If we got a row, check if the column exists in the first row
+          if (rowData && rowData.length > 0) {
+            return columnName in rowData[0];
+          }
+          
+          return false;
+        } catch (error) {
+          console.error('Exception with fallback query:', error);
+          return false;
+        }
+      }
+      
+      // Cache the result for future checks
+      await supabase
+        .from('shopify_settings')
+        .upsert({
+          setting_name: `column_exists_${tableName}_${columnName}`,
+          setting_value: exists ? 'true' : 'false',
+          updated_at: new Date().toISOString()
+        });
+      
+      return !!exists;
     } catch (error) {
       console.error(`Exception checking if column ${columnName} exists:`, error);
       return false;

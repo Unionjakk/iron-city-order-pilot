@@ -29,23 +29,83 @@ const ShopifyAPI = () => {
     return token.substring(0, 4) + '********' + token.substring(token.length - 4);
   };
 
-  // Check if there's a schema error by using our RPC function
-  const checkForSchemaErrors = async () => {
+  // Check if a column exists in a table using raw SQL query
+  const checkColumnExists = async (tableName: string, columnName: string): Promise<boolean> => {
     try {
-      // Use RPC call to check if column exists
-      const { data, error } = await supabase.rpc('column_exists', { 
-        table_name: 'shopify_orders',
-        column_name: 'shopify_order_number'
-      });
+      // Check if we have cached the column existence result
+      const { data, error } = await supabase
+        .from('shopify_settings')
+        .select('setting_value')
+        .filter('setting_name', 'eq', `column_exists_${tableName}_${columnName}`)
+        .maybeSingle();
       
       if (error) {
-        console.error('Error checking schema:', error);
-        setIsSchemaError(true);
-        return;
+        console.error(`Error checking if column ${columnName} exists in ${tableName}:`, error);
+        return false;
       }
       
-      // If the column doesn't exist, we have a schema error
-      setIsSchemaError(data === false);
+      // If we have cached data about this column, use it
+      if (data) {
+        return data.setting_value === 'true';
+      }
+      
+      // Otherwise, use a direct SQL query through RPC to check
+      const { data: exists, error: sqlError } = await supabase
+        .rpc('column_exists', { 
+          table_name: tableName,
+          column_name: columnName
+        });
+      
+      if (sqlError) {
+        console.error(`Error with SQL check for column ${columnName} in ${tableName}:`, sqlError);
+        
+        // Fallback: try to manually check using a select query
+        try {
+          // Try to query the table with a limit of 1 row
+          // If the column doesn't exist, we'll get an error
+          const { data: tableData, error: tableError } = await supabase
+            .from(tableName)
+            .select('*')
+            .limit(1);
+          
+          if (tableError) {
+            console.error('Error with fallback query:', tableError);
+            return false;
+          }
+          
+          // If we got a row, check if the column exists in the first row
+          if (tableData && tableData.length > 0) {
+            return columnName in tableData[0];
+          }
+          
+          return false;
+        } catch (error) {
+          console.error('Exception with fallback query:', error);
+          return false;
+        }
+      }
+      
+      // Cache the result for future checks
+      await supabase
+        .from('shopify_settings')
+        .upsert({
+          setting_name: `column_exists_${tableName}_${columnName}`,
+          setting_value: exists ? 'true' : 'false',
+          updated_at: new Date().toISOString()
+        });
+      
+      return !!exists;
+    } catch (error) {
+      console.error(`Exception checking if column ${columnName} exists:`, error);
+      return false;
+    }
+  };
+
+  // Check if there's a schema error by checking if the column exists
+  const checkForSchemaErrors = async () => {
+    try {
+      const columnExists = await checkColumnExists('shopify_orders', 'shopify_order_number');
+      setIsSchemaError(!columnExists);
     } catch (error) {
       console.error('Exception checking schema:', error);
       setIsSchemaError(true);
