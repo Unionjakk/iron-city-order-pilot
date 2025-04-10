@@ -9,6 +9,84 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      pinnacle_stock: {
+        Row: {
+          average_cost: number | null
+          bin_location: string | null
+          cost: number | null
+          description: string | null
+          id: string
+          last_updated: string | null
+          part_no: string
+          product_group: string | null
+          retail_price: number | null
+          stock_quantity: number | null
+          total_average_cost: number | null
+          total_cost: number | null
+          total_retail: number | null
+        }
+        Insert: {
+          average_cost?: number | null
+          bin_location?: string | null
+          cost?: number | null
+          description?: string | null
+          id?: string
+          last_updated?: string | null
+          part_no: string
+          product_group?: string | null
+          retail_price?: number | null
+          stock_quantity?: number | null
+          total_average_cost?: number | null
+          total_cost?: number | null
+          total_retail?: number | null
+        }
+        Update: {
+          average_cost?: number | null
+          bin_location?: string | null
+          cost?: number | null
+          description?: string | null
+          id?: string
+          last_updated?: string | null
+          part_no?: string
+          product_group?: string | null
+          retail_price?: number | null
+          stock_quantity?: number | null
+          total_average_cost?: number | null
+          total_cost?: number | null
+          total_retail?: number | null
+        }
+        Relationships: []
+      }
+      pinnacle_upload_history: {
+        Row: {
+          error_message: string | null
+          filename: string
+          id: string
+          records_count: number
+          status: string
+          upload_timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          error_message?: string | null
+          filename: string
+          id?: string
+          records_count: number
+          status: string
+          upload_timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          error_message?: string | null
+          filename?: string
+          id?: string
+          records_count?: number
+          status?: string
+          upload_timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       shopify_archived_order_items: {
         Row: {
           archived_at: string

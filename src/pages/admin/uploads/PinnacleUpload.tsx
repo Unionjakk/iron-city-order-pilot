@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -18,20 +18,16 @@ const PinnacleUpload = () => {
   // Fetch stock data stats on component mount
   const fetchStockStats = async () => {
     try {
-      // Get count of stock items
-      const { count, error: countError } = await supabase
-        .from('pinnacle_stock')
-        .select('*', { count: 'exact', head: true });
+      // Get count of stock items using execute_sql function
+      const { data: countData, error: countError } = await supabase
+        .rpc('execute_sql', { sql: 'SELECT COUNT(*) FROM pinnacle_stock' });
       
       if (countError) throw countError;
-      setStockCount(count || 0);
+      setStockCount(countData?.[0]?.count || 0);
       
-      // Get most recent upload
+      // Get most recent upload using execute_sql function
       const { data: uploadHistory, error: historyError } = await supabase
-        .from('pinnacle_upload_history')
-        .select('upload_timestamp')
-        .order('upload_timestamp', { ascending: false })
-        .limit(1);
+        .rpc('execute_sql', { sql: 'SELECT upload_timestamp FROM pinnacle_upload_history ORDER BY upload_timestamp DESC LIMIT 1' });
       
       if (historyError) throw historyError;
       if (uploadHistory && uploadHistory.length > 0) {
@@ -43,7 +39,7 @@ const PinnacleUpload = () => {
   };
 
   // Call fetchStockStats on component mount
-  useState(() => {
+  useEffect(() => {
     fetchStockStats();
   }, []);
 
@@ -143,10 +139,9 @@ const PinnacleUpload = () => {
     setIsDeleting(true);
     
     try {
+      // Use execute_sql function to delete all records
       const { error } = await supabase
-        .from('pinnacle_stock')
-        .delete()
-        .neq('id', 'none'); // Delete all records
+        .rpc('execute_sql', { sql: 'DELETE FROM pinnacle_stock' });
       
       if (error) throw error;
       
