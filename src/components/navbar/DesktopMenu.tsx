@@ -20,7 +20,7 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
   };
 
   return (
-    <nav className="hidden md:block ml-6">
+    <nav className="hidden md:flex justify-center flex-1">
       <ul className="flex space-x-1">
         {/* Dashboard Item */}
         <li>
@@ -80,19 +80,6 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
             )}
           >
             <ul className="py-1">
-              <li>
-                <Link
-                  to="/actions"
-                  className={cn(
-                    "flex items-center px-4 py-2 text-sm transition-colors",
-                    isActive('/actions') && !isActive('/actions/picklist') && !isActive('/actions/toorder') && !isActive('/actions/backorder')
-                      ? "text-orange-400"
-                      : "text-zinc-400 hover:bg-zinc-800 hover:text-orange-300"
-                  )}
-                >
-                  Actions Dashboard
-                </Link>
-              </li>
               <li>
                 <Link
                   to="/actions/picklist"
@@ -165,19 +152,6 @@ const DesktopMenu = ({ isActive }: DesktopMenuProps) => {
             )}
           >
             <ul className="py-1">
-              <li>
-                <Link
-                  to="/admin"
-                  className={cn(
-                    "flex items-center px-4 py-2 text-sm transition-colors",
-                    isActive('/admin') && !isActive('/admin/uploads')
-                      ? "text-orange-400"
-                      : "text-zinc-400 hover:bg-zinc-800 hover:text-orange-300"
-                  )}
-                >
-                  Admin Dashboard
-                </Link>
-              </li>
               <li>
                 <Link
                   to="/admin/uploads"
