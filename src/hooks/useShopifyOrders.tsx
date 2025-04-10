@@ -12,23 +12,21 @@ export const useShopifyOrders = () => {
   const [autoImportEnabled, setAutoImportEnabled] = useState(false);
   const { toast } = useToast();
 
-  // Check if a column exists in a table
+  // Check if a column exists in a table using raw SQL query
   const checkColumnExists = async (tableName: string, columnName: string): Promise<boolean> => {
     try {
-      // Query the information schema to see if the column exists
-      const { data, error } = await supabase
-        .from('information_schema.columns')
-        .select('column_name')
-        .eq('table_name', tableName)
-        .eq('column_name', columnName)
-        .single();
-
+      // Use RPC call to check if column exists
+      const { data, error } = await supabase.rpc('column_exists', { 
+        table_name: tableName,
+        column_name: columnName
+      });
+      
       if (error) {
         console.error(`Error checking if column ${columnName} exists in ${tableName}:`, error);
         return false;
       }
       
-      return data !== null;
+      return data === true;
     } catch (error) {
       console.error(`Exception checking if column ${columnName} exists:`, error);
       return false;
@@ -115,20 +113,55 @@ export const useShopifyOrders = () => {
           }, {});
           
           // Add line items to each order and transform to ShopifyOrder type
-          const ordersWithLineItems = activeData.map(order => ({
-            ...order,
-            // Use shopify_order_number if available, otherwise use empty string as fallback
-            shopify_order_number: hasOrderNumberColumn ? (order.shopify_order_number || '') : '',
-            line_items: lineItemsByOrderId[order.id] || []
-          })) as ShopifyOrder[];
+          const ordersWithLineItems = activeData.map(order => {
+            // Create the order object with all base properties
+            const orderObj: ShopifyOrder = {
+              id: order.id,
+              shopify_order_id: order.shopify_order_id,
+              created_at: order.created_at,
+              customer_name: order.customer_name,
+              items_count: order.items_count,
+              status: order.status,
+              imported_at: order.imported_at,
+              location_id: order.location_id,
+              location_name: order.location_name,
+              line_items: lineItemsByOrderId[order.id] || []
+            };
+            
+            // Add shopify_order_number if it exists in the data
+            if (hasOrderNumberColumn && 'shopify_order_number' in order) {
+              orderObj.shopify_order_number = order.shopify_order_number || '';
+            }
+            
+            return orderObj;
+          });
           
           setImportedOrders(ordersWithLineItems);
         } else {
-          setImportedOrders(activeData.map(order => ({
-            ...order,
-            shopify_order_number: hasOrderNumberColumn ? (order.shopify_order_number || '') : '',
-            line_items: []
-          })) as ShopifyOrder[]);
+          const ordersWithoutLineItems = activeData.map(order => {
+            // Create the order object with all base properties
+            const orderObj: ShopifyOrder = {
+              id: order.id,
+              shopify_order_id: order.shopify_order_id,
+              created_at: order.created_at,
+              customer_name: order.customer_name,
+              items_count: order.items_count,
+              status: order.status,
+              imported_at: order.imported_at,
+              location_id: order.location_id,
+              location_name: order.location_name,
+              line_items: []
+            };
+            
+            // Add shopify_order_number if it exists in the data
+            if (hasOrderNumberColumn && 'shopify_order_number' in order) {
+              orderObj.shopify_order_number = order.shopify_order_number || '';
+            }
+            
+            return orderObj;
+          });
+          
+          setImportedOrders(ordersWithoutLineItems);
         }
         
         // Set last import time if we have orders and no last sync time
@@ -199,14 +232,17 @@ export const useShopifyOrders = () => {
                 customer_name: order.customer_name,
                 items_count: order.items_count,
                 status: order.status,
-                // Add shopify_order_number if column exists
-                shopify_order_number: hasArchivedOrderNumberColumn ? ((order as any).shopify_order_number || '') : '',
                 imported_at: order.imported_at,
                 archived_at: order.archived_at,
                 location_id: order.location_id,
                 location_name: order.location_name,
                 line_items: lineItemsByOrderId[order.id] || []
               };
+              
+              // Add shopify_order_number if it exists in the data
+              if (hasArchivedOrderNumberColumn && 'shopify_order_number' in order) {
+                typedOrder.shopify_order_number = order.shopify_order_number || '';
+              }
               
               return typedOrder;
             });
@@ -223,14 +259,17 @@ export const useShopifyOrders = () => {
                 customer_name: order.customer_name,
                 items_count: order.items_count,
                 status: order.status,
-                // Add shopify_order_number if column exists
-                shopify_order_number: hasArchivedOrderNumberColumn ? ((order as any).shopify_order_number || '') : '',
                 imported_at: order.imported_at,
                 archived_at: order.archived_at,
                 location_id: order.location_id,
                 location_name: order.location_name,
                 line_items: []
               };
+              
+              // Add shopify_order_number if it exists in the data
+              if (hasArchivedOrderNumberColumn && 'shopify_order_number' in order) {
+                typedOrder.shopify_order_number = order.shopify_order_number || '';
+              }
               
               return typedOrder;
             });

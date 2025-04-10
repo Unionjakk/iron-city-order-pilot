@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingCart, Shield, Archive, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
@@ -30,16 +29,15 @@ const ShopifyAPI = () => {
     return token.substring(0, 4) + '********' + token.substring(token.length - 4);
   };
 
-  // Check if there's a schema error by looking for the necessary columns
+  // Check if there's a schema error by using our RPC function
   const checkForSchemaErrors = async () => {
     try {
-      // Query the information schema to see if shopify_order_number column exists
-      const { data, error } = await supabase
-        .from('information_schema.columns')
-        .select('column_name')
-        .eq('table_name', 'shopify_orders')
-        .eq('column_name', 'shopify_order_number');
-
+      // Use RPC call to check if column exists
+      const { data, error } = await supabase.rpc('column_exists', { 
+        table_name: 'shopify_orders',
+        column_name: 'shopify_order_number'
+      });
+      
       if (error) {
         console.error('Error checking schema:', error);
         setIsSchemaError(true);
@@ -47,7 +45,7 @@ const ShopifyAPI = () => {
       }
       
       // If the column doesn't exist, we have a schema error
-      setIsSchemaError(data.length === 0);
+      setIsSchemaError(data === false);
     } catch (error) {
       console.error('Exception checking schema:', error);
       setIsSchemaError(true);
