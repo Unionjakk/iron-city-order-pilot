@@ -1,17 +1,65 @@
 
-import { ArrowRight, RefreshCw, Archive } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRight, RefreshCw, Archive, Link, ExternalLink } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 const ApiDocumentation = () => {
+  const [apiEndpoint, setApiEndpoint] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchApiEndpoint();
+  }, []);
+
+  const fetchApiEndpoint = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("get_shopify_setting", { 
+        setting_name_param: "shopify_api_endpoint" 
+      });
+      
+      if (error) {
+        console.error('Error fetching API endpoint:', error);
+        return;
+      }
+      
+      setApiEndpoint(data || "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json");
+    } catch (error) {
+      console.error('Error in fetchApiEndpoint:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-medium text-orange-400 mb-2">Endpoint Information</h3>
-        <code className="block p-4 bg-zinc-800/60 rounded-lg text-sm text-zinc-300 font-mono overflow-x-auto">
-          https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json<br/>
-          ?status=unfulfilled<br/>
-          &limit=250<br/>
-          &fields=id,created_at,customer,line_items,shipping_address,note,fulfillment_status
-        </code>
+        <h3 className="text-lg font-medium text-orange-400 mb-2 flex items-center">
+          <Link className="mr-2 h-4 w-4" /> Endpoint Information
+        </h3>
+        <div className="bg-zinc-800/60 rounded-lg p-2">
+          <div className="flex items-start mb-2">
+            <h4 className="text-sm font-medium text-zinc-300 mr-2">API Endpoint:</h4>
+            <a 
+              href={apiEndpoint || "#"} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 text-sm font-mono overflow-x-auto flex items-center"
+            >
+              {apiEndpoint}
+              <ExternalLink className="ml-1 h-3 w-3" />
+            </a>
+          </div>
+          <code className="block p-4 bg-zinc-900/80 rounded-lg text-sm text-zinc-300 font-mono overflow-x-auto">
+            {apiEndpoint}<br/>
+            ?status=unfulfilled<br/>
+            &limit=250<br/>
+            &fields=id,created_at,customer,line_items,shipping_address,note,fulfillment_status
+          </code>
+        </div>
       </div>
       
       <div>

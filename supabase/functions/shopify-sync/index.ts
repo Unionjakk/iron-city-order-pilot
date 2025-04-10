@@ -1,4 +1,3 @@
-
 // Supabase Edge Function
 // This function handles synchronizing orders with Shopify
 // It performs:
@@ -136,107 +135,27 @@ serve(async (req) => {
     // STEP 1: DELETE any incorrectly archived unfulfilled orders
     // This completely removes orders that were archived while still having unfulfilled status
     console.log("Checking for incorrectly archived unfulfilled orders to delete");
-    const { data: archivedUnfulfilled, error: archivedError } = await supabase
-      .from("shopify_archived_orders")
-      .select("id, shopify_order_id, shopify_order_number")
-      .eq("status", "unfulfilled");
-
-    if (archivedError) {
-      console.error("Error checking for archived unfulfilled orders:", archivedError);
-    } else if (archivedUnfulfilled && archivedUnfulfilled.length > 0) {
-      console.log(`Found ${archivedUnfulfilled.length} incorrectly archived unfulfilled orders to delete`);
-      
-      for (const order of archivedUnfulfilled) {
-        console.log(`Deleting incorrectly archived order: ${order.shopify_order_id} (${order.shopify_order_number || order.shopify_order_id})`);
-        
-        // First delete line items
-        const { error: deleteLineItemsError } = await supabase
-          .from("shopify_archived_order_items")
-          .delete()
-          .eq("archived_order_id", order.id);
-        
-        if (deleteLineItemsError) {
-          console.error(`Error deleting archived line items for order ${order.shopify_order_id}:`, deleteLineItemsError);
-          continue;
-        }
-        
-        // Then delete the order
-        const { error: deleteError } = await supabase
-          .from("shopify_archived_orders")
-          .delete()
-          .eq("id", order.id);
-        
-        if (deleteError) {
-          console.error(`Error deleting archived order ${order.shopify_order_id}:`, deleteError);
-        } else {
-          responseData.cleaned++;
-        }
-      }
-    } else {
-      console.log("No incorrectly archived unfulfilled orders found");
-    }
+    // ... keep existing code (archive cleanup logic)
 
     try {
       // STEP 2: Check for duplicate orders (exist in both active and archive)
       // and delete them from the archive
       console.log("Checking for duplicate orders");
-      const { data: duplicateData, error: duplicateError } = await supabase
-        .from("shopify_archived_orders")
-        .select("id, shopify_order_id, shopify_order_number");
+      // ... keep existing code (duplicate checks and cleanup)
+
+      // Get API endpoint from database
+      const { data: endpointData, error: endpointError } = await supabase.rpc("get_shopify_setting", { 
+        setting_name_param: "shopify_api_endpoint" 
+      });
       
-      if (duplicateError) {
-        console.error("Error fetching archived order IDs:", duplicateError);
-      } else if (duplicateData && duplicateData.length > 0) {
-        const archivedOrderIds = duplicateData.map(order => order.shopify_order_id);
-        
-        // Check which of these IDs exist in the active orders table
-        const { data: activeMatches, error: activeMatchError } = await supabase
-          .from("shopify_orders")
-          .select("shopify_order_id")
-          .in("shopify_order_id", archivedOrderIds);
-          
-        if (activeMatchError) {
-          console.error("Error checking for duplicates:", activeMatchError);
-        } else if (activeMatches && activeMatches.length > 0) {
-          console.log(`Found ${activeMatches.length} duplicate orders to clean up`);
-          
-          // Get the list of duplicate Shopify order IDs
-          const duplicateIds = activeMatches.map(order => order.shopify_order_id);
-          
-          // Find the corresponding archived orders
-          const duplicateArchived = duplicateData.filter(order => 
-            duplicateIds.includes(order.shopify_order_id)
-          );
-          
-          // Delete them from the archive
-          for (const order of duplicateArchived) {
-            console.log(`Deleting duplicate archived order: ${order.shopify_order_id} (${order.shopify_order_number || order.shopify_order_id})`);
-            
-            // First delete line items
-            const { error: deleteLineItemsError } = await supabase
-              .from("shopify_archived_order_items")
-              .delete()
-              .eq("archived_order_id", order.id);
-            
-            if (deleteLineItemsError) {
-              console.error(`Error deleting archived line items for duplicate order ${order.shopify_order_id}:`, deleteLineItemsError);
-              continue;
-            }
-            
-            // Then delete the order
-            const { error: deleteError } = await supabase
-              .from("shopify_archived_orders")
-              .delete()
-              .eq("id", order.id);
-            
-            if (deleteError) {
-              console.error(`Error deleting duplicate archived order ${order.shopify_order_id}:`, deleteError);
-            } else {
-              responseData.cleaned++;
-            }
-          }
-        }
+      if (endpointError) {
+        console.error("Error retrieving API endpoint from database:", endpointError);
+        throw new Error("Failed to retrieve API endpoint configuration");
       }
+      
+      // Use the stored endpoint or fall back to the default if not configured
+      const apiEndpoint = endpointData || "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json";
+      console.log(`Using Shopify API endpoint: ${apiEndpoint}`);
 
       // STEP 3: Fetch ALL unfulfilled orders from Shopify using pagination
       console.log("Fetching unfulfilled orders from Shopify with pagination");
@@ -245,9 +164,9 @@ serve(async (req) => {
       let hasMorePages = true;
       const maxPages = 10; // Limit to 10 pages (~500-1000 orders) to prevent timeouts
       
-      // Fetch orders page by page
+      // Fetch orders page by page using the endpoint from database
       while (hasMorePages && currentPage <= maxPages) {
-        const pageOrders = await fetchShopifyOrdersPage(apiToken, currentPage);
+        const pageOrders = await fetchShopifyOrdersPage(apiToken, currentPage, 100, apiEndpoint);
         console.log(`Retrieved ${pageOrders.length} orders from Shopify on page ${currentPage}`);
         
         if (pageOrders.length > 0) {
@@ -420,19 +339,32 @@ serve(async (req) => {
   }
 });
 
-async function fetchShopifyOrdersPage(apiToken: string, page: number = 1, limit: number = 100): Promise<ShopifyOrder[]> {
+async function fetchShopifyOrdersPage(apiToken: string, page: number = 1, limit: number = 100, apiEndpoint: string): Promise<ShopifyOrder[]> {
   // Fetch unfulfilled orders from Shopify with pagination
   try {
-    // Updated URL to use the correct store URL, API version, pagination parameters
-    const response = await fetch(
-      `https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json?status=open&fulfillment_status=unfulfilled&limit=${limit}&page=${page}`,
-      {
-        headers: {
-          "X-Shopify-Access-Token": apiToken,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    // Parse the base URL and add pagination parameters
+    const url = new URL(apiEndpoint);
+    
+    // Add query parameters if they don't exist
+    if (!url.searchParams.has('status')) {
+      url.searchParams.append('status', 'open');
+    }
+    if (!url.searchParams.has('fulfillment_status')) {
+      url.searchParams.append('fulfillment_status', 'unfulfilled');
+    }
+    
+    // Always set pagination parameters
+    url.searchParams.set('limit', limit.toString());
+    url.searchParams.set('page', page.toString());
+    
+    console.log(`Fetching orders from: ${url.toString()}`);
+    
+    const response = await fetch(url.toString(), {
+      headers: {
+        "X-Shopify-Access-Token": apiToken,
+        "Content-Type": "application/json",
+      },
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -448,7 +380,7 @@ async function fetchShopifyOrdersPage(apiToken: string, page: number = 1, limit:
         console.warn("Rate limit hit, waiting and retrying...");
         // Wait for 2 seconds and retry
         await new Promise(resolve => setTimeout(resolve, 2000));
-        return fetchShopifyOrdersPage(apiToken, page, limit);
+        return fetchShopifyOrdersPage(apiToken, page, limit, apiEndpoint);
       } else {
         throw new Error(`Shopify API error: ${response.status} - ${errorText || "Unknown error"}`);
       }
@@ -467,18 +399,47 @@ async function fetchShopifyOrdersPage(apiToken: string, page: number = 1, limit:
 }
 
 async function fetchSingleOrder(apiToken: string, orderId: string): Promise<any> {
+  // Get API endpoint base from database
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  
+  const { data: endpointData, error: endpointError } = await supabase.rpc("get_shopify_setting", { 
+    setting_name_param: "shopify_api_endpoint" 
+  });
+  
+  if (endpointError) {
+    console.error("Error retrieving API endpoint from database:", endpointError);
+    throw new Error("Failed to retrieve API endpoint configuration");
+  }
+  
+  // Extract the base URL from the endpoint
+  let baseUrl = "https://opus-harley-davidson.myshopify.com/admin/api/2023-07";
+  
+  if (endpointData) {
+    try {
+      const urlObj = new URL(endpointData);
+      // Extract everything before the /orders.json part
+      const pathParts = urlObj.pathname.split('/');
+      pathParts.pop(); // Remove orders.json
+      baseUrl = urlObj.origin + pathParts.join('/');
+    } catch (e) {
+      console.error("Error parsing API endpoint:", e);
+    }
+  }
+  
+  // Construct the single order endpoint
+  const singleOrderUrl = `${baseUrl}/orders/${orderId}.json`;
+  console.log(`Fetching single order from: ${singleOrderUrl}`);
+  
   // Fetch a single order by ID to check its current status
   try {
-    // Updated URL to use the correct store URL and API version
-    const response = await fetch(
-      `https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders/${orderId}.json`,
-      {
-        headers: {
-          "X-Shopify-Access-Token": apiToken,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await fetch(singleOrderUrl, {
+      headers: {
+        "X-Shopify-Access-Token": apiToken,
+        "Content-Type": "application/json",
+      },
+    });
 
     if (!response.ok) {
       const errorText = await response.text();

@@ -29,16 +29,41 @@ export const getTokenFromDatabase = async () => {
   }
 };
 
+// Get API endpoint from database
+export const getApiEndpoint = async () => {
+  try {
+    const { data, error } = await supabase.rpc('get_shopify_setting', { 
+      setting_name_param: 'shopify_api_endpoint' 
+    });
+    
+    if (error) {
+      console.error('Error retrieving API endpoint from database:', error);
+      return null;
+    }
+    
+    if (data && typeof data === 'string') {
+      return data;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Exception retrieving API endpoint:', error);
+    return null;
+  }
+};
+
 // Get last sync time from database
 export const fetchShopifySettings = async () => {
   try {
-    const [syncTimeResult, cronRunResult, autoImportResult] = await Promise.all([
+    const [syncTimeResult, cronRunResult, autoImportResult, apiEndpointResult] = await Promise.all([
       // Get last sync time
       supabase.rpc('get_shopify_setting', { setting_name_param: 'last_sync_time' }),
       // Get last cron run time
       supabase.rpc('get_shopify_setting', { setting_name_param: 'last_cron_run' }),
       // Check if auto-import is enabled
-      supabase.rpc('get_shopify_setting', { setting_name_param: 'auto_import_enabled' })
+      supabase.rpc('get_shopify_setting', { setting_name_param: 'auto_import_enabled' }),
+      // Get API endpoint
+      supabase.rpc('get_shopify_setting', { setting_name_param: 'shopify_api_endpoint' })
     ]);
 
     const { data: syncTimeData, error: syncTimeError } = syncTimeResult;
@@ -58,6 +83,12 @@ export const fetchShopifySettings = async () => {
     if (autoImportError) {
       console.error('Error retrieving auto-import setting from database:', autoImportError);
     }
+    
+    const { data: apiEndpointData, error: apiEndpointError } = apiEndpointResult;
+    
+    if (apiEndpointError) {
+      console.error('Error retrieving API endpoint from database:', apiEndpointError);
+    }
 
     return {
       lastSyncTime: (syncTimeData && typeof syncTimeData === 'string' && syncTimeData !== PLACEHOLDER_TOKEN_VALUE) 
@@ -66,14 +97,18 @@ export const fetchShopifySettings = async () => {
       lastCronRun: (cronRunData && typeof cronRunData === 'string') 
         ? cronRunData 
         : null,
-      autoImportEnabled: autoImportData === 'true'
+      autoImportEnabled: autoImportData === 'true',
+      apiEndpoint: (apiEndpointData && typeof apiEndpointData === 'string')
+        ? apiEndpointData
+        : 'https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json'
     };
   } catch (error) {
     console.error('Exception retrieving settings:', error);
     return {
       lastSyncTime: null,
       lastCronRun: null,
-      autoImportEnabled: false
+      autoImportEnabled: false,
+      apiEndpoint: 'https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json'
     };
   }
 };
