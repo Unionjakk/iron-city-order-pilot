@@ -66,21 +66,34 @@ const DatabaseHealthCheck = () => {
         return;
       }
       
-      // Check for duplicate orders by running a SQL query
+      // Check for duplicate orders by running a direct query
+      // Fixed: Replace complex query with a simpler approach
       const { data: duplicateData, error: duplicateError } = await supabase
         .from('shopify_archived_orders')
-        .select('shopify_order_id')
-        .in(
-          'shopify_order_id', 
-          supabase.from('shopify_orders').select('shopify_order_id')
-        )
-        .select('id', { count: 'exact' })
-        
+        .select('shopify_order_id');
+      
       if (duplicateError) {
-        console.error('Error checking for duplicates:', duplicateError);
+        console.error('Error fetching archived order IDs:', duplicateError);
       }
       
-      const duplicate_orders = duplicateData ? duplicateData.length : 0;
+      let duplicate_orders = 0;
+      
+      // If we have archived orders, check which ones exist in active orders
+      if (duplicateData && duplicateData.length > 0) {
+        const archivedOrderIds = duplicateData.map(order => order.shopify_order_id);
+        
+        // Now check which of these IDs exist in the active orders table
+        const { data: activeMatches, error: activeMatchError } = await supabase
+          .from('shopify_orders')
+          .select('shopify_order_id')
+          .in('shopify_order_id', archivedOrderIds);
+          
+        if (activeMatchError) {
+          console.error('Error checking for duplicates:', activeMatchError);
+        } else if (activeMatches) {
+          duplicate_orders = activeMatches.length;
+        }
+      }
       
       // Check for line item mismatches (orders with no line items)
       // Find orders without line items
@@ -244,7 +257,7 @@ const DatabaseHealthCheck = () => {
       <CardContent className="space-y-4">
         {healthState.last_check && (
           <Alert 
-            variant={healthStatus.status === "issues" ? "warning" : "default"}
+            variant={healthStatus.status === "issues" ? "destructive" : "default"}
             className={healthStatus.status === "issues" 
               ? "bg-amber-900/20 border-amber-500/50" 
               : "bg-emerald-900/20 border-emerald-500/50"
@@ -271,7 +284,7 @@ const DatabaseHealthCheck = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {healthState.unfulfilled_in_archive > 0 && (
-            <Alert variant="warning" className="bg-amber-900/20 border-amber-500/50">
+            <Alert variant="destructive" className="bg-amber-900/20 border-amber-500/50">
               <AlertCircle className="h-4 w-4 text-amber-500" />
               <AlertTitle className="text-amber-500 flex items-center justify-between">
                 <span>Unfulfilled Orders in Archive</span>
@@ -295,7 +308,7 @@ const DatabaseHealthCheck = () => {
           )}
           
           {healthState.duplicate_orders > 0 && (
-            <Alert variant="warning" className="bg-amber-900/20 border-amber-500/50">
+            <Alert variant="destructive" className="bg-amber-900/20 border-amber-500/50">
               <AlertCircle className="h-4 w-4 text-amber-500" />
               <AlertTitle className="text-amber-500 flex items-center justify-between">
                 <span>Duplicate Orders</span>
@@ -308,7 +321,7 @@ const DatabaseHealthCheck = () => {
           )}
           
           {healthState.mismatched_line_items > 0 && (
-            <Alert variant="warning" className="bg-amber-900/20 border-amber-500/50">
+            <Alert variant="destructive" className="bg-amber-900/20 border-amber-500/50">
               <AlertCircle className="h-4 w-4 text-amber-500" />
               <AlertTitle className="text-amber-500 flex items-center justify-between">
                 <span>Orders Missing Line Items</span>
