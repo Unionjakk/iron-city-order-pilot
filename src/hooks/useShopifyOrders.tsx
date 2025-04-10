@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ShopifyOrder } from '@/components/shopify/OrdersTable';
+import { useToast } from '@/hooks/use-toast';
 
 export const useShopifyOrders = () => {
   const [importedOrders, setImportedOrders] = useState<ShopifyOrder[]>([]);
@@ -9,6 +10,7 @@ export const useShopifyOrders = () => {
   const [lastImport, setLastImport] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [autoImportEnabled, setAutoImportEnabled] = useState(false);
+  const { toast } = useToast();
 
   // Function to fetch recent orders from Supabase
   const fetchRecentOrders = async () => {
@@ -31,12 +33,20 @@ export const useShopifyOrders = () => {
       setAutoImportEnabled(autoImportData === 'true');
       
       // Fetch active orders with basic information
+      // Note: We use 'id, shopify_order_id' first to avoid issues if shopify_order_number doesn't exist yet
       const { data: activeData, error: activeError } = await supabase
         .from('shopify_orders')
-        .select('id, shopify_order_id, shopify_order_number, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
+        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
       
       if (activeError) {
         console.error('Error fetching active orders:', activeError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch orders. The database schema may need to be updated.",
+          variant: "destructive",
+        });
+        setImportedOrders([]);
+        setIsLoading(false);
         return;
       }
       
@@ -70,15 +80,22 @@ export const useShopifyOrders = () => {
             return acc;
           }, {});
           
-          // Add line items to each order
+          // Add line items to each order and transform to ShopifyOrder type
           const ordersWithLineItems = activeData.map(order => ({
             ...order,
+            // Add empty string as fallback for shopify_order_number if it doesn't exist yet
+            shopify_order_number: order.shopify_order_number || '',
             line_items: lineItemsByOrderId[order.id] || []
-          }));
+          })) as ShopifyOrder[];
           
-          setImportedOrders(ordersWithLineItems as ShopifyOrder[]);
+          setImportedOrders(ordersWithLineItems);
         } else {
-          setImportedOrders(activeData as ShopifyOrder[]);
+          // Add empty string as fallback for shopify_order_number if it doesn't exist yet
+          setImportedOrders(activeData.map(order => ({
+            ...order,
+            shopify_order_number: order.shopify_order_number || '',
+            line_items: []
+          })) as ShopifyOrder[]);
         }
         
         // Set last import time if we have orders and no last sync time
@@ -101,53 +118,68 @@ export const useShopifyOrders = () => {
         
       if (archivedError) {
         console.error('Error fetching archived orders:', archivedError);
-      }
-      
-      // If we have archived orders, fetch their line items from the new shopify_archived_order_items table
-      if (archivedData && archivedData.length > 0) {
-        const archivedOrderIds = archivedData.map(order => order.id);
-        
-        // Fetch archived line items
-        const { data: archivedLineItemsData, error: archivedLineItemsError } = await supabase
-          .from('shopify_archived_order_items')
-          .select('archived_order_id, shopify_line_item_id, sku, title, quantity, price')
-          .in('archived_order_id', archivedOrderIds);
-        
-        if (archivedLineItemsError) {
-          console.error('Error fetching archived line items:', archivedLineItemsError);
-        }
-        
-        // Map archived line items to their respective orders
-        if (archivedLineItemsData) {
-          const lineItemsByOrderId = archivedLineItemsData.reduce((acc, item) => {
-            if (!acc[item.archived_order_id]) {
-              acc[item.archived_order_id] = [];
-            }
-            acc[item.archived_order_id].push({
-              id: item.shopify_line_item_id,
-              sku: item.sku,
-              title: item.title,
-              quantity: item.quantity,
-              price: item.price
-            });
-            return acc;
-          }, {});
+        setArchivedOrders([]);
+      } else if (archivedData) {
+        // If we have archived orders, fetch their line items from the new shopify_archived_order_items table
+        if (archivedData.length > 0) {
+          const archivedOrderIds = archivedData.map(order => order.id);
           
-          // Add line items to each archived order
-          const archivedOrdersWithLineItems = archivedData.map(order => ({
-            ...order,
-            line_items: lineItemsByOrderId[order.id] || []
-          }));
+          // Fetch archived line items
+          const { data: archivedLineItemsData, error: archivedLineItemsError } = await supabase
+            .from('shopify_archived_order_items')
+            .select('archived_order_id, shopify_line_item_id, sku, title, quantity, price')
+            .in('archived_order_id', archivedOrderIds);
           
-          setArchivedOrders(archivedOrdersWithLineItems as ShopifyOrder[]);
+          if (archivedLineItemsError) {
+            console.error('Error fetching archived line items:', archivedLineItemsError);
+          }
+          
+          // Map archived line items to their respective orders
+          if (archivedLineItemsData) {
+            const lineItemsByOrderId = archivedLineItemsData.reduce((acc, item) => {
+              if (!acc[item.archived_order_id]) {
+                acc[item.archived_order_id] = [];
+              }
+              acc[item.archived_order_id].push({
+                id: item.shopify_line_item_id,
+                sku: item.sku,
+                title: item.title,
+                quantity: item.quantity,
+                price: item.price
+              });
+              return acc;
+            }, {});
+            
+            // Add line items to each archived order
+            const archivedOrdersWithLineItems = archivedData.map(order => ({
+              ...order,
+              // Add empty string as fallback for shopify_order_number if it doesn't exist yet
+              shopify_order_number: order.shopify_order_number || '',
+              line_items: lineItemsByOrderId[order.id] || []
+            })) as ShopifyOrder[];
+            
+            setArchivedOrders(archivedOrdersWithLineItems);
+          } else {
+            // Add empty string as fallback for shopify_order_number if it doesn't exist yet
+            setArchivedOrders(archivedData.map(order => ({
+              ...order,
+              shopify_order_number: order.shopify_order_number || '',
+              line_items: []
+            })) as ShopifyOrder[]);
+          }
         } else {
-          setArchivedOrders(archivedData as ShopifyOrder[]);
+          setArchivedOrders([]);
         }
       } else {
         setArchivedOrders([]);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch orders. Please try again later.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
