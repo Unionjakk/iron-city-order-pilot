@@ -23,14 +23,14 @@ export const useShopifyOrders = () => {
         setLastImport(lastSyncData);
       }
       
-      // Check if auto-import is enabled
+      // Check if auto-import is enabled - make sure to check the exact string value 'true'
       const { data: autoImportData } = await supabase.rpc('get_shopify_setting', { 
         setting_name_param: 'auto_import_enabled' 
       });
       
       setAutoImportEnabled(autoImportData === 'true');
       
-      // Fetch active orders - wait for migration to complete before running this query
+      // Fetch active orders
       const { data: activeData, error: activeError } = await supabase
         .from('shopify_orders')
         .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at')

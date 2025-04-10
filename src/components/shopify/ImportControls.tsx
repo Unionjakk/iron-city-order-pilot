@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Clock, Info, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
         return;
       }
       
+      // Set auto-import status
       setAutoImportEnabled(autoImportData === 'true');
       
     } catch (error) {
