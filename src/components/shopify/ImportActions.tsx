@@ -69,7 +69,7 @@ const ImportActions = ({
         {isImporting && !hasImportError ? (
           <>
             <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-            Importing...
+            Importing All Orders...
           </>
         ) : hasImportError ? (
           <>
@@ -79,7 +79,7 @@ const ImportActions = ({
         ) : (
           <>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Import Orders Now
+            Import All Orders Now
           </>
         )}
       </Button>

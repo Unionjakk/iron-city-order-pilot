@@ -106,6 +106,12 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     setImportError(null);
     
     try {
+      toast({
+        title: "Import Started",
+        description: "Importing all unfulfilled orders. This may take a few minutes for large order sets...",
+        variant: "default",
+      });
+      
       const result = await executeManualImport();
       
       // Fetch the updated orders to refresh the UI

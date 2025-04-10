@@ -130,6 +130,7 @@ export const executeManualImport = async () => {
     }
     
     // Call the edge function to sync orders with the complete synchronization logic
+    // The edge function now handles pagination to get all orders
     const response = await supabase.functions.invoke('shopify-sync', {
       body: { apiToken: token }
     });

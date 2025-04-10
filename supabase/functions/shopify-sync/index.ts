@@ -238,10 +238,27 @@ serve(async (req) => {
         }
       }
 
-      // STEP 3: Fetch new orders from Shopify
-      console.log("Fetching unfulfilled orders from Shopify");
-      const shopifyOrders = await fetchShopifyOrders(apiToken);
-      console.log(`Retrieved ${shopifyOrders.length} orders from Shopify`);
+      // STEP 3: Fetch ALL unfulfilled orders from Shopify using pagination
+      console.log("Fetching unfulfilled orders from Shopify with pagination");
+      let shopifyOrders: ShopifyOrder[] = [];
+      let currentPage = 1;
+      let hasMorePages = true;
+      const maxPages = 10; // Limit to 10 pages (~500-1000 orders) to prevent timeouts
+      
+      // Fetch orders page by page
+      while (hasMorePages && currentPage <= maxPages) {
+        const pageOrders = await fetchShopifyOrdersPage(apiToken, currentPage);
+        console.log(`Retrieved ${pageOrders.length} orders from Shopify on page ${currentPage}`);
+        
+        if (pageOrders.length > 0) {
+          shopifyOrders = [...shopifyOrders, ...pageOrders];
+          currentPage++;
+        } else {
+          hasMorePages = false;
+        }
+      }
+      
+      console.log(`Total orders retrieved: ${shopifyOrders.length}`);
 
       // STEP 4: Check for each Shopify order
       for (const shopifyOrder of shopifyOrders) {
@@ -338,6 +355,7 @@ serve(async (req) => {
       } else if (activeOrders && activeOrders.length > 0) {
         console.log(`Checking fulfillment status for ${activeOrders.length} active orders`);
         
+        // Use a rate-limited check to avoid hitting Shopify API limits
         for (const order of activeOrders) {
           // Check if the order still exists in the unfulfilled orders from Shopify
           const stillUnfulfilled = shopifyOrders.some(shopifyOrder => 
@@ -347,8 +365,11 @@ serve(async (req) => {
           if (!stillUnfulfilled) {
             console.log(`Order ${order.shopify_order_id} (${order.shopify_order_number || order.shopify_order_id}) is no longer unfulfilled - checking direct status`);
             
-            // If not in unfulfilled list, check the order status directly
             try {
+              // Add a small delay to avoid hitting rate limits
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // If not in unfulfilled list, check the order status directly
               const orderDetails = await fetchSingleOrder(apiToken, order.shopify_order_id);
               
               if (orderDetails.fulfillment_status === "fulfilled") {
@@ -399,12 +420,12 @@ serve(async (req) => {
   }
 });
 
-async function fetchShopifyOrders(apiToken: string): Promise<ShopifyOrder[]> {
-  // Fetch unfulfilled orders from Shopify
+async function fetchShopifyOrdersPage(apiToken: string, page: number = 1, limit: number = 100): Promise<ShopifyOrder[]> {
+  // Fetch unfulfilled orders from Shopify with pagination
   try {
-    // Updated URL to use the correct store URL and API version
+    // Updated URL to use the correct store URL, API version, pagination parameters
     const response = await fetch(
-      "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json?status=open&fulfillment_status=unfulfilled",
+      `https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json?status=open&fulfillment_status=unfulfilled&limit=${limit}&page=${page}`,
       {
         headers: {
           "X-Shopify-Access-Token": apiToken,
@@ -423,6 +444,11 @@ async function fetchShopifyOrders(apiToken: string): Promise<ShopifyOrder[]> {
         throw new Error("Store not found. Please verify your Shopify store URL is correct and the app is installed.");
       } else if (response.status === 403) {
         throw new Error("Access forbidden. Your API token might not have the necessary permissions.");
+      } else if (response.status === 429) {
+        console.warn("Rate limit hit, waiting and retrying...");
+        // Wait for 2 seconds and retry
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return fetchShopifyOrdersPage(apiToken, page, limit);
       } else {
         throw new Error(`Shopify API error: ${response.status} - ${errorText || "Unknown error"}`);
       }
@@ -435,7 +461,7 @@ async function fetchShopifyOrders(apiToken: string): Promise<ShopifyOrder[]> {
     }
     return data.orders;
   } catch (error) {
-    console.error("Exception in fetchShopifyOrders:", error);
+    console.error(`Exception in fetchShopifyOrdersPage (page ${page}):`, error);
     throw error;
   }
 }
@@ -462,6 +488,11 @@ async function fetchSingleOrder(apiToken: string, orderId: string): Promise<any>
         throw new Error("Authentication failed. Your Shopify API token might be invalid or expired.");
       } else if (response.status === 404) {
         throw new Error(`Order ${orderId} not found in Shopify.`);
+      } else if (response.status === 429) {
+        console.warn("Rate limit hit, waiting and retrying...");
+        // Wait for 2 seconds and retry
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return fetchSingleOrder(apiToken, orderId);
       } else {
         throw new Error(`Shopify API error: ${response.status} - ${errorText || "Unknown error"}`);
       }
