@@ -26,17 +26,38 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     }).format(date);
   };
 
+  // Get token from database
+  const getTokenFromDatabase = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('shopify_settings')
+        .select('setting_value')
+        .eq('setting_name', 'shopify_token')
+        .single();
+      
+      if (error || !data || data.setting_value === 'placeholder_token') {
+        console.error('Error retrieving token from database:', error);
+        return null;
+      }
+      
+      return data.setting_value;
+    } catch (error) {
+      console.error('Exception retrieving token:', error);
+      return null;
+    }
+  };
+
   // Handle manual import
   const handleManualImport = async () => {
     setIsImporting(true);
     
     try {
-      const token = localStorage.getItem('shopify_token');
+      const token = await getTokenFromDatabase();
       
       if (!token) {
         toast({
           title: "Error",
-          description: "No API token found. Please add your Shopify API token first.",
+          description: "No API token found in database. Please add your Shopify API token first.",
           variant: "destructive",
         });
         setIsImporting(false);

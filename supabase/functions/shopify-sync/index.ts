@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -11,6 +10,27 @@ const corsHeaders = {
 const supabaseUrl = "https://hbmismnzmocjazaiicdu.supabase.co";
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Function to get API token from database
+async function getApiTokenFromDatabase() {
+  try {
+    const { data, error } = await supabase
+      .from('shopify_settings')
+      .select('setting_value')
+      .eq('setting_name', 'shopify_token')
+      .single();
+    
+    if (error || !data || data.setting_value === 'placeholder_token') {
+      console.error('Error retrieving token from database:', error);
+      return null;
+    }
+    
+    return data.setting_value;
+  } catch (error) {
+    console.error('Exception retrieving token:', error);
+    return null;
+  }
+}
 
 // Function to format the date for Shopify API
 const formatDate = (date: Date): string => {
@@ -299,7 +319,7 @@ serve(async (req) => {
   }
 
   try {
-    // For scheduled invocations, we don't have a body
+    // First try to get the token from the request body
     let apiToken;
     
     if (req.method === 'POST') {
@@ -307,14 +327,20 @@ serve(async (req) => {
       const body = await req.json();
       apiToken = body.apiToken;
       
+      // If no token in request, try to get it from the database
       if (!apiToken) {
-        return new Response(
-          JSON.stringify({ error: "API token is required" }),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
+        console.log('No token in request, trying to get from database');
+        apiToken = await getApiTokenFromDatabase();
+        
+        if (!apiToken) {
+          return new Response(
+            JSON.stringify({ error: "API token not found in request or database" }),
+            { 
+              status: 400, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
       }
     } else {
       return new Response(

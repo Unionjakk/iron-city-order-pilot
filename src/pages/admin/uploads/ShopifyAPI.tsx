@@ -8,10 +8,12 @@ import ImportControls from '@/components/shopify/ImportControls';
 import OrdersTable from '@/components/shopify/OrdersTable';
 import ApiDocumentation from '@/components/shopify/ApiDocumentation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
 
 const ShopifyAPI = () => {
   const [hasToken, setHasToken] = useState(false);
   const [maskedToken, setMaskedToken] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const { importedOrders, archivedOrders, lastImport, fetchRecentOrders } = useShopifyOrders();
 
   // Function to mask the token for display
@@ -20,21 +22,36 @@ const ShopifyAPI = () => {
     return token.substring(0, 4) + '********' + token.substring(token.length - 4);
   };
 
-  // Check for existing token with more robust detection
-  const checkForToken = () => {
+  // Function to check for token in the database
+  const checkForToken = async () => {
+    setIsLoading(true);
     try {
-      const token = localStorage.getItem('shopify_token');
-      console.log('ShopifyAPI - checking for token:', !!token);
+      const { data, error } = await supabase
+        .from('shopify_settings')
+        .select('setting_value')
+        .eq('setting_name', 'shopify_token')
+        .single();
       
-      if (token) {
+      if (error) {
+        console.error('Error checking for token in database:', error);
+        setHasToken(false);
+        setMaskedToken('');
+        return;
+      }
+      
+      if (data && data.setting_value && data.setting_value !== 'placeholder_token') {
         setHasToken(true);
-        setMaskedToken(maskToken(token));
+        setMaskedToken(maskToken(data.setting_value));
       } else {
         setHasToken(false);
         setMaskedToken('');
       }
     } catch (error) {
-      console.error('Error accessing localStorage:', error);
+      console.error('Exception checking for token:', error);
+      setHasToken(false);
+      setMaskedToken('');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -42,22 +59,24 @@ const ShopifyAPI = () => {
   useEffect(() => {
     checkForToken();
     
-    // Set up a retry mechanism in case the first check fails
-    const timeoutId = setTimeout(checkForToken, 500);
+    // Set up a subscription to token changes
+    const channel = supabase
+      .channel('shopify_settings_changes')
+      .on('postgres_changes', 
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'shopify_settings',
+          filter: 'setting_name=eq.shopify_token'
+        }, 
+        () => {
+          checkForToken();
+        })
+      .subscribe();
     
-    return () => clearTimeout(timeoutId);
-  }, []);
-
-  // Create a listener for storage events to detect token changes
-  useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'shopify_token') {
-        checkForToken();
-      }
+    return () => {
+      supabase.removeChannel(channel);
     };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   return (
@@ -76,12 +95,18 @@ const ShopifyAPI = () => {
           <CardDescription className="text-zinc-400">Securely connect to your Shopify store</CardDescription>
         </CardHeader>
         <CardContent>
-          <ApiTokenFormComponent 
-            hasToken={hasToken} 
-            maskedToken={maskedToken} 
-            setHasToken={setHasToken} 
-            setMaskedToken={setMaskedToken} 
-          />
+          {isLoading ? (
+            <div className="py-4 text-zinc-400">
+              Loading API configuration...
+            </div>
+          ) : (
+            <ApiTokenFormComponent 
+              hasToken={hasToken} 
+              maskedToken={maskedToken} 
+              setHasToken={setHasToken} 
+              setMaskedToken={setMaskedToken} 
+            />
+          )}
         </CardContent>
       </Card>
       

@@ -9,6 +9,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, For
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define the form schema
 const apiTokenSchema = z.object({
@@ -40,63 +41,98 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
     return token.substring(0, 4) + '********' + token.substring(token.length - 4);
   };
 
-  // Improved token detection function
-  const detectToken = () => {
+  // Database fetch function to get the token
+  const fetchTokenFromDatabase = async () => {
+    setIsLoading(true);
     try {
-      const storedToken = localStorage.getItem('shopify_token');
-      console.log('ApiTokenForm - detecting token:', !!storedToken);
+      const { data, error } = await supabase
+        .from('shopify_settings')
+        .select('setting_value')
+        .eq('setting_name', 'shopify_token')
+        .single();
       
-      if (storedToken) {
-        // Token found - update state
-        setHasToken(true);
-        setMaskedToken(maskToken(storedToken));
-      } else {
-        // No token found - clear state
+      if (error) {
+        console.error('Error fetching token from database:', error);
         setHasToken(false);
         setMaskedToken('');
+        return false;
+      }
+      
+      if (data && data.setting_value && data.setting_value !== 'placeholder_token') {
+        setHasToken(true);
+        setMaskedToken(maskToken(data.setting_value));
+        return true;
+      } else {
+        setHasToken(false);
+        setMaskedToken('');
+        return false;
       }
     } catch (error) {
-      console.error('Error accessing localStorage:', error);
+      console.error('Exception fetching token:', error);
+      setHasToken(false);
+      setMaskedToken('');
+      return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Check for token in localStorage on mount with improved reliability
+  // Check for token in database on component mount
   useEffect(() => {
-    // Immediate check
-    detectToken();
+    fetchTokenFromDatabase();
     
-    // Retry after a short delay in case the parent component is still initializing
-    const timeoutId = setTimeout(detectToken, 500);
+    // Set up a subscription to token changes
+    const channel = supabase
+      .channel('shopify_settings_changes')
+      .on('postgres_changes', 
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'shopify_settings',
+          filter: 'setting_name=eq.shopify_token'
+        }, 
+        () => {
+          fetchTokenFromDatabase();
+        })
+      .subscribe();
     
-    return () => clearTimeout(timeoutId);
-  }, [setHasToken, setMaskedToken]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
-  // Handle form submission with improved error handling
-  const onSubmit = (data: ApiTokenForm) => {
+  // Handle form submission - save token to database
+  const onSubmit = async (data: ApiTokenForm) => {
     setIsLoading(true);
     
     try {
-      // Save token to localStorage
-      localStorage.setItem('shopify_token', data.apiToken);
-      console.log('Token saved to localStorage');
+      // Save token to database
+      const { error } = await supabase
+        .from('shopify_settings')
+        .update({ 
+          setting_value: data.apiToken,
+          updated_at: new Date().toISOString()
+        })
+        .eq('setting_name', 'shopify_token');
       
-      // Trigger a custom event to notify other components
-      window.dispatchEvent(new Event('shopify_token_updated'));
+      if (error) {
+        throw error;
+      }
       
-      // Update UI
+      // Update UI state
       setMaskedToken(maskToken(data.apiToken));
       setHasToken(true);
       
       toast({
         title: "API Token Saved",
-        description: "Your Shopify API token has been securely saved.",
+        description: "Your Shopify API token has been securely saved to the database.",
         variant: "default",
       });
     } catch (error) {
-      console.error('Error saving token:', error);
+      console.error('Error saving token to database:', error);
       toast({
         title: "Error Saving Token",
-        description: "There was a problem saving your API token.",
+        description: "There was a problem saving your API token to the database.",
         variant: "destructive",
       });
     } finally {
@@ -105,30 +141,40 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
     }
   };
 
-  // Handle token removal with improved error handling
-  const handleRemoveToken = () => {
+  // Handle token removal from database
+  const handleRemoveToken = async () => {
+    setIsLoading(true);
     try {
-      localStorage.removeItem('shopify_token');
-      console.log('Token removed from localStorage');
+      // Reset token in database to placeholder
+      const { error } = await supabase
+        .from('shopify_settings')
+        .update({ 
+          setting_value: 'placeholder_token',
+          updated_at: new Date().toISOString()
+        })
+        .eq('setting_name', 'shopify_token');
       
-      // Trigger a custom event to notify other components
-      window.dispatchEvent(new Event('shopify_token_updated'));
+      if (error) {
+        throw error;
+      }
       
       setHasToken(false);
       setMaskedToken('');
       
       toast({
         title: "API Token Removed",
-        description: "Your Shopify API token has been removed.",
+        description: "Your Shopify API token has been removed from the database.",
         variant: "default",
       });
     } catch (error) {
-      console.error('Error removing token:', error);
+      console.error('Error removing token from database:', error);
       toast({
         title: "Error Removing Token",
-        description: "There was a problem removing your API token.",
+        description: "There was a problem removing your API token from the database.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -148,8 +194,9 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
             variant="destructive" 
             className="mt-2" 
             onClick={handleRemoveToken}
+            disabled={isLoading}
           >
-            Remove API Token
+            {isLoading ? "Processing..." : "Remove API Token"}
           </Button>
         </div>
       ) : (
@@ -175,7 +222,7 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
                     </div>
                   </FormControl>
                   <FormDescription className="text-zinc-500">
-                    This token will be stored securely and used to access your Shopify orders.
+                    This token will be stored securely in the database and used to access your Shopify orders.
                   </FormDescription>
                   <FormMessage className="text-red-400" />
                 </FormItem>
@@ -185,7 +232,7 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
               {isLoading ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Verifying...
+                  Saving...
                 </>
               ) : (
                 <>

@@ -1,5 +1,30 @@
 
 project_id = "hbmismnzmocjazaiicdu"
 
-[functions.shopify-sync]
-verify_jwt = false
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[auth]
+enabled = true
+port = 54325
+
+[realtime]
+enabled = true
+subscription.defaults.postgres_changes = true
+
+[[realtime.postgres_changes]]
+table = "shopify_settings"
