@@ -34,15 +34,6 @@
     --ring: 24 95% 53%;
 
     --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 24 95% 53%;
-    --sidebar-primary: 24 95% 53%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 24 95% 53%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 24 95% 53%;
   }
 }
 
@@ -55,3 +46,40 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Global styles for consistent layout */
+@layer components {
+  .page-title {
+    @apply text-2xl font-bold text-orange-500;
+  }
+  
+  .page-description {
+    @apply text-orange-400/80;
+  }
+  
+  .card-styled {
+    @apply border-zinc-800 bg-zinc-900/60 backdrop-blur-sm;
+  }
+  
+  .card-inset {
+    @apply bg-zinc-800/60 rounded-lg border border-zinc-700 p-4;
+  }
+  
+  .link-styled {
+    @apply text-orange-500 hover:text-orange-400;
+  }
+  
+  .button-primary {
+    @apply bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md transition-colors;
+  }
+  
+  .button-secondary {
+    @apply bg-zinc-800 hover:bg-zinc-700 text-orange-400 px-4 py-2 rounded-md transition-colors;
+  }
+  
+  .button-outline {
+    @apply border border-zinc-700 text-orange-400 hover:bg-zinc-800 hover:text-orange-300 px-4 py-2 rounded-md transition-colors;
+  }
+}
+
+/* Remove obsolete App.css styles */

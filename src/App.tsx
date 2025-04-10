@@ -33,18 +33,18 @@ const App = () => (
             {/* Public route */}
             <Route path="/auth" element={<Auth />} />
             
-            {/* Protected routes */}
+            {/* Protected routes - All under the same layout */}
             <Route element={<ProtectedRoute />}>
-              {/* Main Dashboard */}
-              <Route path="/" element={<Dashboard />} />
-              
-              {/* Admin routes */}
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="uploads" element={<UploadsIndex />} />
-                <Route path="uploads/pinnacle" element={<PinnacleUpload />} />
-                <Route path="uploads/harley" element={<HarleyUpload />} />
-                <Route path="uploads/shopify" element={<ShopifyAPI />} />
+              <Route element={<AdminLayout />}>
+                {/* Main Dashboard */}
+                <Route path="/" element={<Dashboard />} />
+                
+                {/* Admin routes */}
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/uploads" element={<UploadsIndex />} />
+                <Route path="/admin/uploads/pinnacle" element={<PinnacleUpload />} />
+                <Route path="/admin/uploads/harley" element={<HarleyUpload />} />
+                <Route path="/admin/uploads/shopify" element={<ShopifyAPI />} />
               </Route>
             </Route>
             
