@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useShopifyOrders } from '@/hooks/useShopifyOrders';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,7 +26,6 @@ const ShopifyAPIPage = () => {
   
   const { 
     importedOrders, 
-    archivedOrders, 
     lastImport, 
     fetchRecentOrders, 
     isLoading: ordersLoading,
@@ -166,7 +164,7 @@ const ShopifyAPIPage = () => {
         />
       )}
       
-      {/* Complete Refresh Card - NEW */}
+      {/* Complete Refresh Card */}
       {hasToken && (
         <CompleteRefresh
           onRefreshComplete={fetchRecentOrders}
@@ -176,11 +174,11 @@ const ShopifyAPIPage = () => {
       {/* Database Health Check */}
       {hasToken && <DatabaseHealthCheckCard />}
       
-      {/* Orders with Tabs for Active and Archived */}
+      {/* Orders */}
       {hasToken && (
         <OrdersViewCard 
           importedOrders={importedOrders} 
-          archivedOrders={archivedOrders} 
+          archivedOrders={[]} 
           ordersLoading={ordersLoading} 
         />
       )}

@@ -1,7 +1,8 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingCart, Archive, RefreshCw } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Package2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import OrdersTable from '@/components/shopify/OrdersTable';
 import { ShopifyOrder } from '@/components/shopify/OrdersTable';
 
@@ -11,66 +12,36 @@ interface OrdersViewCardProps {
   ordersLoading: boolean;
 }
 
-const OrdersViewCard = ({ importedOrders, archivedOrders, ordersLoading }: OrdersViewCardProps) => {
+const OrdersViewCard = ({ 
+  importedOrders, 
+  ordersLoading 
+}: OrdersViewCardProps) => {
   return (
     <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="text-orange-500">Shopify Orders</CardTitle>
+        <CardTitle className="text-blue-500 flex items-center">
+          <Package2 className="mr-2 h-5 w-5" /> Shopify Orders
+        </CardTitle>
         <CardDescription className="text-zinc-400">
-          View and manage your orders from Shopify
+          All orders imported from Shopify
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="active" className="w-full">
-          <TabsList className="w-full mb-4 bg-zinc-800">
-            <TabsTrigger value="active" className="flex-1">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Active Orders
-            </TabsTrigger>
-            <TabsTrigger value="archived" className="flex-1">
-              <Archive className="mr-2 h-4 w-4" />
-              Archived Orders
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="active">
-            {ordersLoading ? (
-              <div className="py-8 text-center text-zinc-400">
-                <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-                Loading orders...
-              </div>
-            ) : (
-              <>
-                <OrdersTable orders={importedOrders} />
-                
-                <div className="mt-4 text-sm text-zinc-500">
-                  {importedOrders.length > 0 
-                    ? `Showing ${importedOrders.length} active orders. Orders will automatically progress through the fulfillment workflow.`
-                    : 'No active orders to display. Import orders from Shopify to begin the fulfillment process.'}
-                </div>
-              </>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="archived">
-            {ordersLoading ? (
-              <div className="py-8 text-center text-zinc-400">
-                <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-                Loading archived orders...
-              </div>
-            ) : (
-              <>
-                <OrdersTable orders={archivedOrders} />
-                
-                <div className="mt-4 text-sm text-zinc-500">
-                  {archivedOrders.length > 0 
-                    ? `Showing ${archivedOrders.length} archived orders. These orders have been fulfilled or removed from the active workflow.`
-                    : 'No archived orders to display yet. Orders are archived when they are fulfilled in Shopify.'}
-                </div>
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+        {ordersLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-full bg-zinc-800" />
+            <Skeleton className="h-8 w-full bg-zinc-800" />
+            <Skeleton className="h-8 w-full bg-zinc-800" />
+          </div>
+        ) : (
+          <>
+            <OrdersTable 
+              orders={importedOrders} 
+              showStatus={true}
+              emptyMessage="No orders have been imported from Shopify yet."
+            />
+          </>
+        )}
       </CardContent>
     </Card>
   );

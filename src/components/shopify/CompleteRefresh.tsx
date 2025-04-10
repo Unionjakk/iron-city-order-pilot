@@ -37,7 +37,7 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
     try {
       addDebugMessage("Starting complete refresh operation");
       
-      // Step 1: Delete all orders from both tables
+      // Step 1: Delete all orders from the orders table
       addDebugMessage("Step 1: Deleting all existing orders...");
       await deleteAllOrders();
       
@@ -102,31 +102,6 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
         throw new Error(`Failed to delete orders: ${ordersError.message}`);
       }
       addDebugMessage("Successfully deleted all orders");
-      
-      // Delete from shopify_archived_order_items
-      addDebugMessage("Deleting all archived order items...");
-      const { error: archivedItemsError } = await supabase
-        .from('shopify_archived_order_items')
-        .delete()
-        .neq('archived_order_id', '00000000-0000-0000-0000-000000000000'); // Delete all
-        
-      if (archivedItemsError) {
-        throw new Error(`Failed to delete archived order items: ${archivedItemsError.message}`);
-      }
-      addDebugMessage("Successfully deleted all archived order items");
-      
-      // Delete from shopify_archived_orders
-      addDebugMessage("Deleting all archived orders...");
-      const { error: archivedOrdersError } = await supabase
-        .from('shopify_archived_orders')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
-        
-      if (archivedOrdersError) {
-        throw new Error(`Failed to delete archived orders: ${archivedOrdersError.message}`);
-      }
-      addDebugMessage("Successfully deleted all archived orders");
-      
     } catch (error) {
       console.error("Error deleting orders:", error);
       throw error;
@@ -144,7 +119,7 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
       
       addDebugMessage("Calling shopify-sync-all edge function...");
       
-      // Call the new edge function for complete refresh
+      // Call the edge function for complete refresh
       const response = await supabase.functions.invoke('shopify-sync-all', {
         body: { apiToken: token }
       });
@@ -162,7 +137,7 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
         throw new Error(`Shopify sync failed: ${errorMsg}`);
       }
       
-      addDebugMessage(`Successfully imported ${data.imported || 0} orders, including ${data.fulfilled || 0} fulfilled orders`);
+      addDebugMessage(`Successfully imported ${data.imported || 0} orders`);
       return data;
     } catch (error) {
       console.error("Error importing orders:", error);

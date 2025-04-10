@@ -164,8 +164,7 @@ export const executeManualImport = async () => {
       throw new Error("No API token found in database. Please add your Shopify API token first.");
     }
     
-    // Call the edge function to sync orders with the complete synchronization logic
-    // The edge function now handles pagination to get all orders
+    // Call the edge function to sync orders
     const response = await supabase.functions.invoke('shopify-sync', {
       body: { apiToken: token }
     });
@@ -185,7 +184,6 @@ export const executeManualImport = async () => {
     
     return {
       imported: data.imported || 0,
-      archived: data.archived || 0,
       cleaned: data.cleaned || 0
     };
   } catch (error) {

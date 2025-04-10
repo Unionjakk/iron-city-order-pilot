@@ -28,7 +28,6 @@ export interface SyncResponse {
   success: boolean;
   error: string | null;
   imported: number;
-  fulfilled: number;
   debugMessages: string[];
 }
 

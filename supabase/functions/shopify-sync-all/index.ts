@@ -1,7 +1,7 @@
 
 // Supabase Edge Function
 // This function handles importing ALL orders from Shopify
-// It imports both fulfilled and unfulfilled orders
+// It imports all orders without archiving
 
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { 
@@ -15,8 +15,7 @@ import {
   fetchNextPage 
 } from "./shopifyApi.ts";
 import { 
-  importFulfilledOrder, 
-  importUnfulfilledOrder, 
+  importOrder, 
   updateLastSyncTime,
   getShopifyApiEndpoint,
   supabase
@@ -37,7 +36,6 @@ serve(async (req) => {
     success: false,
     error: null,
     imported: 0,
-    fulfilled: 0,
     debugMessages: []
   };
 
@@ -73,12 +71,12 @@ serve(async (req) => {
       const apiEndpoint = await getShopifyApiEndpoint(debug);
       debug(`Using Shopify API endpoint: ${apiEndpoint}`);
 
-      // STEP 1: Fetch ALL orders from Shopify with proper pagination (not just unfulfilled)
-      debug("Fetching ALL orders from Shopify (both fulfilled and unfulfilled)");
+      // STEP 1: Fetch ALL orders from Shopify with proper pagination
+      debug("Fetching ALL orders from Shopify");
       let shopifyOrders: ShopifyOrder[] = [];
       let nextPageUrl: string | null = null;
       
-      // First page of orders - get all orders, not just unfulfilled
+      // First page of orders - get all orders
       const firstPageResult = await fetchAllShopifyOrdersWithPagination(apiToken, apiEndpoint);
       shopifyOrders = firstPageResult.orders;
       nextPageUrl = firstPageResult.nextPageUrl;
@@ -110,27 +108,17 @@ serve(async (req) => {
       
       debug(`Total orders retrieved: ${shopifyOrders.length}`);
 
-      // STEP 2: Import all orders
+      // STEP 2: Import all orders regardless of fulfillment status
       for (const shopifyOrder of shopifyOrders) {
         const orderNumber = shopifyOrder.name;
         const orderId = shopifyOrder.id;
-        const isFulfilled = shopifyOrder.fulfillment_status === "fulfilled";
         
         debug(`Processing order: ${orderId} (${orderNumber}) - Status: ${shopifyOrder.fulfillment_status || "unfulfilled"}`);
 
-        if (isFulfilled) {
-          // Insert into archived orders
-          const success = await importFulfilledOrder(shopifyOrder, orderId, orderNumber, debug);
-          if (success) {
-            responseData.fulfilled++;
-            responseData.imported++;
-          }
-        } else {
-          // Insert unfulfilled order
-          const success = await importUnfulfilledOrder(shopifyOrder, orderId, orderNumber, debug);
-          if (success) {
-            responseData.imported++;
-          }
+        // Import all orders into the active orders table
+        const success = await importOrder(shopifyOrder, orderId, orderNumber, debug);
+        if (success) {
+          responseData.imported++;
         }
       }
     } catch (error) {
@@ -143,7 +131,7 @@ serve(async (req) => {
     
     responseData.success = true;
     debug("Shopify sync ALL completed successfully");
-    debug(`Summary: Imported ${responseData.imported} orders, including ${responseData.fulfilled} fulfilled orders`);
+    debug(`Summary: Imported ${responseData.imported} orders`);
 
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

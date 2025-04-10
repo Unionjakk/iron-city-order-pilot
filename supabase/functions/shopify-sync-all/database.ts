@@ -7,82 +7,49 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Import a fulfilled order (archived)
-export async function importFulfilledOrder(
+// Import an order (regardless of fulfillment status)
+export async function importOrder(
   shopifyOrder: ShopifyOrder, 
   orderId: string, 
   orderNumber: string,
   debug: (message: string) => void
 ) {
-  debug(`Importing fulfilled order: ${orderId} (${orderNumber})`);
+  debug(`Importing order: ${orderId} (${orderNumber})`);
   
   try {
-    const { data: archivedOrder, error: archiveError } = await supabase
-      .from("shopify_archived_orders")
-      .insert({
-        shopify_order_id: orderId,
-        shopify_order_number: orderNumber,
-        created_at: shopifyOrder.created_at,
-        customer_name: `${shopifyOrder.customer?.first_name || ''} ${shopifyOrder.customer?.last_name || ''}`.trim(),
-        customer_email: shopifyOrder.customer?.email,
-        customer_phone: shopifyOrder.customer?.phone,
-        status: "fulfilled",
-        items_count: shopifyOrder.line_items?.length || 0,
-        imported_at: new Date().toISOString(),
-        archived_at: new Date().toISOString(),
-        note: shopifyOrder.note,
-        shipping_address: shopifyOrder.shipping_address,
-        location_id: shopifyOrder.location_id
-      })
-      .select()
-      .single();
+    // Check if order already exists
+    const { data: existingOrder, error: checkError } = await supabase
+      .from("shopify_orders")
+      .select("id")
+      .eq("shopify_order_id", orderId)
+      .maybeSingle();
 
-    if (archiveError) {
-      debug(`Error inserting archived order ${orderId}: ${archiveError.message}`);
+    if (checkError) {
+      debug(`Error checking existing order ${orderId}: ${checkError.message}`);
       return false;
     }
 
-    // Insert archived line items
-    if (shopifyOrder.line_items && shopifyOrder.line_items.length > 0) {
-      const lineItemsToInsert = shopifyOrder.line_items.map(item => ({
-        archived_order_id: archivedOrder.id,
-        shopify_line_item_id: item.id,
-        title: item.title,
-        sku: item.sku,
-        quantity: item.quantity,
-        price: item.price,
-        product_id: item.product_id,
-        variant_id: item.variant_id,
-        properties: item.properties,
-        archived_at: new Date().toISOString()
-      }));
+    if (existingOrder) {
+      debug(`Order ${orderId} (${orderNumber}) already exists - updating`);
+      
+      // Update existing order
+      const { error: updateError } = await supabase
+        .from("shopify_orders")
+        .update({
+          status: shopifyOrder.fulfillment_status || "unfulfilled",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", existingOrder.id);
 
-      const { error: archiveLineItemsError } = await supabase
-        .from("shopify_archived_order_items")
-        .insert(lineItemsToInsert);
-
-      if (archiveLineItemsError) {
-        debug(`Error inserting archived line items for order ${orderId}: ${archiveLineItemsError.message}`);
+      if (updateError) {
+        debug(`Error updating order ${orderId}: ${updateError.message}`);
+        return false;
       }
+      
+      return true;
     }
-    
-    return true;
-  } catch (error) {
-    debug(`Exception importing fulfilled order ${orderId}: ${error.message}`);
-    return false;
-  }
-}
 
-// Import an unfulfilled order (active)
-export async function importUnfulfilledOrder(
-  shopifyOrder: ShopifyOrder, 
-  orderId: string, 
-  orderNumber: string,
-  debug: (message: string) => void
-) {
-  debug(`Importing unfulfilled order: ${orderId} (${orderNumber})`);
-  
-  try {
+    // Insert new order
     const { data: insertedOrder, error: insertError } = await supabase
       .from("shopify_orders")
       .insert({
@@ -92,7 +59,7 @@ export async function importUnfulfilledOrder(
         customer_name: `${shopifyOrder.customer?.first_name || ''} ${shopifyOrder.customer?.last_name || ''}`.trim(),
         customer_email: shopifyOrder.customer?.email,
         customer_phone: shopifyOrder.customer?.phone,
-        status: "unfulfilled",
+        status: shopifyOrder.fulfillment_status || "unfulfilled",
         items_count: shopifyOrder.line_items?.length || 0,
         imported_at: new Date().toISOString(),
         note: shopifyOrder.note,
@@ -132,7 +99,7 @@ export async function importUnfulfilledOrder(
     
     return true;
   } catch (error) {
-    debug(`Exception importing unfulfilled order ${orderId}: ${error.message}`);
+    debug(`Exception importing order ${orderId}: ${error.message}`);
     return false;
   }
 }
