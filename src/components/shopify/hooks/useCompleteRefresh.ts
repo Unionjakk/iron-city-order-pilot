@@ -133,10 +133,13 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
         throw new Error('No orders were imported from Shopify');
       }
       
+      // Here's the fix - remove the third argument which is causing the error
+      // Before: .eq("order_id", "00000000-0000-0000-0000-000000000000", false);
+      // After: .neq("order_id", "00000000-0000-0000-0000-000000000000");
       const { count: lineItemCount, error: lineItemCountError } = await supabase
         .from('shopify_order_items')
         .select('*', { count: 'exact', head: true })
-        .eq("order_id", "00000000-0000-0000-0000-000000000000", false);
+        .neq("order_id", "00000000-0000-0000-0000-000000000000");
       
       if (lineItemCountError) {
         console.error('Error checking imported line item count:', lineItemCountError);
