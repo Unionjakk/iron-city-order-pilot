@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Clock, Info, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   const [lastCronRun, setLastCronRun] = useState<string | null>(null);
   const [autoImportEnabled, setAutoImportEnabled] = useState(false);
   const [hasImportedOrders, setHasImportedOrders] = useState(false);
+  const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
   const { toast } = useToast();
 
   // The special value 'placeholder_token' represents no token being set
@@ -38,6 +40,30 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
+  };
+
+  // Calculate time passed since a date
+  const getTimeSinceLastRun = (dateString: string | null) => {
+    if (!dateString) return 'never run';
+    
+    const lastRunDate = new Date(dateString);
+    if (isNaN(lastRunDate.getTime())) return 'invalid date';
+    
+    const now = new Date();
+    const diffMs = now.getTime() - lastRunDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'just now';
+    if (diffMins === 1) return '1 minute ago';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return '1 hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return '1 day ago';
+    return `${diffDays} days ago`;
   };
 
   // Check if there are any imported orders
@@ -105,6 +131,29 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       console.log('Auto import status:', autoImportData, autoImportData === 'true');
     } catch (error) {
       console.error('Exception retrieving settings:', error);
+    }
+  };
+
+  // Handle refresh status button click
+  const handleRefreshStatus = async () => {
+    setIsRefreshingStatus(true);
+    try {
+      await fetchLastSyncTime();
+      await checkForImportedOrders();
+      toast({
+        title: "Status Refreshed",
+        description: "Auto-import status has been refreshed.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error refreshing status:', error);
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh auto-import status.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshingStatus(false);
     }
   };
 
@@ -201,62 +250,112 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     return () => clearInterval(intervalId);
   }, []);
 
+  // Determine if auto-import might be stalled
+  const isAutoImportPotentiallyStalled = () => {
+    if (!autoImportEnabled || !lastCronRun) return false;
+    
+    const lastRunDate = new Date(lastCronRun);
+    if (isNaN(lastRunDate.getTime())) return false;
+    
+    const now = new Date();
+    const diffMs = now.getTime() - lastRunDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    // If more than 30 minutes have passed since the last cron run, it might be stalled
+    return diffMins > 30;
+  };
+
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div className="space-y-2">
-        <div className="flex items-center text-zinc-400">
-          <Clock className="mr-2 h-4 w-4" />
-          <span>
-            {lastSyncTime 
-              ? `Last import: ${formatDate(lastSyncTime)}` 
-              : lastImport 
-                ? `Last import: ${formatDate(lastImport)}` 
-                : 'No imports have been run yet'}
-          </span>
-        </div>
-        
-        {autoImportEnabled ? (
-          hasImportedOrders ? (
-            <div className="flex items-center text-emerald-400">
-              <CheckCircle className="mr-2 h-4 w-4" />
-              <span>
-                Auto-import enabled {lastCronRun ? `(last run: ${formatDate(lastCronRun)})` : '(never run yet)'}
-              </span>
-            </div>
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-2">
+          <div className="flex items-center text-zinc-400">
+            <Clock className="mr-2 h-4 w-4" />
+            <span>
+              {lastSyncTime 
+                ? `Last import: ${formatDate(lastSyncTime)}` 
+                : lastImport 
+                  ? `Last import: ${formatDate(lastImport)}` 
+                  : 'No imports have been run yet'}
+            </span>
+          </div>
+          
+          {autoImportEnabled ? (
+            hasImportedOrders ? (
+              <div className="flex items-center text-emerald-400">
+                <CheckCircle className="mr-2 h-4 w-4" />
+                <span>
+                  Auto-import enabled {lastCronRun ? `(last run: ${getTimeSinceLastRun(lastCronRun)})` : '(never run yet)'}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center text-amber-400">
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                <span>
+                  Auto-import is enabled but no orders have been imported yet
+                  {lastCronRun ? ` (last attempted: ${getTimeSinceLastRun(lastCronRun)})` : ''}
+                </span>
+              </div>
+            )
           ) : (
             <div className="flex items-center text-amber-400">
               <AlertTriangle className="mr-2 h-4 w-4" />
-              <span>
-                Auto-import is enabled but no orders have been imported yet
-                {lastCronRun ? ` (last attempted: ${formatDate(lastCronRun)})` : ''}
-              </span>
+              <span>Auto-import is not currently active - only manual imports are available</span>
             </div>
-          )
-        ) : (
-          <div className="flex items-center text-amber-400">
-            <AlertTriangle className="mr-2 h-4 w-4" />
-            <span>Auto-import is not currently active - only manual imports are available</span>
-          </div>
-        )}
+          )}
+        </div>
+        
+        <div className="flex space-x-2">
+          <Button 
+            onClick={handleRefreshStatus} 
+            variant="outline"
+            size="sm"
+            disabled={isRefreshingStatus}
+            className="whitespace-nowrap"
+          >
+            {isRefreshingStatus ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh Status
+              </>
+            )}
+          </Button>
+          
+          <Button 
+            onClick={handleManualImport} 
+            className="bg-orange-500 hover:bg-orange-600"
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Import Orders Now
+              </>
+            )}
+          </Button>
+        </div>
       </div>
       
-      <Button 
-        onClick={handleManualImport} 
-        className="bg-orange-500 hover:bg-orange-600"
-        disabled={isImporting}
-      >
-        {isImporting ? (
-          <>
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-            Importing...
-          </>
-        ) : (
-          <>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Import Orders Now
-          </>
-        )}
-      </Button>
+      {isAutoImportPotentiallyStalled() && (
+        <Alert variant="warning" className="bg-amber-900/20 border-amber-500/50 mt-4">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertTitle>Auto-import may be stalled</AlertTitle>
+          <AlertDescription className="text-zinc-300">
+            The auto-import hasn't run in over 30 minutes. This could indicate an issue with the cron job.
+            Try refreshing the status or contacting support if this persists.
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 };

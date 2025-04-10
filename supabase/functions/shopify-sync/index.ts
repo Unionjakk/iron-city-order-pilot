@@ -1,3 +1,4 @@
+
 // IMPORTANT: This Edge Function interacts with a PRODUCTION Shopify API
 // Any changes must maintain compatibility with the live system
 
@@ -62,6 +63,7 @@ async function fetchShopifyOrders(apiToken: string): Promise<any> {
     status: "unfulfilled",
     fields: "id,order_number,created_at,customer,line_items,shipping_address,note,fulfillment_status,location_id",
   });
+  // Note: Removed the limit parameter to fetch all orders
 
   console.log(`Starting to fetch all unfulfilled orders from Shopify`);
   
