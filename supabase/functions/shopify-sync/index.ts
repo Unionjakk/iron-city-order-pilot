@@ -264,7 +264,7 @@ serve(async (req) => {
         if (!existingOrder) {
           console.log(`Importing new order: ${orderId} (${orderNumber})`);
           
-          // Insert order
+          // Insert order - UPDATED to use "unfulfilled" instead of "imported"
           const { data: insertedOrder, error: insertError } = await supabase
             .from("shopify_orders")
             .insert({
@@ -274,7 +274,7 @@ serve(async (req) => {
               customer_name: `${shopifyOrder.customer?.first_name || ''} ${shopifyOrder.customer?.last_name || ''}`.trim(),
               customer_email: shopifyOrder.customer?.email,
               customer_phone: shopifyOrder.customer?.phone,
-              status: shopifyOrder.fulfillment_status || "unfulfilled",
+              status: "unfulfilled", // Changed from shopifyOrder.fulfillment_status || "imported"
               items_count: shopifyOrder.line_items?.length || 0,
               imported_at: new Date().toISOString(),
               note: shopifyOrder.note,
