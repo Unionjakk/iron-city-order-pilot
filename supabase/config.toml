@@ -57,4 +57,3 @@ verify_jwt = false
 
 [functions.pinnacle-upload]
 verify_jwt = false
-

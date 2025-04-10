@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,18 +19,29 @@ const PinnacleUpload = () => {
     try {
       // Get count of stock items using execute_sql function
       const { data: countData, error: countError } = await supabase
-        .rpc('execute_sql', { sql: 'SELECT COUNT(*) FROM pinnacle_stock' });
+        .rpc('execute_sql', { sql: 'SELECT COUNT(*) as count FROM pinnacle_stock' });
       
       if (countError) throw countError;
-      setStockCount(countData?.[0]?.count || 0);
+      if (countData && countData.length > 0) {
+        // Access 'count' from the first row of the result
+        const countValue = countData[0]?.count;
+        setStockCount(typeof countValue === 'number' ? countValue : parseInt(countValue));
+      } else {
+        setStockCount(0);
+      }
       
       // Get most recent upload using execute_sql function
       const { data: uploadHistory, error: historyError } = await supabase
-        .rpc('execute_sql', { sql: 'SELECT upload_timestamp FROM pinnacle_upload_history ORDER BY upload_timestamp DESC LIMIT 1' });
+        .rpc('execute_sql', { 
+          sql: 'SELECT upload_timestamp FROM pinnacle_upload_history ORDER BY upload_timestamp DESC LIMIT 1' 
+        });
       
       if (historyError) throw historyError;
       if (uploadHistory && uploadHistory.length > 0) {
-        setLastUpload(new Date(uploadHistory[0].upload_timestamp).toLocaleString());
+        const timestamp = uploadHistory[0]?.upload_timestamp;
+        if (timestamp) {
+          setLastUpload(new Date(timestamp).toLocaleString());
+        }
       }
     } catch (error) {
       console.error('Error fetching stock stats:', error);
@@ -92,15 +102,15 @@ const PinnacleUpload = () => {
       const formData = new FormData();
       formData.append('file', file);
       
-      // Example API endpoint - replace with your actual endpoint
-      const response = await fetch('/api/pinnacle/upload', {
+      // Use the Supabase Edge Function endpoint
+      const response = await fetch('https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/pinnacle-upload', {
         method: 'POST',
         body: formData,
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Upload failed");
+        throw new Error(errorData.error || "Upload failed");
       }
       
       const result = await response.json();

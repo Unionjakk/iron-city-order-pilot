@@ -1,7 +1,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
-import * as XLSX from 'https://cdn.jsdelivr.net/npm/xlsx@0.18.11/+esm';
+import * as XLSX from 'https://esm.sh/xlsx@0.18.11';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -100,26 +100,26 @@ serve(async (req: Request) => {
       total_retail: row['Tot Retail'] ? parseFloat(row['Tot Retail']) : null,
     }));
 
-    // Insert using SQL function in batches
+    // Insert records in batches
     const batchSize = 100;
     for (let i = 0; i < stockItems.length; i += batchSize) {
       const batch = stockItems.slice(i, i + batchSize);
       
-      // Create INSERT statements for the batch
-      const insertStatements = batch.map(item => {
+      // Create an INSERT statement for each batch item
+      for (const item of batch) {
         const columns = Object.keys(item).filter(key => item[key] !== null);
         const values = columns.map(col => {
           const val = item[col];
           return typeof val === 'string' ? `'${val.replace(/'/g, "''")}'` : val;
         });
         
-        return `(DEFAULT, ${columns.map(c => c).join(', ')}) VALUES (${values.join(', ')})`;
-      }).join(';');
-      
-      // Execute the batch insert
-      await supabase.rpc('execute_sql', {
-        sql: `INSERT INTO pinnacle_stock (id, ${columns.join(', ')}) ${insertStatements}`
-      });
+        const columnsStr = columns.join(', ');
+        const valuesStr = values.join(', ');
+        
+        await supabase.rpc('execute_sql', {
+          sql: `INSERT INTO pinnacle_stock (id, ${columnsStr}) VALUES (gen_random_uuid(), ${valuesStr})`
+        });
+      }
     }
 
     // 3. Record upload history using SQL function
