@@ -233,7 +233,7 @@ async function archiveFulfilledOrders(apiToken: string) {
     // Get all orders from our database
     const { data: existingOrders, error: fetchError } = await supabase
       .from('shopify_orders')
-      .select('id, shopify_order_id');
+      .select('id, shopify_order_id, status');
     
     if (fetchError) {
       console.error("Error fetching existing orders:", fetchError);
@@ -245,8 +245,19 @@ async function archiveFulfilledOrders(apiToken: string) {
       return { archived: 0 };
     }
     
-    // Get order IDs to check
-    const shopifyOrderIds = existingOrders.map(order => order.shopify_order_id);
+    // Get order IDs to check - only check orders that are not already marked as unfulfilled in our db
+    // This is important because we don't want to accidentally archive orders that are actually unfulfilled
+    const shopifyOrderIds = existingOrders
+      .filter(order => order.status !== 'unfulfilled')
+      .map(order => order.shopify_order_id);
+    
+    // If no orders to check, return
+    if (shopifyOrderIds.length === 0) {
+      console.log("No orders eligible for archive check");
+      return { archived: 0 };
+    }
+    
+    console.log(`Checking ${shopifyOrderIds.length} orders for archiving`);
     
     // For each order, check Shopify status
     let archivedCount = 0;
@@ -332,6 +343,8 @@ async function archiveOrder(shopifyOrderId: string) {
       return false;
     }
     
+    console.log(`Archiving order ${shopifyOrderId} with status: ${orderData.status}`);
+    
     // Insert into archive table
     const { data: archivedOrderData, error: insertError } = await supabase
       .from('shopify_archived_orders')
@@ -414,12 +427,19 @@ async function archiveOrder(shopifyOrderId: string) {
 }
 
 // Function to synchronize Shopify orders
-async function syncShopifyOrders(apiToken: string) {
-  console.log("Starting Shopify order sync...");
+async function syncShopifyOrders(apiToken: string, skipArchiving = false) {
+  console.log(`Starting Shopify order sync (skipArchiving=${skipArchiving})...`);
   
   try {
-    // First, archive any fulfilled orders
-    const archiveResult = await archiveFulfilledOrders(apiToken);
+    let archiveResult = { archived: 0 };
+    
+    // Only archive fulfilled orders if skipArchiving is false
+    if (!skipArchiving) {
+      archiveResult = await archiveFulfilledOrders(apiToken);
+      console.log(`Archive process completed: ${archiveResult.archived} orders archived`);
+    } else {
+      console.log('Skipping archive process as requested');
+    }
     
     // Then fetch current unfulfilled orders from Shopify
     const shopifyOrders = await fetchShopifyOrders(apiToken);
@@ -524,6 +544,7 @@ serve(async (req) => {
     // First try to get the token from the request body
     let apiToken;
     let source = 'manual';
+    let skipArchiving = false;
     
     if (req.method === 'POST') {
       // Extract API token from request body
@@ -531,6 +552,8 @@ serve(async (req) => {
       apiToken = body.apiToken;
       // Extract the source if provided (manual or cron)
       source = body.source || 'manual';
+      // Whether to skip archiving
+      skipArchiving = body.skipArchiving === true;
       
       // If no token in request, try to get it from the database
       if (!apiToken) {
@@ -557,10 +580,10 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Starting Shopify sync (source: ${source})...`);
+    console.log(`Starting Shopify sync (source: ${source}, skipArchiving: ${skipArchiving})...`);
     
     // Perform the sync operation
-    const result = await syncShopifyOrders(apiToken);
+    const result = await syncShopifyOrders(apiToken, skipArchiving);
     
     // If this was triggered by a cron job, update the last cron run time
     // Also ensure auto_import_enabled is set to true

@@ -7,6 +7,7 @@ import ApiTokenFormComponent from '@/components/shopify/ApiTokenForm';
 import ImportControls from '@/components/shopify/ImportControls';
 import OrdersTable from '@/components/shopify/OrdersTable';
 import ApiDocumentation from '@/components/shopify/ApiDocumentation';
+import DatabaseHealthCheck from '@/components/shopify/DatabaseHealthCheck';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -170,6 +171,9 @@ const ShopifyAPI = () => {
           </CardContent>
         </Card>
       )}
+      
+      {/* Database Health Check */}
+      {hasToken && <DatabaseHealthCheck />}
       
       {/* Orders with Tabs for Active and Archived */}
       {hasToken && (
