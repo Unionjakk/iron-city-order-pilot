@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Clock, Info, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [lastCronRun, setLastCronRun] = useState<string | null>(null);
   const [autoImportEnabled, setAutoImportEnabled] = useState(false);
+  const [hasImportedOrders, setHasImportedOrders] = useState(false);
   const { toast } = useToast();
 
   // The special value 'placeholder_token' represents no token being set
@@ -38,6 +38,26 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
+  };
+
+  // Check if there are any imported orders
+  const checkForImportedOrders = async () => {
+    try {
+      // Count rows in the shopify_orders table
+      const { count, error } = await supabase
+        .from('shopify_orders')
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) {
+        console.error('Error checking for imported orders:', error);
+        return;
+      }
+      
+      // If we have any orders, set hasImportedOrders to true
+      setHasImportedOrders(count !== null && count > 0);
+    } catch (error) {
+      console.error('Exception checking for imported orders:', error);
+    }
   };
 
   // Get last sync time from database
@@ -167,12 +187,16 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     }
   };
 
-  // Fetch last sync time on component mount
+  // Fetch last sync time and check for imported orders on component mount
   useEffect(() => {
     fetchLastSyncTime();
+    checkForImportedOrders();
     
     // Set up timer to check status every minute
-    const intervalId = setInterval(fetchLastSyncTime, 60000);
+    const intervalId = setInterval(() => {
+      fetchLastSyncTime();
+      checkForImportedOrders();
+    }, 60000);
     
     return () => clearInterval(intervalId);
   }, []);
@@ -192,12 +216,22 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
         </div>
         
         {autoImportEnabled ? (
-          <div className="flex items-center text-emerald-400">
-            <CheckCircle className="mr-2 h-4 w-4" />
-            <span>
-              Auto-import enabled {lastCronRun ? `(last run: ${formatDate(lastCronRun)})` : '(never run yet)'}
-            </span>
-          </div>
+          hasImportedOrders ? (
+            <div className="flex items-center text-emerald-400">
+              <CheckCircle className="mr-2 h-4 w-4" />
+              <span>
+                Auto-import enabled {lastCronRun ? `(last run: ${formatDate(lastCronRun)})` : '(never run yet)'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center text-amber-400">
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              <span>
+                Auto-import is enabled but no orders have been imported yet
+                {lastCronRun ? ` (last attempted: ${formatDate(lastCronRun)})` : ''}
+              </span>
+            </div>
+          )
         ) : (
           <div className="flex items-center text-amber-400">
             <AlertTriangle className="mr-2 h-4 w-4" />

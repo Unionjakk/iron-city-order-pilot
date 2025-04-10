@@ -12,6 +12,29 @@ export const useShopifyOrders = () => {
   const [autoImportEnabled, setAutoImportEnabled] = useState(false);
   const { toast } = useToast();
 
+  // Check if a column exists in a table
+  const checkColumnExists = async (tableName: string, columnName: string): Promise<boolean> => {
+    try {
+      // Query the information schema to see if the column exists
+      const { data, error } = await supabase
+        .from('information_schema.columns')
+        .select('column_name')
+        .eq('table_name', tableName)
+        .eq('column_name', columnName)
+        .single();
+
+      if (error) {
+        console.error(`Error checking if column ${columnName} exists in ${tableName}:`, error);
+        return false;
+      }
+      
+      return data !== null;
+    } catch (error) {
+      console.error(`Exception checking if column ${columnName} exists:`, error);
+      return false;
+    }
+  };
+
   // Function to fetch recent orders from Supabase
   const fetchRecentOrders = async () => {
     setIsLoading(true);
@@ -32,29 +55,22 @@ export const useShopifyOrders = () => {
       
       setAutoImportEnabled(autoImportData === 'true');
       
-      // Fetch active orders with basic information
-      // First, try with shopify_order_number included in the query
-      let activeData;
-      let activeError;
+      // Check if shopify_order_number column exists in the table
+      const hasOrderNumberColumn = await checkColumnExists('shopify_orders', 'shopify_order_number');
       
-      try {
-        // Try with shopify_order_number included (which might not exist yet)
-        const activeResult = await supabase
+      // Fetch active orders with basic information based on column availability
+      let activeQuery = supabase
+        .from('shopify_orders')
+        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
+      
+      // Add shopify_order_number to the query if the column exists
+      if (hasOrderNumberColumn) {
+        activeQuery = supabase
           .from('shopify_orders')
           .select('id, shopify_order_id, shopify_order_number, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
-          
-        activeData = activeResult.data;
-        activeError = activeResult.error;
-      } catch (err) {
-        // If that fails, try without shopify_order_number
-        console.warn('Falling back to query without shopify_order_number', err);
-        const fallbackResult = await supabase
-          .from('shopify_orders')
-          .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, location_id, location_name');
-          
-        activeData = fallbackResult.data;
-        activeError = fallbackResult.error;
       }
+      
+      const { data: activeData, error: activeError } = await activeQuery;
       
       if (activeError) {
         console.error('Error fetching active orders:', activeError);
@@ -102,7 +118,7 @@ export const useShopifyOrders = () => {
           const ordersWithLineItems = activeData.map(order => ({
             ...order,
             // Use shopify_order_number if available, otherwise use empty string as fallback
-            shopify_order_number: order.shopify_order_number || '',
+            shopify_order_number: hasOrderNumberColumn ? (order.shopify_order_number || '') : '',
             line_items: lineItemsByOrderId[order.id] || []
           })) as ShopifyOrder[];
           
@@ -110,7 +126,7 @@ export const useShopifyOrders = () => {
         } else {
           setImportedOrders(activeData.map(order => ({
             ...order,
-            shopify_order_number: order.shopify_order_number || '',
+            shopify_order_number: hasOrderNumberColumn ? (order.shopify_order_number || '') : '',
             line_items: []
           })) as ShopifyOrder[]);
         }
@@ -129,10 +145,15 @@ export const useShopifyOrders = () => {
         setImportedOrders([]);
       }
       
-      // Fetch archived orders - using the RPC function to avoid type issues
-      // Try using the updated RPC function that includes shopify_order_number
+      // Check if shopify_order_number column exists in the archived orders table
+      const hasArchivedOrderNumberColumn = await checkColumnExists('shopify_archived_orders', 'shopify_order_number');
+      
+      // Fetch archived orders - modify the RPC call or use direct query based on column availability
       const { data: archivedData, error: archivedError } = await supabase
-        .rpc('get_archived_shopify_orders', { limit_count: 10 });
+        .from('shopify_archived_orders')
+        .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, archived_at, location_id, location_name')
+        .order('archived_at', { ascending: false })
+        .limit(10);
         
       if (archivedError) {
         console.error('Error fetching archived orders:', archivedError);
@@ -168,9 +189,9 @@ export const useShopifyOrders = () => {
               return acc;
             }, {});
             
-            // Process each archived order - with safe access to shopify_order_number
+            // Process each archived order
             const archivedOrdersWithLineItems = archivedData.map(order => {
-              // First create a properly typed order object with the properties we know exist
+              // Create a properly typed order object with the properties we know exist
               const typedOrder: ShopifyOrder = {
                 id: order.id,
                 shopify_order_id: order.shopify_order_id,
@@ -178,8 +199,8 @@ export const useShopifyOrders = () => {
                 customer_name: order.customer_name,
                 items_count: order.items_count,
                 status: order.status,
-                // Add the optional properties safely
-                shopify_order_number: (order as any).shopify_order_number || '',
+                // Add shopify_order_number if column exists
+                shopify_order_number: hasArchivedOrderNumberColumn ? ((order as any).shopify_order_number || '') : '',
                 imported_at: order.imported_at,
                 archived_at: order.archived_at,
                 location_id: order.location_id,
@@ -194,7 +215,7 @@ export const useShopifyOrders = () => {
           } else {
             // Process each archived order without line items
             const archivedOrdersWithoutLineItems = archivedData.map(order => {
-              // First create a properly typed order object with the properties we know exist
+              // Create a properly typed order object with the properties we know exist
               const typedOrder: ShopifyOrder = {
                 id: order.id,
                 shopify_order_id: order.shopify_order_id,
@@ -202,8 +223,8 @@ export const useShopifyOrders = () => {
                 customer_name: order.customer_name,
                 items_count: order.items_count,
                 status: order.status,
-                // Add the optional properties safely
-                shopify_order_number: (order as any).shopify_order_number || '',
+                // Add shopify_order_number if column exists
+                shopify_order_number: hasArchivedOrderNumberColumn ? ((order as any).shopify_order_number || '') : '',
                 imported_at: order.imported_at,
                 archived_at: order.archived_at,
                 location_id: order.location_id,
