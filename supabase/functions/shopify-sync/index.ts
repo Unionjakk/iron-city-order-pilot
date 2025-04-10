@@ -257,133 +257,138 @@ serve(async (req) => {
       console.log("No incorrectly archived unfulfilled orders found");
     }
 
-    // STEP 2: Fetch new orders from Shopify
-    console.log("Fetching unfulfilled orders from Shopify");
-    const shopifyOrders = await fetchShopifyOrders(apiToken);
-    console.log(`Retrieved ${shopifyOrders.length} orders from Shopify`);
+    try {
+      // STEP 2: Fetch new orders from Shopify
+      console.log("Fetching unfulfilled orders from Shopify");
+      const shopifyOrders = await fetchShopifyOrders(apiToken);
+      console.log(`Retrieved ${shopifyOrders.length} orders from Shopify`);
 
-    // STEP 3: Check for each Shopify order
-    for (const shopifyOrder of shopifyOrders) {
-      const orderNumber = shopifyOrder.name;
-      const orderId = shopifyOrder.id;
+      // STEP 3: Check for each Shopify order
+      for (const shopifyOrder of shopifyOrders) {
+        const orderNumber = shopifyOrder.name;
+        const orderId = shopifyOrder.id;
 
-      // Check if order exists in the database
-      const { data: existingOrder, error: existingError } = await supabase
-        .from("shopify_orders")
-        .select("id")
-        .eq("shopify_order_id", orderId)
-        .maybeSingle();
-
-      if (existingError) {
-        console.error(`Error checking existing order ${orderId}:`, existingError);
-        continue;
-      }
-
-      // If order doesn't exist, insert it
-      if (!existingOrder) {
-        console.log(`Importing new order: ${orderId} (${orderNumber})`);
-        
-        // Insert order
-        const { data: insertedOrder, error: insertError } = await supabase
+        // Check if order exists in the database
+        const { data: existingOrder, error: existingError } = await supabase
           .from("shopify_orders")
-          .insert({
-            shopify_order_id: orderId,
-            shopify_order_number: orderNumber,
-            created_at: shopifyOrder.created_at,
-            customer_name: `${shopifyOrder.customer.first_name || ''} ${shopifyOrder.customer.last_name || ''}`.trim(),
-            customer_email: shopifyOrder.customer.email,
-            customer_phone: shopifyOrder.customer.phone,
-            status: shopifyOrder.fulfillment_status || "unfulfilled",
-            items_count: shopifyOrder.line_items.length,
-            imported_at: new Date().toISOString(),
-            note: shopifyOrder.note,
-            shipping_address: shopifyOrder.shipping_address,
-            location_id: shopifyOrder.location_id
-          })
-          .select()
-          .single();
+          .select("id")
+          .eq("shopify_order_id", orderId)
+          .maybeSingle();
 
-        if (insertError) {
-          console.error(`Error inserting order ${orderId}:`, insertError);
+        if (existingError) {
+          console.error(`Error checking existing order ${orderId}:`, existingError);
           continue;
         }
 
-        // Insert line items
-        if (shopifyOrder.line_items && shopifyOrder.line_items.length > 0) {
-          const lineItemsToInsert = shopifyOrder.line_items.map(item => ({
-            order_id: insertedOrder.id,
-            shopify_line_item_id: item.id,
-            title: item.title,
-            sku: item.sku,
-            quantity: item.quantity,
-            price: item.price,
-            product_id: item.product_id,
-            variant_id: item.variant_id,
-            properties: item.properties
-          }));
+        // If order doesn't exist, insert it
+        if (!existingOrder) {
+          console.log(`Importing new order: ${orderId} (${orderNumber})`);
+          
+          // Insert order
+          const { data: insertedOrder, error: insertError } = await supabase
+            .from("shopify_orders")
+            .insert({
+              shopify_order_id: orderId,
+              shopify_order_number: orderNumber,
+              created_at: shopifyOrder.created_at,
+              customer_name: `${shopifyOrder.customer?.first_name || ''} ${shopifyOrder.customer?.last_name || ''}`.trim(),
+              customer_email: shopifyOrder.customer?.email,
+              customer_phone: shopifyOrder.customer?.phone,
+              status: shopifyOrder.fulfillment_status || "unfulfilled",
+              items_count: shopifyOrder.line_items?.length || 0,
+              imported_at: new Date().toISOString(),
+              note: shopifyOrder.note,
+              shipping_address: shopifyOrder.shipping_address,
+              location_id: shopifyOrder.location_id
+            })
+            .select()
+            .single();
 
-          const { error: insertLineItemsError } = await supabase
-            .from("shopify_order_items")
-            .insert(lineItemsToInsert);
-
-          if (insertLineItemsError) {
-            console.error(`Error inserting line items for order ${orderId}:`, insertLineItemsError);
+          if (insertError) {
+            console.error(`Error inserting order ${orderId}:`, insertError);
+            continue;
           }
-        }
 
-        responseData.imported++;
-      } else {
-        console.log(`Order ${orderId} (${orderNumber}) already exists in database - checking fulfillment status`);
-        
-        // Update fulfillment status if it has changed
-        if (shopifyOrder.fulfillment_status === "fulfilled") {
-          console.log(`Order ${orderId} (${orderNumber}) is now fulfilled - archiving`);
-          
-          // Archive the order
-          await archiveOrder(supabase, existingOrder.id, orderId);
-          responseData.archived++;
-        }
-      }
-    }
+          // Insert line items
+          if (shopifyOrder.line_items && shopifyOrder.line_items.length > 0) {
+            const lineItemsToInsert = shopifyOrder.line_items.map(item => ({
+              order_id: insertedOrder.id,
+              shopify_line_item_id: item.id,
+              title: item.title,
+              sku: item.sku,
+              quantity: item.quantity,
+              price: item.price,
+              product_id: item.product_id,
+              variant_id: item.variant_id,
+              properties: item.properties
+            }));
 
-    // STEP 4: Check existing orders in database for fulfillment status changes
-    console.log("Checking existing orders in database for fulfillment status changes");
-    const { data: activeOrders, error: activeOrdersError } = await supabase
-      .from("shopify_orders")
-      .select("id, shopify_order_id, shopify_order_number");
+            const { error: insertLineItemsError } = await supabase
+              .from("shopify_order_items")
+              .insert(lineItemsToInsert);
 
-    if (activeOrdersError) {
-      console.error("Error fetching active orders:", activeOrdersError);
-    } else if (activeOrders && activeOrders.length > 0) {
-      console.log(`Checking fulfillment status for ${activeOrders.length} active orders`);
-      
-      for (const order of activeOrders) {
-        // Check if the order still exists in the unfulfilled orders from Shopify
-        const stillUnfulfilled = shopifyOrders.some(shopifyOrder => 
-          shopifyOrder.id === order.shopify_order_id
-        );
-        
-        if (!stillUnfulfilled) {
-          console.log(`Order ${order.shopify_order_id} (${order.shopify_order_number || order.shopify_order_id}) is no longer unfulfilled - checking direct status`);
-          
-          // If not in unfulfilled list, check the order status directly
-          try {
-            const orderDetails = await fetchSingleOrder(apiToken, order.shopify_order_id);
-            
-            if (orderDetails.fulfillment_status === "fulfilled") {
-              console.log(`Confirmed that order ${order.shopify_order_id} is now fulfilled - archiving`);
-              
-              // Archive the order
-              await archiveOrder(supabase, order.id, order.shopify_order_id);
-              responseData.archived++;
-            } else {
-              console.log(`Order ${order.shopify_order_id} is still not fulfilled (status: ${orderDetails.fulfillment_status || "unfulfilled"}) - keeping in active table`);
+            if (insertLineItemsError) {
+              console.error(`Error inserting line items for order ${orderId}:`, insertLineItemsError);
             }
-          } catch (err) {
-            console.error(`Error checking order ${order.shopify_order_id} status:`, err);
+          }
+
+          responseData.imported++;
+        } else {
+          console.log(`Order ${orderId} (${orderNumber}) already exists in database - checking fulfillment status`);
+          
+          // Update fulfillment status if it has changed
+          if (shopifyOrder.fulfillment_status === "fulfilled") {
+            console.log(`Order ${orderId} (${orderNumber}) is now fulfilled - archiving`);
+            
+            // Archive the order
+            await archiveOrder(supabase, existingOrder.id, orderId);
+            responseData.archived++;
           }
         }
       }
+
+      // STEP 4: Check existing orders in database for fulfillment status changes
+      console.log("Checking existing orders in database for fulfillment status changes");
+      const { data: activeOrders, error: activeOrdersError } = await supabase
+        .from("shopify_orders")
+        .select("id, shopify_order_id, shopify_order_number");
+
+      if (activeOrdersError) {
+        console.error("Error fetching active orders:", activeOrdersError);
+      } else if (activeOrders && activeOrders.length > 0) {
+        console.log(`Checking fulfillment status for ${activeOrders.length} active orders`);
+        
+        for (const order of activeOrders) {
+          // Check if the order still exists in the unfulfilled orders from Shopify
+          const stillUnfulfilled = shopifyOrders.some(shopifyOrder => 
+            shopifyOrder.id === order.shopify_order_id
+          );
+          
+          if (!stillUnfulfilled) {
+            console.log(`Order ${order.shopify_order_id} (${order.shopify_order_number || order.shopify_order_id}) is no longer unfulfilled - checking direct status`);
+            
+            // If not in unfulfilled list, check the order status directly
+            try {
+              const orderDetails = await fetchSingleOrder(apiToken, order.shopify_order_id);
+              
+              if (orderDetails.fulfillment_status === "fulfilled") {
+                console.log(`Confirmed that order ${order.shopify_order_id} is now fulfilled - archiving`);
+                
+                // Archive the order
+                await archiveOrder(supabase, order.id, order.shopify_order_id);
+                responseData.archived++;
+              } else {
+                console.log(`Order ${order.shopify_order_id} is still not fulfilled (status: ${orderDetails.fulfillment_status || "unfulfilled"}) - keeping in active table`);
+              }
+            } catch (err) {
+              console.error(`Error checking order ${order.shopify_order_id} status:`, err);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error in Shopify API operations:", error);
+      throw error;
     }
 
     // STEP 5: Update last sync time in settings
@@ -416,46 +421,64 @@ serve(async (req) => {
 
 async function fetchShopifyOrders(apiToken: string): Promise<ShopifyOrder[]> {
   // Fetch unfulfilled orders from Shopify
-  const response = await fetch(
-    "https://iron-city-hardware.myshopify.com/admin/api/2022-01/orders.json?status=open&fulfillment_status=unfulfilled",
-    {
-      headers: {
-        "X-Shopify-Access-Token": apiToken,
-        "Content-Type": "application/json",
-      },
+  try {
+    const response = await fetch(
+      "https://iron-city-hardware.myshopify.com/admin/api/2022-01/orders.json?status=open&fulfillment_status=unfulfilled",
+      {
+        headers: {
+          "X-Shopify-Access-Token": apiToken,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Shopify API error (${response.status}):`, errorText);
+      throw new Error(`Shopify API error: ${response.status} ${errorText}`);
     }
-  );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Shopify API error:", errorText);
-    throw new Error(`Shopify API error: ${response.status} ${errorText}`);
+    const data = await response.json();
+    if (!data.orders || !Array.isArray(data.orders)) {
+      console.error("Unexpected Shopify API response format:", data);
+      return [];
+    }
+    return data.orders;
+  } catch (error) {
+    console.error("Exception in fetchShopifyOrders:", error);
+    throw error;
   }
-
-  const data = await response.json();
-  return data.orders;
 }
 
 async function fetchSingleOrder(apiToken: string, orderId: string): Promise<any> {
   // Fetch a single order by ID to check its current status
-  const response = await fetch(
-    `https://iron-city-hardware.myshopify.com/admin/api/2022-01/orders/${orderId}.json`,
-    {
-      headers: {
-        "X-Shopify-Access-Token": apiToken,
-        "Content-Type": "application/json",
-      },
+  try {
+    const response = await fetch(
+      `https://iron-city-hardware.myshopify.com/admin/api/2022-01/orders/${orderId}.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": apiToken,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Shopify API error for order ${orderId} (${response.status}):`, errorText);
+      throw new Error(`Shopify API error: ${response.status} ${errorText}`);
     }
-  );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Shopify API error for order ${orderId}:`, errorText);
-    throw new Error(`Shopify API error: ${response.status} ${errorText}`);
+    const data = await response.json();
+    if (!data.order) {
+      console.error("Unexpected Shopify API response format for single order:", data);
+      throw new Error("Invalid order data returned from Shopify API");
+    }
+    return data.order;
+  } catch (error) {
+    console.error(`Exception in fetchSingleOrder for order ${orderId}:`, error);
+    throw error;
   }
-
-  const data = await response.json();
-  return data.order;
 }
 
 async function archiveOrder(supabase: any, orderId: string, shopifyOrderId: string) {

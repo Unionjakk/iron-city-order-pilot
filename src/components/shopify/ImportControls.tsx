@@ -26,6 +26,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   const [hasImportedOrders, setHasImportedOrders] = useState(false);
   const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
   const [isSwitchingAutoImport, setIsSwitchingAutoImport] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Load settings and check for orders
@@ -46,6 +47,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   // Handle refresh status button click
   const handleRefreshStatus = async () => {
     setIsRefreshingStatus(true);
+    setImportError(null);
     try {
       await loadSettingsAndOrders();
       toast({
@@ -68,6 +70,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   // Toggle auto-import setting
   const handleToggleAutoImport = async () => {
     setIsSwitchingAutoImport(true);
+    setImportError(null);
     try {
       const newValue = !autoImportEnabled;
       await toggleAutoImport(newValue);
@@ -92,9 +95,15 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     }
   };
 
+  // Clear error state
+  const handleClearError = () => {
+    setImportError(null);
+  };
+
   // Handle manual import
   const handleManualImport = async () => {
     setIsImporting(true);
+    setImportError(null);
     
     try {
       const result = await executeManualImport();
@@ -112,6 +121,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
       });
     } catch (error) {
       console.error('Error importing orders:', error);
+      setImportError(error.message || "Unknown error occurred");
       toast({
         title: "Import Failed",
         description: error.message || "Failed to import orders. Please try again.",
@@ -136,6 +146,13 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
 
   return (
     <div className="space-y-4">
+      {importError && (
+        <div className="bg-red-900/20 border border-red-500/50 rounded-md p-4 mb-4">
+          <h4 className="text-red-400 font-medium">Import Error</h4>
+          <p className="text-zinc-300 text-sm mt-1">{importError}</p>
+        </div>
+      )}
+      
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <ImportStatus
           lastSyncTime={lastSyncTime}
@@ -149,9 +166,11 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
           isSwitchingAutoImport={isSwitchingAutoImport}
           isImporting={isImporting}
           autoImportEnabled={autoImportEnabled}
+          hasImportError={!!importError}
           onRefreshStatus={handleRefreshStatus}
           onToggleAutoImport={handleToggleAutoImport}
           onManualImport={handleManualImport}
+          onClearError={handleClearError}
         />
       </div>
       

@@ -9,9 +9,11 @@ interface ImportActionsProps {
   isSwitchingAutoImport: boolean;
   isImporting: boolean;
   autoImportEnabled: boolean;
+  hasImportError: boolean;
   onRefreshStatus: () => Promise<void>;
   onToggleAutoImport: () => Promise<void>;
   onManualImport: () => Promise<void>;
+  onClearError: () => void;
 }
 
 const ImportActions = ({
@@ -19,9 +21,11 @@ const ImportActions = ({
   isSwitchingAutoImport,
   isImporting,
   autoImportEnabled,
+  hasImportError,
   onRefreshStatus,
   onToggleAutoImport,
-  onManualImport
+  onManualImport,
+  onClearError
 }: ImportActionsProps) => {
   return (
     <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
@@ -58,14 +62,19 @@ const ImportActions = ({
       </Button>
       
       <Button 
-        onClick={onManualImport} 
-        className="bg-orange-500 hover:bg-orange-600"
-        disabled={isImporting}
+        onClick={hasImportError ? onClearError : onManualImport} 
+        className={hasImportError ? "bg-red-500 hover:bg-red-600" : "bg-orange-500 hover:bg-orange-600"}
+        disabled={isImporting && !hasImportError}
       >
-        {isImporting ? (
+        {isImporting && !hasImportError ? (
           <>
             <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
             Importing...
+          </>
+        ) : hasImportError ? (
+          <>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Dismiss Error & Retry
           </>
         ) : (
           <>

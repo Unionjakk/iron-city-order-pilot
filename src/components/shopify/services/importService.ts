@@ -110,7 +110,7 @@ export const toggleAutoImport = async (newValue: boolean) => {
     
     if (error) {
       console.error('Error updating auto-import setting:', error);
-      throw error;
+      throw new Error(`Failed to update auto-import setting: ${error.message}`);
     }
     
     return true;
@@ -130,23 +130,27 @@ export const executeManualImport = async () => {
     }
     
     // Call the edge function to sync orders with the complete synchronization logic
-    const { data, error } = await supabase.functions.invoke('shopify-sync', {
+    const response = await supabase.functions.invoke('shopify-sync', {
       body: { apiToken: token }
     });
-    
-    if (error) {
-      console.error('Error importing orders:', error);
-      throw new Error(error.message || 'Failed to sync with Shopify');
+
+    if (response.error) {
+      console.error('Error invoking shopify-sync function:', response.error);
+      throw new Error(`Failed to connect to Shopify API: ${response.error.message || 'Unknown error'}`);
     }
     
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to sync with Shopify');
+    const data = response.data;
+    
+    if (!data || !data.success) {
+      const errorMsg = data?.error || 'Unknown error occurred during Shopify sync';
+      console.error('Shopify sync failed:', errorMsg);
+      throw new Error(`Shopify sync failed: ${errorMsg}`);
     }
     
     return {
-      imported: data.imported,
-      archived: data.archived,
-      fixed: data.fixed
+      imported: data.imported || 0,
+      archived: data.archived || 0,
+      fixed: data.fixed || 0
     };
   } catch (error) {
     console.error('Error importing orders:', error);
