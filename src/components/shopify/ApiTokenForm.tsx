@@ -46,8 +46,9 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
     setIsLoading(true);
     try {
       // Using RPC for type safety
-      const { data, error } = await supabase
-        .rpc('get_shopify_setting', { setting_name_param: 'shopify_token' });
+      const { data, error } = await supabase.rpc('get_shopify_setting', { 
+        setting_name_param: 'shopify_token' 
+      });
       
       if (error) {
         console.error('Error fetching token from database:', error);
@@ -105,11 +106,10 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
     
     try {
       // Save token to database using RPC for type safety
-      const { error } = await supabase
-        .rpc('upsert_shopify_setting', { 
-          setting_name_param: 'shopify_token',
-          setting_value_param: data.apiToken
-        });
+      const { error } = await supabase.rpc('upsert_shopify_setting', { 
+        setting_name_param: 'shopify_token',
+        setting_value_param: data.apiToken
+      });
       
       if (error) {
         throw error;
@@ -142,11 +142,10 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
     setIsLoading(true);
     try {
       // Reset token in database to placeholder using RPC for type safety
-      const { error } = await supabase
-        .rpc('upsert_shopify_setting', { 
-          setting_name_param: 'shopify_token',
-          setting_value_param: 'placeholder_token'
-        });
+      const { error } = await supabase.rpc('upsert_shopify_setting', { 
+        setting_name_param: 'shopify_token',
+        setting_value_param: 'placeholder_token'
+      });
       
       if (error) {
         throw error;

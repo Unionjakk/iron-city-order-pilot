@@ -29,7 +29,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   // Get token from database
   const getTokenFromDatabase = async () => {
     try {
-      // Using custom query for type safety
+      // Using RPC for type safety
       const { data, error } = await supabase
         .rpc('get_shopify_setting', { setting_name_param: 'shopify_token' });
       
