@@ -49,7 +49,7 @@ const HarleyUploadDashboard = () => {
         // Use execute_sql to run a custom query that calls our function
         const { data, error } = await supabase
           .rpc('execute_sql', { 
-            sql: 'SELECT get_hd_stats()' 
+            sql: 'SELECT * FROM get_hd_stats()' 
           });
         
         if (error) {
@@ -63,8 +63,8 @@ const HarleyUploadDashboard = () => {
         
         // Parse the JSON result from the function
         if (data && data.length > 0) {
-          // The function returns an object in the first row's get_hd_stats column
-          const statsData = data[0].get_hd_stats as HDStats;
+          // The function returns an object in the first row
+          const statsData = data[0] as unknown as HDStats;
           
           if (statsData) {
             // Update stats with data from database
@@ -115,9 +115,9 @@ const HarleyUploadDashboard = () => {
         
         console.log('Recent uploads:', data);
         
-        // Convert the JSON data to our typed array
+        // Convert the data to our typed array
         if (data && Array.isArray(data)) {
-          const typedUploads: HDUploadHistory[] = data.map((upload) => ({
+          const typedUploads: HDUploadHistory[] = data.map((upload: any) => ({
             id: upload.id,
             upload_type: upload.upload_type,
             filename: upload.filename,
