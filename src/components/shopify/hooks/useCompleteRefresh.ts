@@ -21,72 +21,93 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
 
   const deleteAllOrders = async () => {
     try {
-      // Delete from shopify_order_items first (foreign key constraints)
-      addDebugMessage("Deleting all order items...");
-      const { error: itemsError } = await supabase
+      // Improved deletion approach
+      addDebugMessage("Starting deletion of all order data...");
+      
+      // STEP 1: First, delete all order items (because of foreign key constraints)
+      addDebugMessage("Deleting all order items first...");
+      
+      // Clear all order items using direct DELETE
+      const { error: itemsDeleteError } = await supabase
         .from('shopify_order_items')
         .delete()
-        .neq('order_id', '00000000-0000-0000-0000-000000000000'); // Delete all
+        .neq('id', '00000000-0000-0000-0000-000000000000');
         
-      if (itemsError) {
-        throw new Error(`Failed to delete order items: ${itemsError.message}`);
+      if (itemsDeleteError) {
+        throw new Error(`Failed to delete order items: ${itemsDeleteError.message}`);
       }
-      addDebugMessage("Successfully deleted all order items");
       
-      // FIX: Use row-by-row deletion approach which is more reliable
-      addDebugMessage("Fetching all order IDs for deletion...");
-      const { data: orderIds, error: fetchError } = await supabase
+      // Verify that all order items are deleted
+      const { count: itemsCount, error: itemsCountError } = await supabase
+        .from('shopify_order_items')
+        .select('*', { count: 'exact', head: true });
+      
+      if (itemsCountError) {
+        throw new Error(`Failed to verify order items deletion: ${itemsCountError.message}`);
+      }
+      
+      if (itemsCount && itemsCount > 0) {
+        addDebugMessage(`WARNING: ${itemsCount} order items still remain after deletion attempt`);
+      } else {
+        addDebugMessage("All order items successfully deleted");
+      }
+      
+      // STEP 2: Delete all orders with a direct approach
+      addDebugMessage("Deleting all orders...");
+      
+      // Direct DELETE all orders
+      const { error: ordersDeleteError } = await supabase
         .from('shopify_orders')
-        .select('id');
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
       
-      if (fetchError) {
-        throw new Error(`Failed to fetch order IDs: ${fetchError.message}`);
+      if (ordersDeleteError) {
+        throw new Error(`Failed to delete orders: ${ordersDeleteError.message}`);
       }
       
-      if (!orderIds || orderIds.length === 0) {
-        addDebugMessage("No orders found to delete");
-        return;
-      }
-      
-      addDebugMessage(`Found ${orderIds.length} orders to delete`);
-      
-      // Delete each order individually
-      addDebugMessage("Deleting orders one by one...");
-      const batchSize = 50; // Process in smaller batches
-      let deletedCount = 0;
-      
-      for (let i = 0; i < orderIds.length; i += batchSize) {
-        const batch = orderIds.slice(i, i + batchSize);
-        const batchIds = batch.map(order => order.id);
-        
-        // Delete this batch
-        const { error: batchError } = await supabase
-          .from('shopify_orders')
-          .delete()
-          .in('id', batchIds);
-        
-        if (batchError) {
-          throw new Error(`Error deleting batch of orders: ${batchError.message}`);
-        }
-        
-        deletedCount += batch.length;
-        addDebugMessage(`Deleted ${deletedCount}/${orderIds.length} orders...`);
-      }
-      
-      // Verify all orders are deleted
-      const { count, error: countError } = await supabase
+      // STEP 3: Verify all orders are deleted
+      const { count: orderCount, error: orderCountError } = await supabase
         .from('shopify_orders')
         .select('*', { count: 'exact', head: true });
       
-      if (countError) {
-        throw new Error(`Failed to verify order deletion: ${countError.message}`);
+      if (orderCountError) {
+        throw new Error(`Failed to verify orders deletion: ${orderCountError.message}`);
       }
       
-      if (count && count > 0) {
-        throw new Error(`Order deletion failed: ${count} orders still remain in database after deletion`);
+      if (orderCount && orderCount > 0) {
+        // If orders still remain, try a final desperate approach with RPC
+        addDebugMessage(`WARNING: ${orderCount} orders still remain after initial deletion`);
+        addDebugMessage("Attempting alternative deletion method...");
+        
+        // Use SQL query via RPC to delete remaining orders
+        const { error: rpcError } = await supabase.rpc('execute_sql', {
+          sql: `DELETE FROM public.shopify_orders WHERE id IS NOT NULL;`
+        });
+        
+        if (rpcError) {
+          throw new Error(`Alternative deletion failed: ${rpcError.message}`);
+        }
+        
+        // Final verification
+        const { count: finalCount, error: finalCountError } = await supabase
+          .from('shopify_orders')
+          .select('*', { count: 'exact', head: true });
+          
+        if (finalCountError) {
+          throw new Error(`Failed to verify final deletion: ${finalCountError.message}`);
+        }
+        
+        if (finalCount && finalCount > 0) {
+          throw new Error(`Deletion failed: ${finalCount} orders still remain in database after multiple deletion attempts`);
+        } else {
+          addDebugMessage("All orders successfully deleted using alternative method");
+        }
+      } else {
+        addDebugMessage("All orders successfully deleted");
       }
       
-      addDebugMessage("Successfully deleted all orders - verified zero remaining");
+      addDebugMessage("Database is now clean and ready for import");
+      return true;
     } catch (error) {
       console.error("Error deleting orders:", error);
       throw error;
@@ -133,9 +154,6 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
         throw new Error('No orders were imported from Shopify');
       }
       
-      // Here's the fix - remove the third argument which is causing the error
-      // Before: .eq("order_id", "00000000-0000-0000-0000-000000000000", false);
-      // After: .neq("order_id", "00000000-0000-0000-0000-000000000000");
       const { count: lineItemCount, error: lineItemCountError } = await supabase
         .from('shopify_order_items')
         .select('*', { count: 'exact', head: true })
