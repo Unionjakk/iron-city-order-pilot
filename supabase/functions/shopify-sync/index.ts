@@ -1,4 +1,3 @@
-
 // IMPORTANT: This Edge Function interacts with a PRODUCTION Shopify API
 // Any changes must maintain compatibility with the live system
 
@@ -475,6 +474,7 @@ async function syncShopifyOrders(apiToken: string) {
   }
 }
 
+// Main handler for HTTP requests
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -524,11 +524,20 @@ serve(async (req) => {
     const result = await syncShopifyOrders(apiToken);
     
     // If this was triggered by a cron job, update the last cron run time
+    // Also ensure auto_import_enabled is set to true
     if (source === 'cron') {
-      console.log('Updating last cron run time');
+      console.log('Updating last cron run time and ensuring auto_import_enabled is true');
+      
+      // Update last cron run time
       await supabase.rpc('upsert_shopify_setting', { 
         setting_name_param: 'last_cron_run', 
         setting_value_param: new Date().toISOString() 
+      });
+      
+      // Make sure auto_import_enabled is set to true
+      await supabase.rpc('upsert_shopify_setting', { 
+        setting_name_param: 'auto_import_enabled', 
+        setting_value_param: 'true'
       });
     }
     

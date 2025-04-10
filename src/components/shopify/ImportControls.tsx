@@ -25,7 +25,12 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
 
   // Format date for display
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'Never';
+    
     const date = new Date(dateString);
+    // Check if date is valid
+    if (isNaN(date.getTime())) return 'Invalid date';
+    
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
@@ -75,9 +80,9 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
         return;
       }
       
-      // Set auto-import status
+      // Set auto-import status - make sure to do a strict comparison with the string 'true'
       setAutoImportEnabled(autoImportData === 'true');
-      
+      console.log('Auto import status:', autoImportData, autoImportData === 'true');
     } catch (error) {
       console.error('Exception retrieving settings:', error);
     }
@@ -190,7 +195,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
           <div className="flex items-center text-emerald-400">
             <CheckCircle className="mr-2 h-4 w-4" />
             <span>
-              Auto-import enabled {lastCronRun && `(last run: ${formatDate(lastCronRun)})`}
+              Auto-import enabled {lastCronRun ? `(last run: ${formatDate(lastCronRun)})` : '(never run yet)'}
             </span>
           </div>
         ) : (
