@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Clock, Info, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -124,7 +123,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
         return;
       }
       
-      // Call the edge function to sync orders
+      // Call the edge function to sync orders - note that JWT verification is now disabled
       const { data, error } = await supabase.functions.invoke('shopify-sync', {
         body: { apiToken: token }
       });
