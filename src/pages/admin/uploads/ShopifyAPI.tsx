@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Shield, Archive } from 'lucide-react';
+import { ShoppingCart, Shield, Archive, AlertTriangle } from 'lucide-react';
 import { useShopifyOrders } from '@/hooks/useShopifyOrders';
 import ApiTokenFormComponent from '@/components/shopify/ApiTokenForm';
 import ImportControls from '@/components/shopify/ImportControls';
@@ -9,12 +9,18 @@ import OrdersTable from '@/components/shopify/OrdersTable';
 import ApiDocumentation from '@/components/shopify/ApiDocumentation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
+// IMPORTANT: This component interacts with a PRODUCTION Shopify API
+// Any changes must maintain compatibility with the live system
 const ShopifyAPI = () => {
   const [hasToken, setHasToken] = useState(false);
   const [maskedToken, setMaskedToken] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const { importedOrders, archivedOrders, lastImport, fetchRecentOrders } = useShopifyOrders();
+
+  // The special value 'placeholder_token' represents no token being set
+  const PLACEHOLDER_TOKEN_VALUE = 'placeholder_token';
 
   // Function to mask the token for display
   const maskToken = (token: string) => {
@@ -27,8 +33,9 @@ const ShopifyAPI = () => {
     setIsLoading(true);
     try {
       // Using RPC for type safety
-      const { data, error } = await supabase
-        .rpc('get_shopify_setting', { setting_name_param: 'shopify_token' });
+      const { data, error } = await supabase.rpc('get_shopify_setting', { 
+        setting_name_param: 'shopify_token' 
+      });
       
       if (error) {
         console.error('Error checking for token in database:', error);
@@ -37,7 +44,8 @@ const ShopifyAPI = () => {
         return;
       }
       
-      if (data && data !== 'placeholder_token') {
+      // Check if we have a valid token (not the placeholder)
+      if (data && typeof data === 'string' && data !== PLACEHOLDER_TOKEN_VALUE) {
         setHasToken(true);
         setMaskedToken(maskToken(data));
       } else {
@@ -83,6 +91,14 @@ const ShopifyAPI = () => {
         <h1 className="text-2xl font-bold text-orange-500">Shopify API Integration</h1>
         <p className="text-orange-400/80">Configure and manage Shopify order imports</p>
       </div>
+      
+      <Alert className="bg-zinc-800/60 border-amber-500/50">
+        <AlertTriangle className="h-5 w-5 text-amber-500" />
+        <AlertTitle className="text-amber-500">Production System</AlertTitle>
+        <AlertDescription className="text-zinc-300">
+          This is a real production system connected to the live Shopify store. All actions here will affect the actual store data.
+        </AlertDescription>
+      </Alert>
       
       {/* API Configuration Card */}
       <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Key, RefreshCw, Shield, CheckCircle } from 'lucide-react';
+import { Key, RefreshCw, Shield, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,8 @@ interface ApiTokenFormProps {
   setMaskedToken: (maskedToken: string) => void;
 }
 
+// IMPORTANT: This component interacts with a PRODUCTION Shopify API
+// Any changes must maintain compatibility with the live system
 const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedToken }: ApiTokenFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -34,6 +36,9 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
       apiToken: '',
     },
   });
+
+  // The special value 'placeholder_token' represents no token being set
+  const PLACEHOLDER_TOKEN_VALUE = 'placeholder_token';
 
   // Function to mask the token for display
   const maskToken = (token: string) => {
@@ -57,7 +62,8 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
         return false;
       }
       
-      if (data && data !== 'placeholder_token') {
+      // Check if we have a valid token (not the placeholder)
+      if (data && typeof data === 'string' && data !== PLACEHOLDER_TOKEN_VALUE) {
         setHasToken(true);
         setMaskedToken(maskToken(data));
         return true;
@@ -144,7 +150,7 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
       // Reset token in database to placeholder using RPC for type safety
       const { error } = await supabase.rpc('upsert_shopify_setting', { 
         setting_name_param: 'shopify_token',
-        setting_value_param: 'placeholder_token'
+        setting_value_param: PLACEHOLDER_TOKEN_VALUE
       });
       
       if (error) {
@@ -193,49 +199,59 @@ const ApiTokenFormComponent = ({ hasToken, maskedToken, setHasToken, setMaskedTo
           </Button>
         </div>
       ) : (
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="apiToken"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-zinc-300">Shopify Admin API Access Token</FormLabel>
-                  <FormControl>
-                    <div className="flex space-x-2">
-                      <div className="relative flex-grow">
-                        <Key className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
-                        <Input
-                          placeholder="Enter your Shopify Admin API access token"
-                          type="password"
-                          className="pl-10 bg-zinc-800 border-zinc-700 text-zinc-300"
-                          {...field}
-                        />
+        <>
+          <Alert className="bg-zinc-800/60 border-amber-500/50 mb-4">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTitle className="text-amber-500">API Token Required</AlertTitle>
+            <AlertDescription className="text-zinc-300">
+              This is a real production system. Please enter a valid Shopify API token to enable order import functionality.
+            </AlertDescription>
+          </Alert>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="apiToken"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-zinc-300">Shopify Admin API Access Token</FormLabel>
+                    <FormControl>
+                      <div className="flex space-x-2">
+                        <div className="relative flex-grow">
+                          <Key className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
+                          <Input
+                            placeholder="Enter your Shopify Admin API access token"
+                            type="password"
+                            className="pl-10 bg-zinc-800 border-zinc-700 text-zinc-300"
+                            {...field}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </FormControl>
-                  <FormDescription className="text-zinc-500">
-                    This token will be stored securely in the database and used to access your Shopify orders.
-                  </FormDescription>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="bg-orange-500 hover:bg-orange-600" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Shield className="mr-2 h-4 w-4" />
-                  Save API Token
-                </>
-              )}
-            </Button>
-          </form>
-        </Form>
+                    </FormControl>
+                    <FormDescription className="text-zinc-500">
+                      This token will be stored securely in the database and used to access your Shopify orders.
+                    </FormDescription>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="bg-orange-500 hover:bg-orange-600" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="mr-2 h-4 w-4" />
+                    Save API Token
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
+        </>
       )}
     </>
   );

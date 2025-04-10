@@ -1,4 +1,7 @@
 
+// IMPORTANT: This Edge Function interacts with a PRODUCTION Shopify API
+// Any changes must maintain compatibility with the live system
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -12,18 +15,26 @@ const supabaseUrl = "https://hbmismnzmocjazaiicdu.supabase.co";
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// The special value 'placeholder_token' represents no token being set
+const PLACEHOLDER_TOKEN_VALUE = 'placeholder_token';
+
 // Function to get API token from database
 async function getApiTokenFromDatabase() {
   try {
     const { data, error } = await supabase
       .rpc('get_shopify_setting', { setting_name_param: 'shopify_token' });
     
-    if (error || !data || data === 'placeholder_token') {
+    if (error) {
       console.error('Error retrieving token from database:', error);
       return null;
     }
     
-    return data;
+    // Check if we have a valid token (not the placeholder)
+    if (data && typeof data === 'string' && data !== PLACEHOLDER_TOKEN_VALUE) {
+      return data;
+    }
+    
+    return null;
   } catch (error) {
     console.error('Exception retrieving token:', error);
     return null;

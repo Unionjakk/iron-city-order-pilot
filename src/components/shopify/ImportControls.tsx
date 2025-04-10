@@ -1,18 +1,24 @@
 
 import { useState } from 'react';
-import { Clock, Info, RefreshCw } from 'lucide-react';
+import { Clock, Info, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface ImportControlsProps {
   lastImport: string | null;
   fetchRecentOrders: () => Promise<void>;
 }
 
+// IMPORTANT: This component interacts with a PRODUCTION Shopify API
+// Any changes must maintain compatibility with the live system
 const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) => {
   const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
+
+  // The special value 'placeholder_token' represents no token being set
+  const PLACEHOLDER_TOKEN_VALUE = 'placeholder_token';
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -30,15 +36,21 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   const getTokenFromDatabase = async () => {
     try {
       // Using RPC for type safety
-      const { data, error } = await supabase
-        .rpc('get_shopify_setting', { setting_name_param: 'shopify_token' });
+      const { data, error } = await supabase.rpc('get_shopify_setting', { 
+        setting_name_param: 'shopify_token' 
+      });
       
-      if (error || !data || data === 'placeholder_token') {
+      if (error) {
         console.error('Error retrieving token from database:', error);
         return null;
       }
       
-      return data;
+      // Check if we have a valid token (not the placeholder)
+      if (data && typeof data === 'string' && data !== PLACEHOLDER_TOKEN_VALUE) {
+        return data;
+      }
+      
+      return null;
     } catch (error) {
       console.error('Exception retrieving token:', error);
       return null;
