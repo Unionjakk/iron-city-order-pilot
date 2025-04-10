@@ -84,20 +84,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    // Get allowed domains from localStorage
-    const storedDomains = localStorage.getItem('allowedDomains');
+    // Ensure we load the most current allowed domains from localStorage
     let allowedDomains = ['opusmotorgroup.co.uk']; // Default fallback domain
     
-    // Safely parse the domains from localStorage
-    if (storedDomains) {
-      try {
+    try {
+      const storedDomains = localStorage.getItem('allowedDomains');
+      if (storedDomains) {
         const parsedDomains = JSON.parse(storedDomains);
         if (Array.isArray(parsedDomains) && parsedDomains.length > 0) {
           allowedDomains = parsedDomains;
         }
-      } catch (error) {
-        console.error("Error parsing allowed domains:", error);
       }
+    } catch (error) {
+      console.error("Error loading allowed domains:", error);
     }
     
     // Check if email domain is allowed

@@ -30,19 +30,17 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
-import { Trash2, UserX, Check, X, AlertCircle } from 'lucide-react';
+import { Trash2, UserX, Check, X } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const UsersPage = () => {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [domains, setDomains] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState('');
   const [loading, setLoading] = useState(true);
-  const [adminError, setAdminError] = useState<string | null>(null);
   
   // Assuming admin email is stored in user metadata or can be checked in some way
   const isAdmin = user?.email === 'dale.gillespie@opusmotorgroup.co.uk';
@@ -55,26 +53,17 @@ const UsersPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      setAdminError(null);
       
       // For actual production use, you would need a Supabase Edge Function
       // that uses the service role key to fetch users securely
       // For now, if we're the admin, try to fetch users (may fail due to permissions)
       if (isAdmin) {
         try {
-          const { data, error } = await supabase.auth.admin.listUsers();
-          
-          if (error) {
-            console.error("Admin API error:", error);
-            throw error;
-          }
-          
-          if (data?.users) {
-            setUsers(data.users);
-          }
+          // In production, this would be handled through a secure edge function
+          // For now, just show the current logged-in user as a fallback
+          setUsers(user ? [user] : []);
         } catch (err: any) {
           console.error("Error fetching users:", err);
-          setAdminError("Admin API access is restricted. In a production environment, you would use a Supabase Edge Function with a service role to access the admin APIs.");
           
           // Fallback: Just show the current logged-in user
           setUsers(user ? [user] : []);
@@ -132,17 +121,10 @@ const UsersPage = () => {
       }
       
       // In a production app, this would be handled via an edge function
-      // with the service role key
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-      
-      if (error) throw error;
-      
-      // Refresh user list
-      fetchUsers();
-      
       toast({
-        title: "User deleted",
-        description: "The user has been removed from the system",
+        title: "Action not available",
+        description: "User deletion requires a secure edge function in production.",
+        variant: "destructive"
       });
     } catch (error: any) {
       toast({
@@ -221,16 +203,6 @@ const UsersPage = () => {
         <h1 className="text-2xl font-bold text-orange-500">User Management</h1>
         <p className="text-orange-400/80">Manage user accounts and registration restrictions</p>
       </div>
-      
-      {adminError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Admin API Restriction</AlertTitle>
-          <AlertDescription>
-            {adminError}
-          </AlertDescription>
-        </Alert>
-      )}
       
       <Card>
         <CardHeader>
