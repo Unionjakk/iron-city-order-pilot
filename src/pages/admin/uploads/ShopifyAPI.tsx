@@ -79,8 +79,15 @@ const ShopifyAPI = () => {
             return false;
           }
           
-          const exists = fallbackData && fallbackData[0] && fallbackData[0].exists;
-          return !!exists;
+          // Type-safe way to check if exists property is true
+          if (fallbackData && fallbackData.length > 0) {
+            const firstRow = fallbackData[0];
+            if (typeof firstRow === 'object' && firstRow !== null && 'exists' in firstRow) {
+              return Boolean(firstRow.exists);
+            }
+          }
+          
+          return false;
         } catch (error) {
           console.error('Exception with fallback query:', error);
           return false;

@@ -62,8 +62,15 @@ export const useShopifyOrders = () => {
             return false;
           }
           
-          const exists = fallbackData && fallbackData[0] && fallbackData[0].exists;
-          return !!exists;
+          // Type-safe way to check if exists property is true
+          if (fallbackData && fallbackData.length > 0) {
+            const firstRow = fallbackData[0];
+            if (typeof firstRow === 'object' && firstRow !== null && 'exists' in firstRow) {
+              return Boolean(firstRow.exists);
+            }
+          }
+          
+          return false;
         } catch (error) {
           console.error('Exception with fallback query:', error);
           return false;
@@ -149,7 +156,7 @@ export const useShopifyOrders = () => {
         
         // Map line items to their respective orders
         if (lineItemsData) {
-          const lineItemsByOrderId = lineItemsData.reduce((acc, item) => {
+          const lineItemsByOrderId = lineItemsData.reduce((acc: Record<string, any[]>, item) => {
             if (!acc[item.order_id]) {
               acc[item.order_id] = [];
             }
@@ -164,7 +171,7 @@ export const useShopifyOrders = () => {
           }, {});
           
           // Add line items to each order and transform to ShopifyOrder type
-          const ordersWithLineItems = activeData.map(order => {
+          const ordersWithLineItems = activeData.map((order) => {
             const orderObj: ShopifyOrder = {
               id: order.id,
               shopify_order_id: order.shopify_order_id,
@@ -191,7 +198,7 @@ export const useShopifyOrders = () => {
           
           setImportedOrders(ordersWithLineItems);
         } else {
-          const ordersWithoutLineItems = activeData.map(order => {
+          const ordersWithoutLineItems = activeData.map((order) => {
             const orderObj: ShopifyOrder = {
               id: order.id,
               shopify_order_id: order.shopify_order_id,
@@ -270,7 +277,7 @@ export const useShopifyOrders = () => {
           
           // Map archived line items to their respective orders
           if (archivedLineItemsData) {
-            const lineItemsByOrderId = archivedLineItemsData.reduce((acc, item) => {
+            const lineItemsByOrderId = archivedLineItemsData.reduce((acc: Record<string, any[]>, item) => {
               if (!acc[item.archived_order_id]) {
                 acc[item.archived_order_id] = [];
               }
@@ -285,7 +292,7 @@ export const useShopifyOrders = () => {
             }, {});
             
             // Process each archived order
-            const archivedOrdersWithLineItems = archivedData.map(order => {
+            const archivedOrdersWithLineItems = archivedData.map((order) => {
               // Create a properly typed order object with the properties we know exist
               const typedOrder: ShopifyOrder = {
                 id: order.id,
@@ -315,7 +322,7 @@ export const useShopifyOrders = () => {
             setArchivedOrders(archivedOrdersWithLineItems);
           } else {
             // Process each archived order without line items
-            const archivedOrdersWithoutLineItems = archivedData.map(order => {
+            const archivedOrdersWithoutLineItems = archivedData.map((order) => {
               // Create a properly typed order object with the properties we know exist
               const typedOrder: ShopifyOrder = {
                 id: order.id,
