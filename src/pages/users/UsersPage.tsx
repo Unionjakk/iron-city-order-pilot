@@ -30,17 +30,19 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
-import { Trash2, UserX, Check, X } from 'lucide-react';
+import { Trash2, UserX, Check, X, AlertCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const UsersPage = () => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [domains, setDomains] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState('');
   const [loading, setLoading] = useState(true);
+  const [adminError, setAdminError] = useState<string | null>(null);
   
   // Assuming admin email is stored in user metadata or can be checked in some way
   const isAdmin = user?.email === 'dale.gillespie@opusmotorgroup.co.uk';
@@ -53,18 +55,33 @@ const UsersPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setAdminError(null);
       
-      // Instead of using admin API, get users from auth table that Supabase allows access to
-      const { data: { users: authUsers }, error } = await supabase.auth.admin.listUsers();
-      
-      if (error) {
-        console.error("Error fetching users:", error);
-        throw error;
-      }
-      
-      if (authUsers) {
-        console.log("Users data:", authUsers);
-        setUsers(authUsers);
+      // For actual production use, you would need a Supabase Edge Function
+      // that uses the service role key to fetch users securely
+      // For now, if we're the admin, try to fetch users (may fail due to permissions)
+      if (isAdmin) {
+        try {
+          const { data, error } = await supabase.auth.admin.listUsers();
+          
+          if (error) {
+            console.error("Admin API error:", error);
+            throw error;
+          }
+          
+          if (data?.users) {
+            setUsers(data.users);
+          }
+        } catch (err: any) {
+          console.error("Error fetching users:", err);
+          setAdminError("Admin API access is restricted. In a production environment, you would use a Supabase Edge Function with a service role to access the admin APIs.");
+          
+          // Fallback: Just show the current logged-in user
+          setUsers(user ? [user] : []);
+        }
+      } else {
+        // Non-admin users just see themselves
+        setUsers(user ? [user] : []);
       }
     } catch (error: any) {
       console.error("Error in fetchUsers:", error);
@@ -73,6 +90,7 @@ const UsersPage = () => {
         description: error.message || "User not allowed",
         variant: "destructive"
       });
+      
       // Set empty array to avoid showing loading state indefinitely
       setUsers([]);
     } finally {
@@ -84,14 +102,22 @@ const UsersPage = () => {
     // Retrieve domains from localStorage for persistence
     const storedDomains = localStorage.getItem('allowedDomains');
     if (storedDomains) {
-      setDomains(JSON.parse(storedDomains));
+      try {
+        const parsedDomains = JSON.parse(storedDomains);
+        setDomains(Array.isArray(parsedDomains) ? parsedDomains : ['opusmotorgroup.co.uk']);
+        console.log("Loaded domains from localStorage:", parsedDomains);
+      } catch (error) {
+        console.error("Error parsing domains from localStorage:", error);
+        // Fallback to default domain
+        setDomains(['opusmotorgroup.co.uk']);
+        localStorage.setItem('allowedDomains', JSON.stringify(['opusmotorgroup.co.uk']));
+      }
     } else {
       // Initialize with default domain and store in localStorage
       const defaultDomains = ['opusmotorgroup.co.uk'];
       setDomains(defaultDomains);
       localStorage.setItem('allowedDomains', JSON.stringify(defaultDomains));
     }
-    console.log("Allowed domains:", domains);
   };
   
   const deleteUser = async (userId: string) => {
@@ -105,6 +131,8 @@ const UsersPage = () => {
         return;
       }
       
+      // In a production app, this would be handled via an edge function
+      // with the service role key
       const { error } = await supabase.auth.admin.deleteUser(userId);
       
       if (error) throw error;
@@ -166,6 +194,16 @@ const UsersPage = () => {
       return;
     }
     
+    // Don't allow removing all domains
+    if (domains.length <= 1) {
+      toast({
+        title: "Cannot remove domain",
+        description: "At least one domain must remain in the allowed list",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Remove domain from list and update localStorage
     const updatedDomains = domains.filter(d => d !== domain);
     setDomains(updatedDomains);
@@ -183,6 +221,16 @@ const UsersPage = () => {
         <h1 className="text-2xl font-bold text-orange-500">User Management</h1>
         <p className="text-orange-400/80">Manage user accounts and registration restrictions</p>
       </div>
+      
+      {adminError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Admin API Restriction</AlertTitle>
+          <AlertDescription>
+            {adminError}
+          </AlertDescription>
+        </Alert>
+      )}
       
       <Card>
         <CardHeader>
@@ -304,6 +352,7 @@ const UsersPage = () => {
                           size="icon"
                           className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-100/10"
                           onClick={() => removeDomain(domain)}
+                          disabled={domains.length <= 1}
                         >
                           <UserX className="h-4 w-4" />
                         </Button>
