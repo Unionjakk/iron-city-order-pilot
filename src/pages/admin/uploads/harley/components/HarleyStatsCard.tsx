@@ -71,9 +71,31 @@ const HarleyStatsCard = ({ stats, isLoading }: HarleyStatsProps) => {
           
           <div className="bg-zinc-700/40 rounded p-3">
             <h4 className="text-sm font-medium text-orange-400 mb-2">Upload Status</h4>
-            <p className="text-xs text-zinc-300">
-              No data has been uploaded yet. Begin by uploading the Open Orders List from H-D NET.
-            </p>
+            {stats.totalOrders > 0 ? (
+              <div className="space-y-2 text-xs text-zinc-300">
+                <div className="flex justify-between items-center">
+                  <span>Orders with line items:</span>
+                  <span className="font-medium">
+                    {Math.round(((stats.totalOrders - stats.ordersWithoutLineItems) / stats.totalOrders) * 100)}%
+                  </span>
+                </div>
+                <div className="w-full bg-zinc-800 rounded-full h-1.5">
+                  <div 
+                    className="bg-orange-500 h-1.5 rounded-full" 
+                    style={{ width: `${Math.round(((stats.totalOrders - stats.ordersWithoutLineItems) / stats.totalOrders) * 100)}%` }}>
+                  </div>
+                </div>
+                {stats.backorderItems > 0 && (
+                  <p className="mt-2 text-amber-400">
+                    {stats.backorderItems} items currently on backorder
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-300">
+                No data has been uploaded yet. Begin by uploading the Open Orders List from H-D NET.
+              </p>
+            )}
           </div>
         </div>
       )}

@@ -9,6 +9,167 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      hd_order_line_items: {
+        Row: {
+          backorder_clear_by: string | null
+          created_at: string
+          dealer_po_number: string | null
+          description: string | null
+          hd_order_id: string | null
+          hd_order_number: string
+          id: string
+          invoice_date: string | null
+          invoice_number: string | null
+          is_backorder: boolean | null
+          line_number: string | null
+          open_quantity: number | null
+          order_date: string | null
+          order_quantity: number | null
+          part_number: string | null
+          projected_shipping_date: string | null
+          projected_shipping_quantity: number | null
+          status: string | null
+          total_price: number | null
+          unit_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          backorder_clear_by?: string | null
+          created_at?: string
+          dealer_po_number?: string | null
+          description?: string | null
+          hd_order_id?: string | null
+          hd_order_number: string
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          is_backorder?: boolean | null
+          line_number?: string | null
+          open_quantity?: number | null
+          order_date?: string | null
+          order_quantity?: number | null
+          part_number?: string | null
+          projected_shipping_date?: string | null
+          projected_shipping_quantity?: number | null
+          status?: string | null
+          total_price?: number | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          backorder_clear_by?: string | null
+          created_at?: string
+          dealer_po_number?: string | null
+          description?: string | null
+          hd_order_id?: string | null
+          hd_order_number?: string
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          is_backorder?: boolean | null
+          line_number?: string | null
+          open_quantity?: number | null
+          order_date?: string | null
+          order_quantity?: number | null
+          part_number?: string | null
+          projected_shipping_date?: string | null
+          projected_shipping_quantity?: number | null
+          status?: string | null
+          total_price?: number | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hd_order_line_items_hd_order_id_fkey"
+            columns: ["hd_order_id"]
+            isOneToOne: false
+            referencedRelation: "hd_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hd_orders: {
+        Row: {
+          created_at: string
+          dealer_po_number: string | null
+          has_line_items: boolean | null
+          hd_order_number: string
+          id: string
+          notes: string | null
+          order_date: string | null
+          order_type: string | null
+          ship_to: string | null
+          terms: string | null
+          total_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dealer_po_number?: string | null
+          has_line_items?: boolean | null
+          hd_order_number: string
+          id?: string
+          notes?: string | null
+          order_date?: string | null
+          order_type?: string | null
+          ship_to?: string | null
+          terms?: string | null
+          total_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dealer_po_number?: string | null
+          has_line_items?: boolean | null
+          hd_order_number?: string
+          id?: string
+          notes?: string | null
+          order_date?: string | null
+          order_type?: string | null
+          ship_to?: string | null
+          terms?: string | null
+          total_price?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hd_upload_history: {
+        Row: {
+          error_message: string | null
+          filename: string
+          id: string
+          items_count: number
+          replaced_previous: boolean
+          status: string
+          upload_date: string
+          upload_type: string
+          user_id: string | null
+        }
+        Insert: {
+          error_message?: string | null
+          filename: string
+          id?: string
+          items_count?: number
+          replaced_previous?: boolean
+          status: string
+          upload_date?: string
+          upload_type: string
+          user_id?: string | null
+        }
+        Update: {
+          error_message?: string | null
+          filename?: string
+          id?: string
+          items_count?: number
+          replaced_previous?: boolean
+          status?: string
+          upload_date?: string
+          upload_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       pinnacle_stock: {
         Row: {
           average_cost: number | null
@@ -386,6 +547,10 @@ export type Database = {
           shopify_order_number: string | null
           status: string
         }[]
+      }
+      get_hd_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       get_shopify_order_number: {
         Args: { order_id: string }
