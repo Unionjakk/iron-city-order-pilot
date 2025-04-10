@@ -29,7 +29,7 @@ const MobileMenu = ({ isActive }: MobileMenuProps) => {
             Menu
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 bg-zinc-900 border-zinc-800">
+        <DropdownMenuContent align="end" className="w-56 bg-zinc-900 border-zinc-800 z-50">
           <DropdownMenuLabel className="text-orange-400">Navigation</DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-zinc-800" />
           <DropdownMenuItem asChild>
@@ -53,6 +53,17 @@ const MobileMenu = ({ isActive }: MobileMenuProps) => {
             >
               <Users className="h-4 w-4 mr-2" />
               Users
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link 
+              to="/admin" 
+              className={cn(
+                "cursor-pointer",
+                isActive('/admin') && !isActive('/admin/uploads') ? "text-orange-400" : "text-zinc-400 hover:text-orange-300"
+              )}
+            >
+              Admin
             </Link>
           </DropdownMenuItem>
           <DropdownMenuLabel className="text-orange-400 pt-2">Admin</DropdownMenuLabel>

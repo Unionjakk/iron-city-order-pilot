@@ -13,7 +13,7 @@ const NavBar = () => {
   };
   
   return (
-    <header className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800 sticky top-0 z-10">
+    <header className="bg-zinc-900/80 backdrop-blur-sm border-b border-zinc-800 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <Logo />
         <DesktopMenu isActive={isActive} />
