@@ -26,7 +26,7 @@ type HDUploadHistory = {
   upload_date: string;
   items_count: number;
   status: string;
-}
+};
 
 const HarleyUploadDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -63,17 +63,20 @@ const HarleyUploadDashboard = () => {
         
         // Parse the JSON result from the function
         if (data && data.length > 0) {
-          const statsData = data[0].get_hd_stats;
+          // The function returns an object in the first row's get_hd_stats column
+          const statsData = data[0].get_hd_stats as HDStats;
           
-          // Update stats with data from database
-          setStats({
-            totalOrders: statsData.totalOrders || 0,
-            ordersWithoutLineItems: statsData.ordersWithoutLineItems || 0,
-            backorderItems: statsData.backorderItems || 0,
-            lastOpenOrdersUpload: statsData.lastOpenOrdersUpload,
-            lastLineItemsUpload: statsData.lastLineItemsUpload,
-            lastBackordersUpload: statsData.lastBackordersUpload
-          });
+          if (statsData) {
+            // Update stats with data from database
+            setStats({
+              totalOrders: statsData.totalOrders || 0,
+              ordersWithoutLineItems: statsData.ordersWithoutLineItems || 0,
+              backorderItems: statsData.backorderItems || 0,
+              lastOpenOrdersUpload: statsData.lastOpenOrdersUpload,
+              lastLineItemsUpload: statsData.lastLineItemsUpload,
+              lastBackordersUpload: statsData.lastBackordersUpload
+            });
+          }
         }
         
         setIsLoading(false);
@@ -111,7 +114,23 @@ const HarleyUploadDashboard = () => {
         }
         
         console.log('Recent uploads:', data);
-        setRecentUploads(data || []);
+        
+        // Convert the JSON data to our typed array
+        if (data && Array.isArray(data)) {
+          const typedUploads: HDUploadHistory[] = data.map((upload) => ({
+            id: upload.id,
+            upload_type: upload.upload_type,
+            filename: upload.filename,
+            upload_date: upload.upload_date,
+            items_count: upload.items_count,
+            status: upload.status
+          }));
+          
+          setRecentUploads(typedUploads);
+        } else {
+          setRecentUploads([]);
+        }
+        
         setIsLoadingUploads(false);
       } catch (error) {
         console.error('Error fetching recent uploads:', error);

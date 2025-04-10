@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,13 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-// This is a placeholder for actual Excel parsing logic
-// In a real implementation, you would use a library like SheetJS/xlsx
 const parseExcelFile = async (file: File): Promise<any[]> => {
-  // Mock implementation - in a real app, this would parse the Excel file
   console.log('Parsing file:', file.name);
-  
-  // Return a mock array of data
   return Promise.resolve([
     { 
       hd_order_number: 'HD-' + Math.floor(Math.random() * 1000000), 
@@ -62,13 +56,10 @@ const OpenOrdersUpload = () => {
     setIsProcessing(true);
     
     try {
-      // Step 1: Parse the Excel file
       console.log('Starting to parse Excel file...');
       const parsedData = await parseExcelFile(file);
       console.log('Parsed data:', parsedData);
       
-      // Step 2: Clear existing open orders (if this is a full replacement)
-      // In a real implementation, you might want to ask for confirmation first
       console.log('Clearing existing open orders...');
       const clearOrdersQuery = `DELETE FROM hd_orders`;
       const { error: clearError } = await supabase
@@ -82,10 +73,8 @@ const OpenOrdersUpload = () => {
         return;
       }
       
-      // Step 3: Insert new order data
       console.log('Inserting new order data...');
       
-      // Build the SQL insert query for multiple rows
       const insertValues = parsedData.map(order => {
         return `('${order.hd_order_number}', 
                  '${order.dealer_po_number || ''}', 
@@ -116,7 +105,6 @@ const OpenOrdersUpload = () => {
         return;
       }
       
-      // Step 4: Record the upload in history
       console.log('Recording upload history...');
       const insertHistoryQuery = `
         INSERT INTO hd_upload_history (
@@ -131,16 +119,13 @@ const OpenOrdersUpload = () => {
       
       if (historyError) {
         console.error('Error recording upload history:', historyError);
-        // This is non-critical, so we'll just log it
       }
       
-      // Success!
       console.log('Upload completed successfully!');
       toast.success(`Successfully uploaded ${parsedData.length} orders`);
       setUploadSuccess(true);
       setIsProcessing(false);
       
-      // After 3 seconds, navigate back to the dashboard
       setTimeout(() => {
         navigate('/admin/uploads/harley/dashboard');
       }, 3000);
@@ -160,7 +145,6 @@ const OpenOrdersUpload = () => {
         <p className="text-orange-400/80">Import order information from H-D NET Open Orders screen</p>
       </div>
       
-      {/* Instructions Card */}
       <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="flex items-center text-orange-500">
@@ -197,7 +181,6 @@ const OpenOrdersUpload = () => {
         </CardContent>
       </Card>
       
-      {/* Upload Card */}
       <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="flex items-center text-orange-500">
