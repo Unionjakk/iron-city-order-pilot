@@ -1,4 +1,3 @@
-
 import { AlertCircle, Archive, MapPin, Package } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -35,9 +34,11 @@ export interface ShopifyOrder {
 
 interface OrdersTableProps {
   orders: ShopifyOrder[];
+  showStatus?: boolean;
+  emptyMessage?: string;
 }
 
-const OrdersTable = ({ orders }: OrdersTableProps) => {
+const OrdersTable = ({ orders, showStatus = true, emptyMessage = "No orders to display" }: OrdersTableProps) => {
   // Function to render status badge
   const renderStatusBadge = (status: string) => {
     switch (status) {
@@ -138,9 +139,7 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
         <AlertCircle className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
         <h3 className="text-lg font-medium text-zinc-400">No orders to display</h3>
         <p className="text-zinc-500 mt-1">
-          {orders.some(o => o.archived_at) 
-            ? "No archived orders found. Orders are archived when they're fulfilled in Shopify."
-            : "When you import orders from Shopify, they will appear here."}
+          {emptyMessage}
         </p>
       </div>
     );
@@ -157,7 +156,9 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
             <TableHead className="text-zinc-400">Customer</TableHead>
             <TableHead className="text-zinc-400">Items</TableHead>
             <TableHead className="text-zinc-400">Location</TableHead>
-            <TableHead className="text-zinc-400">Status</TableHead>
+            {showStatus && (
+              <TableHead className="text-zinc-400">Status</TableHead>
+            )}
             {orders.some(o => o.archived_at) && (
               <TableHead className="text-zinc-400">Archived</TableHead>
             )}
@@ -191,9 +192,11 @@ const OrdersTable = ({ orders }: OrdersTableProps) => {
                   <span className="text-zinc-500">Not specified</span>
                 )}
               </TableCell>
-              <TableCell>
-                {renderStatusBadge(order.status)}
-              </TableCell>
+              {showStatus && (
+                <TableCell>
+                  {renderStatusBadge(order.status)}
+                </TableCell>
+              )}
               {orders.some(o => o.archived_at) && (
                 <TableCell className="text-zinc-400">
                   {order.archived_at ? formatDate(order.archived_at) : '-'}
