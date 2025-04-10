@@ -277,6 +277,10 @@ export type Database = {
         Args: { table_name: string; column_name: string }
         Returns: boolean
       }
+      execute_sql: {
+        Args: { sql: string }
+        Returns: Json[]
+      }
       get_archived_shopify_orders: {
         Args: { limit_count: number }
         Returns: {
@@ -297,6 +301,10 @@ export type Database = {
           shopify_order_id: string
           status: string
         }[]
+      }
+      get_shopify_order_number: {
+        Args: { order_id: string }
+        Returns: string
       }
       get_shopify_setting: {
         Args: { setting_name_param: string }

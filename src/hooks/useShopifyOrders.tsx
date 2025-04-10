@@ -11,48 +11,39 @@ export const useShopifyOrders = () => {
   const [autoImportEnabled, setAutoImportEnabled] = useState(false);
   const { toast } = useToast();
 
-  // Check if a column exists in a table using raw SQL query
+  // Check if a column exists in a table
   const checkColumnExists = async (tableName: string, columnName: string): Promise<boolean> => {
     try {
       // Check if we have cached the column existence result
-      const { data, error } = await supabase
+      const { data: settingData, error: settingError } = await supabase
         .from('shopify_settings')
         .select('setting_value')
-        .filter('setting_name', 'eq', `column_exists_${tableName}_${columnName}`)
+        .eq('setting_name', `column_exists_${tableName}_${columnName}`)
         .maybeSingle();
       
-      if (error) {
-        console.error(`Error checking if column ${columnName} exists in ${tableName}:`, error);
+      if (settingError) {
+        console.error(`Error checking if column ${columnName} exists in ${tableName}:`, settingError);
         return false;
       }
       
       // If we have cached data about this column, use it
-      if (data) {
-        return data.setting_value === 'true';
+      if (settingData) {
+        return settingData.setting_value === 'true';
       }
       
-      // Otherwise, use a direct SQL query to check
-      const query = `
-        SELECT EXISTS (
-          SELECT 1
-          FROM information_schema.columns
-          WHERE table_schema = 'public'
-            AND table_name = '${tableName}'
-            AND column_name = '${columnName}'
-        ) as exists
-      `;
+      // Otherwise, use the column_exists function
+      const { data: existsData, error: existsError } = await supabase
+        .rpc('column_exists', { 
+          table_name: tableName,
+          column_name: columnName
+        });
       
-      const { data: existsData, error: sqlError } = await supabase.rpc('execute_sql', { 
-        sql: query 
-      });
-      
-      if (sqlError) {
-        console.error(`Error with SQL check for column ${columnName} in ${tableName}:`, sqlError);
+      if (existsError) {
+        console.error(`Error with column_exists check for ${columnName} in ${tableName}:`, existsError);
         
         // Fallback: try to manually check using a select query
         try {
           // Try to query the table with a limit of 1 row
-          // If the column doesn't exist, we'll get an error
           const { data: tableData, error: tableError } = await supabase
             .from(tableName)
             .select('*')
@@ -75,18 +66,16 @@ export const useShopifyOrders = () => {
         }
       }
       
-      const exists = existsData && existsData[0] && existsData[0].exists === true;
-      
       // Cache the result for future checks
       await supabase
         .from('shopify_settings')
         .upsert({
           setting_name: `column_exists_${tableName}_${columnName}`,
-          setting_value: exists ? 'true' : 'false',
+          setting_value: existsData ? 'true' : 'false',
           updated_at: new Date().toISOString()
         });
       
-      return exists;
+      return !!existsData;
     } catch (error) {
       console.error(`Exception checking if column ${columnName} exists:`, error);
       return false;
@@ -189,6 +178,9 @@ export const useShopifyOrders = () => {
             // Add shopify_order_number if it exists in the data
             if (hasOrderNumberColumn && 'shopify_order_number' in order) {
               orderObj.shopify_order_number = order.shopify_order_number || '';
+            } else {
+              // Use shopify_order_id as fallback
+              orderObj.shopify_order_number = order.shopify_order_id;
             }
             
             return orderObj;
@@ -214,6 +206,9 @@ export const useShopifyOrders = () => {
             // Add shopify_order_number if it exists in the data
             if (hasOrderNumberColumn && 'shopify_order_number' in order) {
               orderObj.shopify_order_number = order.shopify_order_number || '';
+            } else {
+              // Use shopify_order_id as fallback
+              orderObj.shopify_order_number = order.shopify_order_id;
             }
             
             return orderObj;
@@ -307,6 +302,9 @@ export const useShopifyOrders = () => {
               // Add shopify_order_number if it exists in the data
               if (hasArchivedOrderNumberColumn && 'shopify_order_number' in order) {
                 typedOrder.shopify_order_number = order.shopify_order_number || '';
+              } else {
+                // Use shopify_order_id as fallback
+                typedOrder.shopify_order_number = order.shopify_order_id;
               }
               
               return typedOrder;
@@ -334,6 +332,9 @@ export const useShopifyOrders = () => {
               // Add shopify_order_number if it exists in the data
               if (hasArchivedOrderNumberColumn && 'shopify_order_number' in order) {
                 typedOrder.shopify_order_number = order.shopify_order_number || '';
+              } else {
+                // Use shopify_order_id as fallback 
+                typedOrder.shopify_order_number = order.shopify_order_id;
               }
               
               return typedOrder;
