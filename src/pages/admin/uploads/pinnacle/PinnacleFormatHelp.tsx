@@ -21,7 +21,7 @@ const PinnacleFormatHelp = () => {
         </SheetHeader>
         <div className="mt-6">
           <img 
-            src="/lovable-uploads/839e8ad6-7bed-4564-9527-a55ca404f5ab.png" 
+            src="/lovable-uploads/90c8196f-a4b3-40ed-a9d0-fede7295585c.png" 
             alt="Pinnacle Excel Format Example" 
             className="max-w-full h-auto rounded-lg border border-zinc-700" 
           />
@@ -29,16 +29,16 @@ const PinnacleFormatHelp = () => {
             <h4 className="text-orange-400 font-medium text-sm mb-2">Required Columns</h4>
             <ul className="list-disc pl-5 text-sm text-zinc-300 space-y-1">
               <li>Part No - Unique identifier for the part</li>
-              <li>Prod Group - Product category classification</li>
+              <li>Prod Group / Product Group - Product category classification</li>
               <li>Description - Part description text</li>
-              <li>Bin Locations - Storage location</li>
-              <li>Stock Holding - Quantity currently in stock</li>
+              <li>Bin Locations / Bin Location 1 - Storage location</li>
+              <li>Stock / Stock Holding - Quantity currently in stock</li>
               <li>Av Cost - Average cost per unit</li>
-              <li>Tot Av Cost - Total average cost</li>
+              <li>Tot Av Cost / Total Av Cost - Total average cost</li>
               <li>Cost - Current cost per unit</li>
-              <li>Tot Cost - Total current cost</li>
+              <li>Tot Cost / Total Cost - Total current cost</li>
               <li>Retail - Retail price per unit</li>
-              <li>Tot Retail - Total retail value</li>
+              <li>Tot Retail / Total Retail - Total retail value</li>
             </ul>
           </div>
         </div>

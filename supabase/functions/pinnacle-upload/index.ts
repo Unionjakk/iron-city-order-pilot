@@ -63,9 +63,23 @@ serve(async (req: Request) => {
     }
 
     // Validate that required columns exist
-    const requiredColumns = ['Part No', 'Description', 'Stock Holding'];
     const firstRow = data[0] as Record<string, any>;
-    const missingColumns = requiredColumns.filter(col => !(col in firstRow));
+    
+    // Check for required columns with multiple possible names
+    const requiredColumnMappings = {
+      'Part No': ['Part No'],
+      'Description': ['Description'],
+      'Stock Holding': ['Stock Holding', 'Stock'] // Allow both "Stock Holding" and "Stock" as valid column names
+    };
+    
+    const missingColumns = [];
+    
+    for (const [requiredColumn, possibleNames] of Object.entries(requiredColumnMappings)) {
+      const hasColumn = possibleNames.some(name => name in firstRow);
+      if (!hasColumn) {
+        missingColumns.push(requiredColumn);
+      }
+    }
     
     if (missingColumns.length > 0) {
       return new Response(JSON.stringify({ 
@@ -86,19 +100,24 @@ serve(async (req: Request) => {
     await supabase.rpc('execute_sql', { sql: 'DELETE FROM pinnacle_stock' });
 
     // 2. Prepare stock items for insertion
-    const stockItems = data.map((row: any) => ({
-      part_no: row['Part No'],
-      product_group: row['Prod Group'] || null,
-      description: row['Description'] || null,
-      bin_location: row['Bin Locations'] || null,
-      stock_quantity: row['Stock Holding'] ? parseFloat(row['Stock Holding']) : null,
-      average_cost: row['Av Cost'] ? parseFloat(row['Av Cost']) : null,
-      total_average_cost: row['Tot Av Cost'] ? parseFloat(row['Tot Av Cost']) : null,
-      cost: row['Cost'] ? parseFloat(row['Cost']) : null,
-      total_cost: row['Tot Cost'] ? parseFloat(row['Tot Cost']) : null,
-      retail_price: row['Retail'] ? parseFloat(row['Retail']) : null,
-      total_retail: row['Tot Retail'] ? parseFloat(row['Tot Retail']) : null,
-    }));
+    const stockItems = data.map((row: any) => {
+      // Determine which column name to use for stock quantity
+      const stockQuantity = row['Stock Holding'] !== undefined ? row['Stock Holding'] : row['Stock'];
+      
+      return {
+        part_no: row['Part No'],
+        product_group: row['Prod Group'] || row['Product Group'] || null,
+        description: row['Description'] || null,
+        bin_location: row['Bin Locations'] || row['Bin Location 1'] || null,
+        stock_quantity: stockQuantity ? parseFloat(stockQuantity) : null,
+        average_cost: row['Av Cost'] ? parseFloat(row['Av Cost']) : null,
+        total_average_cost: row['Tot Av Cost'] || row['Total Av Cost'] ? parseFloat(row['Tot Av Cost'] || row['Total Av Cost']) : null,
+        cost: row['Cost'] ? parseFloat(row['Cost']) : null,
+        total_cost: row['Tot Cost'] || row['Total Cost'] ? parseFloat(row['Tot Cost'] || row['Total Cost']) : null,
+        retail_price: row['Retail'] ? parseFloat(row['Retail']) : null,
+        total_retail: row['Tot Retail'] || row['Total Retail'] ? parseFloat(row['Tot Retail'] || row['Total Retail']) : null,
+      };
+    });
 
     // Insert records in batches
     const batchSize = 100;
