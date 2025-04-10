@@ -45,6 +45,8 @@ serve(async (req: Request) => {
       });
     }
 
+    console.log("Reading Excel file:", file.name, "Size:", file.size);
+
     // Read Excel file
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'array' });
@@ -62,20 +64,27 @@ serve(async (req: Request) => {
       });
     }
 
+    console.log("Excel data loaded, first row:", JSON.stringify(data[0]));
+
     // Validate that required columns exist
     const firstRow = data[0] as Record<string, any>;
     
     // Check for required columns with multiple possible names
     const requiredColumnMappings = {
-      'Part No': ['Part No'],
-      'Description': ['Description'],
-      'Stock Holding': ['Stock Holding', 'Stock'] // Allow both "Stock Holding" and "Stock" as valid column names
+      'Part No': ['Part No', 'PartNo', 'Part_No', 'Part Number'],
+      'Description': ['Description', 'Desc', 'Item Description'],
+      'Stock Holding': ['Stock Holding', 'Stock', 'Stock Qty', 'Quantity']
     };
     
     const missingColumns = [];
     
     for (const [requiredColumn, possibleNames] of Object.entries(requiredColumnMappings)) {
-      const hasColumn = possibleNames.some(name => name in firstRow);
+      const hasColumn = possibleNames.some(name => {
+        const exists = name in firstRow;
+        if (exists) console.log(`Found column "${name}" for required "${requiredColumn}"`);
+        return exists;
+      });
+      
       if (!hasColumn) {
         missingColumns.push(requiredColumn);
       }
@@ -95,57 +104,91 @@ serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Begin transaction to replace all stock data
-    // 1. Delete existing records using SQL function
-    await supabase.rpc('execute_sql', { sql: 'DELETE FROM pinnacle_stock' });
+    console.log("Deleting existing stock data");
+    
+    // 1. Delete existing records
+    const { error: deleteError } = await supabase
+      .from('pinnacle_stock')
+      .delete()
+      .gte('id', '00000000-0000-0000-0000-000000000000');
+    
+    if (deleteError) {
+      console.error("Error deleting existing data:", deleteError);
+      throw deleteError;
+    }
 
+    // Helper function to get value from multiple possible column names
+    const getValue = (row: Record<string, any>, possibleNames: string[], defaultValue: any = null) => {
+      for (const name of possibleNames) {
+        if (name in row) {
+          return row[name];
+        }
+      }
+      return defaultValue;
+    };
+
+    console.log("Preparing stock items for insertion");
+    
     // 2. Prepare stock items for insertion
     const stockItems = data.map((row: any) => {
-      // Determine which column name to use for stock quantity
-      const stockQuantity = row['Stock Holding'] !== undefined ? row['Stock Holding'] : row['Stock'];
+      // Find the right column names for each required field
+      const partNo = getValue(row, ['Part No', 'PartNo', 'Part_No', 'Part Number']);
+      const productGroup = getValue(row, ['Prod Group', 'Product Group', 'ProdGroup', 'Group']);
+      const description = getValue(row, ['Description', 'Desc', 'Item Description']);
+      const binLocation = getValue(row, ['Bin Locations', 'Bin Location', 'Bin Location 1', 'Bin']);
+      const stockQuantity = getValue(row, ['Stock Holding', 'Stock', 'Stock Qty', 'Quantity']);
+      const avgCost = getValue(row, ['Av Cost', 'Average Cost', 'Avg Cost']);
+      const totalAvgCost = getValue(row, ['Tot Av Cost', 'Total Av Cost', 'Total Average Cost']);
+      const cost = getValue(row, ['Cost', 'Unit Cost']);
+      const totalCost = getValue(row, ['Tot Cost', 'Total Cost']);
+      const retailPrice = getValue(row, ['Retail', 'Retail Price']);
+      const totalRetail = getValue(row, ['Tot Retail', 'Total Retail']);
       
+      // Convert numeric values to numbers
       return {
-        part_no: row['Part No'],
-        product_group: row['Prod Group'] || row['Product Group'] || null,
-        description: row['Description'] || null,
-        bin_location: row['Bin Locations'] || row['Bin Location 1'] || null,
-        stock_quantity: stockQuantity ? parseFloat(stockQuantity) : null,
-        average_cost: row['Av Cost'] ? parseFloat(row['Av Cost']) : null,
-        total_average_cost: row['Tot Av Cost'] || row['Total Av Cost'] ? parseFloat(row['Tot Av Cost'] || row['Total Av Cost']) : null,
-        cost: row['Cost'] ? parseFloat(row['Cost']) : null,
-        total_cost: row['Tot Cost'] || row['Total Cost'] ? parseFloat(row['Tot Cost'] || row['Total Cost']) : null,
-        retail_price: row['Retail'] ? parseFloat(row['Retail']) : null,
-        total_retail: row['Tot Retail'] || row['Total Retail'] ? parseFloat(row['Tot Retail'] || row['Total Retail']) : null,
+        part_no: partNo,
+        product_group: productGroup,
+        description: description,
+        bin_location: binLocation,
+        stock_quantity: stockQuantity !== null ? parseFloat(stockQuantity) : null,
+        average_cost: avgCost !== null ? parseFloat(avgCost) : null,
+        total_average_cost: totalAvgCost !== null ? parseFloat(totalAvgCost) : null,
+        cost: cost !== null ? parseFloat(cost) : null,
+        total_cost: totalCost !== null ? parseFloat(totalCost) : null,
+        retail_price: retailPrice !== null ? parseFloat(retailPrice) : null,
+        total_retail: totalRetail !== null ? parseFloat(totalRetail) : null,
       };
     });
 
-    // Insert records in batches
-    const batchSize = 100;
-    for (let i = 0; i < stockItems.length; i += batchSize) {
-      const batch = stockItems.slice(i, i + batchSize);
-      
-      // Create an INSERT statement for each batch item
-      for (const item of batch) {
-        const columns = Object.keys(item).filter(key => item[key] !== null);
-        const values = columns.map(col => {
-          const val = item[col];
-          return typeof val === 'string' ? `'${val.replace(/'/g, "''")}'` : val;
-        });
-        
-        const columnsStr = columns.join(', ');
-        const valuesStr = values.join(', ');
-        
-        await supabase.rpc('execute_sql', {
-          sql: `INSERT INTO pinnacle_stock (id, ${columnsStr}) VALUES (gen_random_uuid(), ${valuesStr})`
-        });
-      }
+    console.log(`Inserting ${stockItems.length} stock items`);
+    
+    // 3. Insert all items in a single batch (more efficient)
+    const { error: insertError } = await supabase
+      .from('pinnacle_stock')
+      .insert(stockItems);
+    
+    if (insertError) {
+      console.error("Error inserting stock data:", insertError);
+      throw insertError;
     }
 
-    // 3. Record upload history using SQL function
-    await supabase.rpc('execute_sql', {
-      sql: `INSERT INTO pinnacle_upload_history (filename, records_count, status) 
-            VALUES ('${file.name.replace(/'/g, "''")}', ${stockItems.length}, 'success')`
-    });
+    console.log("Recording upload history");
+    
+    // 4. Record upload history
+    const { error: historyError } = await supabase
+      .from('pinnacle_upload_history')
+      .insert({
+        filename: file.name,
+        records_count: stockItems.length,
+        status: 'success'
+      });
+    
+    if (historyError) {
+      console.error("Error recording upload history:", historyError);
+      // Non-fatal error, continue
+    }
+
+    console.log("Upload completed successfully");
 
     return new Response(JSON.stringify({ 
       message: 'File processed successfully', 
@@ -164,11 +207,14 @@ serve(async (req: Request) => {
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
       const supabase = createClient(supabaseUrl, supabaseKey);
       
-      await supabase.rpc('execute_sql', {
-        sql: `INSERT INTO pinnacle_upload_history 
-              (filename, records_count, status, error_message) 
-              VALUES ('failed_upload.xlsx', 0, 'error', '${(error instanceof Error ? error.message : 'Unknown error').replace(/'/g, "''")}')`
-      });
+      await supabase
+        .from('pinnacle_upload_history')
+        .insert({
+          filename: 'failed_upload.xlsx',
+          records_count: 0,
+          status: 'error',
+          error_message: error instanceof Error ? error.message : 'Unknown error'
+        });
     } catch (logError) {
       console.error('Error logging upload failure:', logError);
     }

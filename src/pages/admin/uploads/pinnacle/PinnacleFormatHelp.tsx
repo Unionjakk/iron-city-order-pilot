@@ -29,10 +29,14 @@ const PinnacleFormatHelp = () => {
             <h4 className="text-orange-400 font-medium text-sm mb-2">Required Columns</h4>
             <ul className="list-disc pl-5 text-sm text-zinc-300 space-y-1">
               <li>Part No - Unique identifier for the part</li>
-              <li>Prod Group / Product Group - Product category classification</li>
               <li>Description - Part description text</li>
+              <li>Stock Holding / Stock - Quantity currently in stock</li>
+            </ul>
+            
+            <h4 className="text-orange-400 font-medium text-sm mt-4 mb-2">Optional Columns</h4>
+            <ul className="list-disc pl-5 text-sm text-zinc-300 space-y-1">
+              <li>Prod Group / Product Group - Product category classification</li>
               <li>Bin Locations / Bin Location 1 - Storage location</li>
-              <li>Stock / Stock Holding - Quantity currently in stock</li>
               <li>Av Cost - Average cost per unit</li>
               <li>Tot Av Cost / Total Av Cost - Total average cost</li>
               <li>Cost - Current cost per unit</li>
@@ -40,6 +44,11 @@ const PinnacleFormatHelp = () => {
               <li>Retail - Retail price per unit</li>
               <li>Tot Retail / Total Retail - Total retail value</li>
             </ul>
+            
+            <div className="mt-4 p-2 bg-orange-950/30 border border-orange-700/30 rounded text-orange-300 text-xs">
+              <strong>Note:</strong> The system is flexible with column names and will recognize common variations.
+              For example, "Stock Holding" or "Stock" will both work for the stock quantity field.
+            </div>
           </div>
         </div>
       </SheetContent>

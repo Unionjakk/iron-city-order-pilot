@@ -56,12 +56,17 @@ const PinnacleUploadCard = ({
         body: formData,
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Upload failed");
+      // Check if the response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Received non-JSON response from server');
       }
       
       const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || "Upload failed");
+      }
       
       toast({
         title: "Upload successful",
@@ -97,9 +102,11 @@ const PinnacleUploadCard = ({
     setIsDeleting(true);
     
     try {
-      // Use execute_sql function to delete all records
+      // Delete all records directly
       const { error } = await supabase
-        .rpc('execute_sql', { sql: 'DELETE FROM pinnacle_stock' });
+        .from('pinnacle_stock')
+        .delete()
+        .gte('id', '00000000-0000-0000-0000-000000000000');
       
       if (error) throw error;
       
