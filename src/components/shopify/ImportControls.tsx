@@ -1,12 +1,15 @@
 
 import { useState, useEffect } from 'react';
-import { Clock, Info, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import ImportStatus from './ImportStatus';
+import ImportActions from './ImportActions';
+import ImportAlerts from './ImportAlerts';
+import { 
+  fetchShopifySettings, 
+  checkForImportedOrders,
+  toggleAutoImport,
+  executeManualImport
+} from './services/importService';
 
 interface ImportControlsProps {
   lastImport: string | null;
@@ -25,114 +28,18 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   const [isSwitchingAutoImport, setIsSwitchingAutoImport] = useState(false);
   const { toast } = useToast();
 
-  // The special value 'placeholder_token' represents no token being set
-  const PLACEHOLDER_TOKEN_VALUE = 'placeholder_token';
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'Never';
-    
-    const date = new Date(dateString);
-    // Check if date is valid
-    if (isNaN(date.getTime())) return 'Invalid date';
-    
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  };
-
-  // Calculate time passed since a date
-  const getTimeSinceLastRun = (dateString: string | null) => {
-    if (!dateString) return 'never run';
-    
-    const lastRunDate = new Date(dateString);
-    if (isNaN(lastRunDate.getTime())) return 'invalid date';
-    
-    const now = new Date();
-    const diffMs = now.getTime() - lastRunDate.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'just now';
-    if (diffMins === 1) return '1 minute ago';
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours === 1) return '1 hour ago';
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return '1 day ago';
-    return `${diffDays} days ago`;
-  };
-
-  // Check if there are any imported orders
-  const checkForImportedOrders = async () => {
+  // Load settings and check for orders
+  const loadSettingsAndOrders = async () => {
     try {
-      // Count rows in the shopify_orders table
-      const { count, error } = await supabase
-        .from('shopify_orders')
-        .select('*', { count: 'exact', head: true });
+      const { lastSyncTime, lastCronRun, autoImportEnabled } = await fetchShopifySettings();
+      setLastSyncTime(lastSyncTime);
+      setLastCronRun(lastCronRun);
+      setAutoImportEnabled(autoImportEnabled);
       
-      if (error) {
-        console.error('Error checking for imported orders:', error);
-        return;
-      }
-      
-      // If we have any orders, set hasImportedOrders to true
-      setHasImportedOrders(count !== null && count > 0);
+      const hasOrders = await checkForImportedOrders();
+      setHasImportedOrders(hasOrders);
     } catch (error) {
-      console.error('Exception checking for imported orders:', error);
-    }
-  };
-
-  // Get last sync time from database
-  const fetchLastSyncTime = async () => {
-    try {
-      const { data: syncTimeData, error: syncTimeError } = await supabase.rpc('get_shopify_setting', { 
-        setting_name_param: 'last_sync_time' 
-      });
-      
-      if (syncTimeError) {
-        console.error('Error retrieving last sync time from database:', syncTimeError);
-        return;
-      }
-      
-      if (syncTimeData && typeof syncTimeData === 'string' && syncTimeData !== PLACEHOLDER_TOKEN_VALUE) {
-        setLastSyncTime(syncTimeData);
-      }
-      
-      // Get last cron run time
-      const { data: cronRunData, error: cronRunError } = await supabase.rpc('get_shopify_setting', { 
-        setting_name_param: 'last_cron_run' 
-      });
-      
-      if (cronRunError) {
-        console.error('Error retrieving last cron run time from database:', cronRunError);
-        return;
-      }
-      
-      if (cronRunData && typeof cronRunData === 'string') {
-        setLastCronRun(cronRunData);
-      }
-      
-      // Check if auto-import is enabled
-      const { data: autoImportData, error: autoImportError } = await supabase.rpc('get_shopify_setting', { 
-        setting_name_param: 'auto_import_enabled' 
-      });
-      
-      if (autoImportError) {
-        console.error('Error retrieving auto-import setting from database:', autoImportError);
-        return;
-      }
-      
-      // Set auto-import status - make sure to do a strict comparison with the string 'true'
-      setAutoImportEnabled(autoImportData === 'true');
-    } catch (error) {
-      console.error('Exception retrieving settings:', error);
+      console.error('Error loading settings and orders:', error);
     }
   };
 
@@ -140,8 +47,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   const handleRefreshStatus = async () => {
     setIsRefreshingStatus(true);
     try {
-      await fetchLastSyncTime();
-      await checkForImportedOrders();
+      await loadSettingsAndOrders();
       toast({
         title: "Status Refreshed",
         description: "Auto-import status has been refreshed.",
@@ -164,18 +70,7 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     setIsSwitchingAutoImport(true);
     try {
       const newValue = !autoImportEnabled;
-      
-      // Update the setting in the database
-      const { error } = await supabase.rpc('upsert_shopify_setting', {
-        setting_name_param: 'auto_import_enabled',
-        setting_value_param: newValue ? 'true' : 'false'
-      });
-      
-      if (error) {
-        console.error('Error updating auto-import setting:', error);
-        throw error;
-      }
-      
+      await toggleAutoImport(newValue);
       setAutoImportEnabled(newValue);
       
       toast({
@@ -197,72 +92,22 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
     }
   };
 
-  // Get token from database
-  const getTokenFromDatabase = async () => {
-    try {
-      // Using RPC for type safety
-      const { data, error } = await supabase.rpc('get_shopify_setting', { 
-        setting_name_param: 'shopify_token' 
-      });
-      
-      if (error) {
-        console.error('Error retrieving token from database:', error);
-        return null;
-      }
-      
-      // Check if we have a valid token (not the placeholder)
-      if (data && typeof data === 'string' && data !== PLACEHOLDER_TOKEN_VALUE) {
-        return data;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Exception retrieving token:', error);
-      return null;
-    }
-  };
-
-  // Handle manual import - simplified to just one proper import function
+  // Handle manual import
   const handleManualImport = async () => {
     setIsImporting(true);
     
     try {
-      const token = await getTokenFromDatabase();
-      
-      if (!token) {
-        toast({
-          title: "Error",
-          description: "No API token found in database. Please add your Shopify API token first.",
-          variant: "destructive",
-        });
-        setIsImporting(false);
-        return;
-      }
-      
-      // Call the edge function to sync orders with the complete synchronization logic
-      const { data, error } = await supabase.functions.invoke('shopify-sync', {
-        body: { apiToken: token }
-      });
-      
-      if (error) {
-        console.error('Error importing orders:', error);
-        throw new Error(error.message || 'Failed to sync with Shopify');
-      }
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to sync with Shopify');
-      }
+      const result = await executeManualImport();
       
       // Fetch the updated orders to refresh the UI
       await fetchRecentOrders();
       
       // Refresh the last sync time
-      await fetchLastSyncTime();
-      await checkForImportedOrders();
+      await loadSettingsAndOrders();
       
       toast({
         title: "Import Completed",
-        description: `Successfully imported ${data.imported} new orders, archived ${data.archived} fulfilled orders, and fixed ${data.fixed} incorrectly archived orders.`,
+        description: `Successfully imported ${result.imported} new orders, archived ${result.archived} fulfilled orders, and fixed ${result.fixed} incorrectly archived orders.`,
         variant: "default",
       });
     } catch (error) {
@@ -279,152 +124,41 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
 
   // Fetch last sync time and check for imported orders on component mount
   useEffect(() => {
-    fetchLastSyncTime();
-    checkForImportedOrders();
+    loadSettingsAndOrders();
     
     // Set up timer to check status every minute
     const intervalId = setInterval(() => {
-      fetchLastSyncTime();
-      checkForImportedOrders();
+      loadSettingsAndOrders();
     }, 60000);
     
     return () => clearInterval(intervalId);
   }, []);
 
-  // Determine if auto-import might be stalled
-  const isAutoImportPotentiallyStalled = () => {
-    if (!autoImportEnabled || !lastCronRun) return false;
-    
-    const lastRunDate = new Date(lastCronRun);
-    if (isNaN(lastRunDate.getTime())) return false;
-    
-    const now = new Date();
-    const diffMs = now.getTime() - lastRunDate.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    // If more than 30 minutes have passed since the last cron run, it might be stalled
-    return diffMins > 30;
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center text-zinc-400">
-            <Clock className="mr-2 h-4 w-4" />
-            <span>
-              {lastSyncTime 
-                ? `Last import: ${formatDate(lastSyncTime)}` 
-                : lastImport 
-                  ? `Last import: ${formatDate(lastImport)}` 
-                  : 'No imports have been run yet'}
-            </span>
-          </div>
-          
-          {autoImportEnabled ? (
-            <div className="flex items-center text-emerald-400">
-              <CheckCircle className="mr-2 h-4 w-4" />
-              <span>
-                Auto-import enabled - runs every 15 minutes {lastCronRun ? `(last run: ${getTimeSinceLastRun(lastCronRun)})` : '(never run yet)'}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center text-amber-400">
-              <AlertTriangle className="mr-2 h-4 w-4" />
-              <span>Auto-import is disabled - only manual imports are available</span>
-            </div>
-          )}
-        </div>
+        <ImportStatus
+          lastSyncTime={lastSyncTime}
+          lastImport={lastImport}
+          lastCronRun={lastCronRun}
+          autoImportEnabled={autoImportEnabled}
+        />
         
-        <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="auto-import"
-              checked={autoImportEnabled}
-              onCheckedChange={handleToggleAutoImport}
-              disabled={isSwitchingAutoImport}
-            />
-            <Label htmlFor="auto-import" className="text-sm">
-              {isSwitchingAutoImport ? 'Updating...' : 'Auto Import'}
-            </Label>
-          </div>
-          
-          <Button 
-            onClick={handleRefreshStatus} 
-            variant="outline"
-            size="sm"
-            disabled={isRefreshingStatus}
-            className="whitespace-nowrap"
-          >
-            {isRefreshingStatus ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Refreshing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh Status
-              </>
-            )}
-          </Button>
-          
-          <Button 
-            onClick={handleManualImport} 
-            className="bg-orange-500 hover:bg-orange-600"
-            disabled={isImporting}
-          >
-            {isImporting ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Importing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Import Orders Now
-              </>
-            )}
-          </Button>
-        </div>
+        <ImportActions
+          isRefreshingStatus={isRefreshingStatus}
+          isSwitchingAutoImport={isSwitchingAutoImport}
+          isImporting={isImporting}
+          autoImportEnabled={autoImportEnabled}
+          onRefreshStatus={handleRefreshStatus}
+          onToggleAutoImport={handleToggleAutoImport}
+          onManualImport={handleManualImport}
+        />
       </div>
       
-      {isAutoImportPotentiallyStalled() && (
-        <Alert variant="warning" className="bg-amber-900/20 border-amber-500/50 mt-4">
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
-          <AlertTitle>Auto-import may be stalled</AlertTitle>
-          <AlertDescription className="text-zinc-300">
-            The auto-import hasn't run in over 30 minutes. This could indicate an issue with the cron job.
-            Try refreshing the status or checking the database logs if this persists.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      <Alert className="bg-zinc-800/50 border-zinc-700/50">
-        <Info className="h-4 w-4 text-zinc-400" />
-        <AlertDescription className="text-zinc-300">
-          <p>Auto-import runs every 15 minutes when enabled. You can manually trigger an import anytime.</p>
-          {lastCronRun && (
-            <p className="mt-1 text-sm text-zinc-400">
-              Next scheduled run: approximately {
-                (() => {
-                  if (!lastCronRun) return 'unknown';
-                  const lastRun = new Date(lastCronRun);
-                  if (isNaN(lastRun.getTime())) return 'unknown';
-                  
-                  // Calculate next run (15 minutes after last run)
-                  const nextRun = new Date(lastRun.getTime() + 15 * 60 * 1000);
-                  // Format the next run time
-                  return new Intl.DateTimeFormat('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  }).format(nextRun);
-                })()
-              }
-            </p>
-          )}
-        </AlertDescription>
-      </Alert>
+      <ImportAlerts
+        autoImportEnabled={autoImportEnabled}
+        lastCronRun={lastCronRun}
+      />
     </div>
   );
 };
