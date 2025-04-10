@@ -21,6 +21,12 @@ import HarleyUpload from "@/pages/admin/uploads/HarleyUpload";
 import ShopifyAPI from "@/pages/admin/uploads/ShopifyAPI";
 import AdminSettings from "@/pages/admin/AdminSettings";
 
+// Harley Davidson Pages
+import HarleyUploadDashboard from "@/pages/admin/uploads/harley/HarleyUploadDashboard";
+import OpenOrdersUpload from "@/pages/admin/uploads/harley/OpenOrdersUpload";
+import OrderLinesUpload from "@/pages/admin/uploads/harley/OrderLinesUpload";
+import BackordersUpload from "@/pages/admin/uploads/harley/BackordersUpload";
+
 // User Pages
 import UsersPage from "@/pages/users/UsersPage";
 
@@ -63,6 +69,13 @@ const App = () => (
                 <Route path="/admin/uploads" element={<UploadsIndex />} />
                 <Route path="/admin/uploads/pinnacle" element={<PinnacleUpload />} />
                 <Route path="/admin/uploads/harley" element={<HarleyUpload />} />
+                
+                {/* Harley Davidson Upload routes */}
+                <Route path="/admin/uploads/harley/dashboard" element={<HarleyUploadDashboard />} />
+                <Route path="/admin/uploads/harley/open-orders" element={<OpenOrdersUpload />} />
+                <Route path="/admin/uploads/harley/order-lines" element={<OrderLinesUpload />} />
+                <Route path="/admin/uploads/harley/backorders" element={<BackordersUpload />} />
+                
                 <Route path="/admin/uploads/shopify" element={<ShopifyAPI />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
               </Route>
