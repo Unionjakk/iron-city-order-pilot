@@ -8,6 +8,7 @@ export const useShopifyOrders = () => {
   const [archivedOrders, setArchivedOrders] = useState<ShopifyOrder[]>([]);
   const [lastImport, setLastImport] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [autoImportEnabled, setAutoImportEnabled] = useState(false);
 
   // Function to fetch recent orders from Supabase
   const fetchRecentOrders = async () => {
@@ -21,6 +22,13 @@ export const useShopifyOrders = () => {
       if (lastSyncData && typeof lastSyncData === 'string') {
         setLastImport(lastSyncData);
       }
+      
+      // Check if auto-import is enabled
+      const { data: autoImportData } = await supabase.rpc('get_shopify_setting', { 
+        setting_name_param: 'auto_import_enabled' 
+      });
+      
+      setAutoImportEnabled(autoImportData === 'true');
       
       // Fetch active orders - wait for migration to complete before running this query
       const { data: activeData, error: activeError } = await supabase
@@ -79,6 +87,7 @@ export const useShopifyOrders = () => {
     archivedOrders,
     lastImport,
     isLoading,
+    autoImportEnabled,
     fetchRecentOrders
   };
 };

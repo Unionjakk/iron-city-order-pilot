@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Clock, Info, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Clock, Info, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +16,8 @@ interface ImportControlsProps {
 const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) => {
   const [isImporting, setIsImporting] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [lastCronRun, setLastCronRun] = useState<string | null>(null);
+  const [autoImportEnabled, setAutoImportEnabled] = useState(false);
   const { toast } = useToast();
 
   // The special value 'placeholder_token' represents no token being set
@@ -36,20 +38,47 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   // Get last sync time from database
   const fetchLastSyncTime = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_shopify_setting', { 
+      const { data: syncTimeData, error: syncTimeError } = await supabase.rpc('get_shopify_setting', { 
         setting_name_param: 'last_sync_time' 
       });
       
-      if (error) {
-        console.error('Error retrieving last sync time from database:', error);
+      if (syncTimeError) {
+        console.error('Error retrieving last sync time from database:', syncTimeError);
         return;
       }
       
-      if (data && typeof data === 'string' && data !== PLACEHOLDER_TOKEN_VALUE) {
-        setLastSyncTime(data);
+      if (syncTimeData && typeof syncTimeData === 'string' && syncTimeData !== PLACEHOLDER_TOKEN_VALUE) {
+        setLastSyncTime(syncTimeData);
       }
+      
+      // Get last cron run time
+      const { data: cronRunData, error: cronRunError } = await supabase.rpc('get_shopify_setting', { 
+        setting_name_param: 'last_cron_run' 
+      });
+      
+      if (cronRunError) {
+        console.error('Error retrieving last cron run time from database:', cronRunError);
+        return;
+      }
+      
+      if (cronRunData && typeof cronRunData === 'string') {
+        setLastCronRun(cronRunData);
+      }
+      
+      // Check if auto-import is enabled
+      const { data: autoImportData, error: autoImportError } = await supabase.rpc('get_shopify_setting', { 
+        setting_name_param: 'auto_import_enabled' 
+      });
+      
+      if (autoImportError) {
+        console.error('Error retrieving auto-import setting from database:', autoImportError);
+        return;
+      }
+      
+      setAutoImportEnabled(autoImportData === 'true');
+      
     } catch (error) {
-      console.error('Exception retrieving last sync time:', error);
+      console.error('Exception retrieving settings:', error);
     }
   };
 
@@ -135,6 +164,11 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
   // Fetch last sync time on component mount
   useEffect(() => {
     fetchLastSyncTime();
+    
+    // Set up timer to check status every minute
+    const intervalId = setInterval(fetchLastSyncTime, 60000);
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   return (
@@ -151,10 +185,19 @@ const ImportControls = ({ lastImport, fetchRecentOrders }: ImportControlsProps) 
           </span>
         </div>
         
-        <div className="flex items-center text-amber-400">
-          <AlertTriangle className="mr-2 h-4 w-4" />
-          <span>Auto-import feature is in development - currently only manual imports are available</span>
-        </div>
+        {autoImportEnabled ? (
+          <div className="flex items-center text-emerald-400">
+            <CheckCircle className="mr-2 h-4 w-4" />
+            <span>
+              Auto-import enabled {lastCronRun && `(last run: ${formatDate(lastCronRun)})`}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center text-amber-400">
+            <AlertTriangle className="mr-2 h-4 w-4" />
+            <span>Auto-import is not currently active - only manual imports are available</span>
+          </div>
+        )}
       </div>
       
       <Button 

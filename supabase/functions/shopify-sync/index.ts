@@ -339,15 +339,18 @@ serve(async (req) => {
   try {
     // First try to get the token from the request body
     let apiToken;
+    let source = 'manual';
     
     if (req.method === 'POST') {
       // Extract API token from request body
       const body = await req.json();
       apiToken = body.apiToken;
+      // Extract the source if provided (manual or cron)
+      source = body.source || 'manual';
       
       // If no token in request, try to get it from the database
       if (!apiToken) {
-        console.log('No token in request, trying to get from database');
+        console.log(`No token in request (source: ${source}), trying to get from database`);
         apiToken = await getApiTokenFromDatabase();
         
         if (!apiToken) {
@@ -370,8 +373,19 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Starting Shopify sync (source: ${source})...`);
+    
     // Perform the sync operation
     const result = await syncShopifyOrders(apiToken);
+    
+    // If this was triggered by a cron job, update the last cron run time
+    if (source === 'cron') {
+      console.log('Updating last cron run time');
+      await supabase.rpc('upsert_shopify_setting', { 
+        setting_name_param: 'last_cron_run', 
+        setting_value_param: new Date().toISOString() 
+      });
+    }
     
     return new Response(
       JSON.stringify(result),

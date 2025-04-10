@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Shield, Archive, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Shield, Archive, AlertTriangle, Clock } from 'lucide-react';
 import { useShopifyOrders } from '@/hooks/useShopifyOrders';
 import ApiTokenFormComponent from '@/components/shopify/ApiTokenForm';
 import ImportControls from '@/components/shopify/ImportControls';
