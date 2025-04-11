@@ -10,13 +10,12 @@ export async function fetchOrdersWithLineItems(
   debug: (message: string) => void
 ): Promise<ShopifyOrder> {
   try {
-    // Get the base API endpoint
+    // Get the base API endpoint for orders
     const baseEndpoint = "https://opus-harley-davidson.myshopify.com/admin/api/2023-07";
     const url = `${baseEndpoint}/orders/${orderId}.json?fields=id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status,fulfillments,locations`;
     
-    debug(`Fetching from Shopify API: ${url}`);
+    debug(`Fetching order from Shopify API: ${url}`);
     debug(`Using API token: ${apiToken.substring(0, 4)}...${apiToken.substring(apiToken.length - 4)}`);
-    debug(`Token type: ${typeof apiToken}, length: ${apiToken.length}`);
     
     const response = await fetch(url, {
       method: "GET",
@@ -110,6 +109,7 @@ export async function fetchOrdersWithLineItems(
 
 /**
  * Fetches a specific line item from Shopify by order ID and line item ID
+ * This is a more direct and efficient way to get a single line item
  */
 export async function fetchSingleLineItem(
   apiToken: string,
@@ -119,45 +119,47 @@ export async function fetchSingleLineItem(
 ): Promise<ShopifyLineItem | null> {
   try {
     debug(`Fetching single line item: Order ID ${orderId}, Line Item ID ${lineItemId}`);
-    debug(`API Token format check: ${typeof apiToken === 'string' ? 'Valid format' : 'Invalid format'}, Length: ${apiToken?.length || 0}`);
-    debug(`First 4 chars of token: ${apiToken.substring(0, 4)}, last 4: ${apiToken.substring(apiToken.length - 4)}`);
     
-    // Direct API call instead of using fetchOrdersWithLineItems to bypass potential issues
+    // Direct API call to get the order with specific line items
     const baseEndpoint = "https://opus-harley-davidson.myshopify.com/admin/api/2023-07";
     const url = `${baseEndpoint}/orders/${orderId}.json?fields=id,line_items`;
     
-    debug(`Direct API call to: ${url}`);
-    
-    // Log all headers for debugging
-    const headers = {
-      "X-Shopify-Access-Token": apiToken,
-      "Content-Type": "application/json",
-      "Accept": "application/json"
-    };
-    debug(`Request headers: ${JSON.stringify(headers).replace(apiToken, "REDACTED")}`);
+    debug(`Calling Shopify API: ${url}`);
     
     const response = await fetch(url, {
       method: "GET",
-      headers: headers,
+      headers: {
+        "X-Shopify-Access-Token": apiToken,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
     });
     
     debug(`Shopify API response status: ${response.status} ${response.statusText}`);
     
     if (!response.ok) {
       const errorText = await response.text();
-      debug(`Direct Shopify API error (${response.status}): ${errorText}`);
-      throw new Error(`Failed to connect to Shopify API: ${response.status} - ${errorText || "Unknown error"}`);
+      debug(`ERROR: Shopify API returned ${response.status}: ${errorText}`);
+      
+      // Special case handling for common errors
+      if (response.status === 401) {
+        throw new Error("Authentication failed. Your Shopify API token might be invalid or expired.");
+      } else if (response.status === 404) {
+        throw new Error(`Order ${orderId} not found in Shopify.`);
+      } else if (response.status === 403) {
+        throw new Error("Access forbidden. Your API token might not have the necessary permissions.");
+      }
+      
+      throw new Error(`Failed to fetch from Shopify API: ${response.status} - ${errorText || "Unknown error"}`);
     }
     
     const data = await response.json();
-    debug(`Received data from Shopify: ${JSON.stringify(data).substring(0, 200)}...`);
+    debug(`Received order data from Shopify, checking for line item ${lineItemId}`);
     
     if (!data.order || !data.order.line_items) {
       debug(`No valid order or line items found for order ${orderId}`);
       return null;
     }
-    
-    debug(`Found order with ${data.order.line_items.length} line items`);
     
     // Find the specific line item
     const lineItem = data.order.line_items.find((item: any) => String(item.id) === String(lineItemId));

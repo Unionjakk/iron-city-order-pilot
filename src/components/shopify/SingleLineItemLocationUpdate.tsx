@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, MapPin, RefreshCw } from 'lucide-react';
+import { AlertCircle, MapPin, RefreshCw, HelpCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Code } from '@/components/ui/code';
 import DebugInfoPanel from './DebugInfoPanel';
 import { getTokenFromDatabase } from './services/importService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SingleLineItemLocationUpdateProps {
   onUpdateComplete: () => Promise<void>;
@@ -29,7 +30,7 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
   // Handle update for single line item
   const handleUpdateSingleItem = async () => {
     if (!orderId.trim() || !lineItemId.trim()) {
-      setError('Both Order ID and Line Item ID are required');
+      setError('Both Order ID and Line Item ID are required to identify a specific line item in Shopify');
       return;
     }
 
@@ -65,125 +66,75 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
         lineItemId: lineItemId
       };
       
-      // Using the hardcoded URL to avoid protected property access
-      const requestUrl = `${window.location.origin}/functions/v1/shopify-locations-sync`;
-      addDebugMessage(`Generated request URL: ${requestUrl}`);
-      
-      // Fall back to hardcoded URL if needed
-      const fallbackUrl = "https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/shopify-locations-sync";
-      addDebugMessage(`Using fallback URL if needed: ${fallbackUrl}`);
-      
-      const finalUrl = requestUrl.includes('functions/v1') ? requestUrl : fallbackUrl;
+      // Get the correct URL for the edge function
+      const edgeFunctionUrl = "https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/shopify-locations-sync";
+      addDebugMessage(`Calling Edge Function: ${edgeFunctionUrl}`);
+      addDebugMessage(`Request payload: ${JSON.stringify({...body, apiToken: "[REDACTED]"}, null, 2)}`);
       
       setRequestDetails({
-        url: finalUrl,
-        body: body
+        url: edgeFunctionUrl,
+        body: {
+          ...body,
+          apiToken: "[REDACTED]"
+        }
       });
       
-      addDebugMessage(`Calling Edge Function: ${finalUrl}`);
-      addDebugMessage(`Request payload: ${JSON.stringify(body, null, 2).replace(token, "[REDACTED]")}`);
+      // Call the edge function directly
+      const fetchResponse = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body)
+      });
       
-      // Call the edge function directly with a fetch request for more control
+      addDebugMessage(`Direct fetch response status: ${fetchResponse.status}`);
+      
+      const responseText = await fetchResponse.text();
+      addDebugMessage(`Response text (first 100 chars): ${responseText.substring(0, 100)}...`);
+      
+      let responseJson;
       try {
-        addDebugMessage("Attempting direct fetch to edge function...");
-        
-        const fetchResponse = await fetch(finalUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.getSession() ? 'session_token' : 'no_session'}`
-          },
-          body: JSON.stringify(body)
-        });
-        
-        addDebugMessage(`Direct fetch response status: ${fetchResponse.status}`);
-        
-        const responseText = await fetchResponse.text();
-        addDebugMessage(`Response text (first 100 chars): ${responseText.substring(0, 100)}...`);
-        
-        let responseJson;
-        try {
-          responseJson = JSON.parse(responseText);
-          addDebugMessage("Successfully parsed JSON response");
-        } catch (err) {
-          addDebugMessage(`Error parsing JSON: ${err}`);
-          responseJson = { error: "Invalid JSON response", rawText: responseText.substring(0, 100) + "..." };
-        }
-        
-        setResponseData({
-          status: fetchResponse.status,
-          statusText: fetchResponse.statusText,
-          data: responseJson
-        });
-        
-        if (!fetchResponse.ok) {
-          throw new Error(`Edge function error: ${fetchResponse.status} ${fetchResponse.statusText}`);
-        }
-        
-        if (!responseJson.success) {
-          throw new Error(responseJson.error || "Unknown error from edge function");
-        }
-        
-        addDebugMessage(`Successfully updated line item location info`);
-        
-        // Notify user
-        toast({
-          title: "Location Info Updated",
-          description: "Successfully updated location for the line item",
-          variant: "default",
-        });
-        
-      } catch (directFetchError: any) {
-        addDebugMessage(`Direct fetch failed: ${directFetchError.message}`);
-        addDebugMessage("Falling back to supabase.functions.invoke...");
-        
-        // Fall back to supabase.functions.invoke
-        const response = await supabase.functions.invoke('shopify-locations-sync', {
-          body: body
-        });
-        
-        // Store full response for display
-        setResponseData(response);
-        
-        if (response.error) {
-          console.error('Error invoking shopify-locations-sync function:', response.error);
-          addDebugMessage(`Error from Edge Function: ${response.error.message || 'Unknown error'}`);
-          throw new Error(`Failed to connect to Shopify API: ${response.error.message || 'Unknown error'}`);
-        }
-        
-        const data = response.data;
-        addDebugMessage(`Response received: ${JSON.stringify(data, null, 2)}`);
-        
-        if (!data || !data.success) {
-          const errorMsg = data?.error || 'Unknown error occurred during location info sync';
-          console.error('Location info sync failed:', errorMsg);
-          addDebugMessage(`Location sync failed: ${errorMsg}`);
-          throw new Error(`Location info sync failed: ${errorMsg}`);
-        }
-        
-        // Add debug messages from the edge function
-        if (data.debugMessages && Array.isArray(data.debugMessages)) {
-          data.debugMessages.forEach((message: string) => {
-            addDebugMessage(message);
-          });
-        }
-        
-        const resultMessage = data.updated > 0 
-          ? `Successfully updated location for line item ${lineItemId}`
-          : 'Operation completed but no updates were made';
-        
-        addDebugMessage(resultMessage);
-        
-        // Notify user
-        toast({
-          title: "Location Info Updated",
-          description: resultMessage,
-          variant: "default",
+        responseJson = JSON.parse(responseText);
+        addDebugMessage("Successfully parsed JSON response");
+      } catch (err) {
+        addDebugMessage(`Error parsing JSON: ${err}`);
+        responseJson = { error: "Invalid JSON response", rawText: responseText.substring(0, 100) + "..." };
+      }
+      
+      setResponseData({
+        status: fetchResponse.status,
+        statusText: fetchResponse.statusText,
+        data: responseJson
+      });
+      
+      if (!fetchResponse.ok) {
+        throw new Error(`Edge function error: ${fetchResponse.status} ${fetchResponse.statusText}`);
+      }
+      
+      if (!responseJson.success) {
+        throw new Error(responseJson.error || "Unknown error from edge function");
+      }
+      
+      // Add debug messages from the edge function if available
+      if (responseJson.debugMessages && Array.isArray(responseJson.debugMessages)) {
+        responseJson.debugMessages.forEach((message: string) => {
+          addDebugMessage(message);
         });
       }
       
+      addDebugMessage(`Successfully updated line item location info`);
+      
+      // Notify user
+      toast({
+        title: "Location Info Updated",
+        description: "Successfully updated location for the line item",
+        variant: "default",
+      });
+      
       // Refresh data
       await onUpdateComplete();
+      
     } catch (error: any) {
       console.error('Error updating location info:', error);
       setError(error.message || 'Unknown error during location update');
@@ -210,10 +161,31 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Alert className="bg-amber-900/20 border-amber-500/50">
+          <AlertCircle className="h-5 w-5 text-amber-500" />
+          <AlertTitle className="text-amber-400">Why Both IDs?</AlertTitle>
+          <AlertDescription className="text-zinc-300">
+            In Shopify's data structure, line items exist within orders. To identify a specific line item, 
+            we need both the Order ID (to find the order) and the Line Item ID (to find the specific item within that order).
+          </AlertDescription>
+        </Alert>
+        
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="orderId">Shopify Order ID</Label>
+              <Label htmlFor="orderId" className="flex items-center">
+                Shopify Order ID
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="ml-1 h-4 w-4 text-zinc-500" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">The Shopify Order ID (usually a long number)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </Label>
               <Input
                 id="orderId"
                 placeholder="e.g. 5212345678901"
@@ -223,7 +195,19 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lineItemId">Line Item ID</Label>
+              <Label htmlFor="lineItemId" className="flex items-center">
+                Line Item ID
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="ml-1 h-4 w-4 text-zinc-500" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">The specific Line Item ID within the order</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </Label>
               <Input
                 id="lineItemId"
                 placeholder="e.g. 12345678901234"
@@ -274,7 +258,7 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
               <div>
                 <span className="text-xs text-zinc-500">Request Body:</span>
                 <Code className="mt-1 text-emerald-400 whitespace-pre overflow-x-auto">
-                  {JSON.stringify({...requestDetails.body, apiToken: "[REDACTED]"}, null, 2)}
+                  {JSON.stringify(requestDetails.body, null, 2)}
                 </Code>
               </div>
             </div>
