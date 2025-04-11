@@ -64,7 +64,7 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
         lineItemId: lineItemId
       };
       
-      // Set request details for display - using a hardcoded URL to avoid protected property access
+      // Using the hardcoded URL to avoid protected property access
       const requestUrl = "https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/shopify-locations-sync";
       setRequestDetails({
         url: requestUrl,
@@ -84,6 +84,7 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
       
       if (response.error) {
         console.error('Error invoking shopify-locations-sync function:', response.error);
+        addDebugMessage(`Error from Edge Function: ${response.error.message || 'Unknown error'}`);
         throw new Error(`Failed to connect to Shopify API: ${response.error.message || 'Unknown error'}`);
       }
       
@@ -93,6 +94,7 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
       if (!data || !data.success) {
         const errorMsg = data?.error || 'Unknown error occurred during location info sync';
         console.error('Location info sync failed:', errorMsg);
+        addDebugMessage(`Location sync failed: ${errorMsg}`);
         throw new Error(`Location info sync failed: ${errorMsg}`);
       }
       
@@ -208,7 +210,7 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
               <div>
                 <span className="text-xs text-zinc-500">Request Body:</span>
                 <Code className="mt-1 text-emerald-400 whitespace-pre overflow-x-auto">
-                  {JSON.stringify(requestDetails.body, null, 2)}
+                  {JSON.stringify({...requestDetails.body, apiToken: "[REDACTED]"}, null, 2)}
                 </Code>
               </div>
             </div>

@@ -15,11 +15,14 @@ export async function fetchOrdersWithLineItems(
     const url = `${baseEndpoint}/orders/${orderId}.json?fields=id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status,fulfillments,locations`;
     
     debug(`Fetching from Shopify API: ${url}`);
+    debug(`Using API token: ${apiToken.substring(0, 4)}...${apiToken.substring(apiToken.length - 4)}`);
     
     const response = await fetch(url, {
+      method: "GET",
       headers: {
         "X-Shopify-Access-Token": apiToken,
         "Content-Type": "application/json",
+        "Accept": "application/json"
       },
     });
 
@@ -114,17 +117,42 @@ export async function fetchSingleLineItem(
 ): Promise<ShopifyLineItem | null> {
   try {
     debug(`Fetching single line item: Order ID ${orderId}, Line Item ID ${lineItemId}`);
+    debug(`API Token format check: ${typeof apiToken === 'string' ? 'Valid format' : 'Invalid format'}, Length: ${apiToken?.length || 0}`);
     
-    // Get the full order
-    const order = await fetchOrdersWithLineItems(apiToken, orderId, debug);
+    // Direct API call instead of using fetchOrdersWithLineItems to bypass potential issues
+    const baseEndpoint = "https://opus-harley-davidson.myshopify.com/admin/api/2023-07";
+    const url = `${baseEndpoint}/orders/${orderId}.json?fields=id,line_items`;
     
-    if (!order.line_items || !Array.isArray(order.line_items)) {
-      debug(`No line items found in order ${orderId}`);
+    debug(`Direct API call to: ${url}`);
+    
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "X-Shopify-Access-Token": apiToken,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+    });
+    
+    debug(`Shopify API response status: ${response.status} ${response.statusText}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      debug(`Direct Shopify API error (${response.status}): ${errorText}`);
+      throw new Error(`Failed to connect to Shopify API: ${response.status} - ${errorText || "Unknown error"}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.order || !data.order.line_items) {
+      debug(`No valid order or line items found for order ${orderId}`);
       return null;
     }
     
+    debug(`Found order with ${data.order.line_items.length} line items`);
+    
     // Find the specific line item
-    const lineItem = order.line_items.find(item => String(item.id) === String(lineItemId));
+    const lineItem = data.order.line_items.find((item: any) => String(item.id) === String(lineItemId));
     
     if (!lineItem) {
       debug(`Line item ${lineItemId} not found in order ${orderId}`);
@@ -132,6 +160,13 @@ export async function fetchSingleLineItem(
     }
     
     debug(`Successfully found line item ${lineItemId} in order ${orderId}`);
+    
+    // Add location info if available
+    if (lineItem.origin_location) {
+      lineItem.location_id = lineItem.origin_location.id;
+      lineItem.location_name = lineItem.origin_location.name;
+    }
+    
     debug(`Line item details: ${JSON.stringify(lineItem)}`);
     
     return lineItem;
