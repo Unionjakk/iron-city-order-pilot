@@ -44,7 +44,6 @@ export const fetchAccuratePickStatsData = async (): Promise<PickStatsData> => {
   try {
     console.log("Fetching accurate Pick Stats data directly");
     
-    // Instead of using the get_picklist_stats RPC function, we'll query directly
     // First get all order items that don't have a progress entry - these need to be picked
     const { data: itemsNeedingPick, error: itemsError } = await supabase
       .from('shopify_order_items')
