@@ -22,8 +22,6 @@ export const transformOrdersData = (
       items_count: order.items_count,
       status: order.status,
       imported_at: order.imported_at,
-      location_id: order.location_id,
-      location_name: order.location_name,
       line_items: lineItemsByOrderId?.[order.id] || []
     } as ShopifyOrder;
   });

@@ -1,3 +1,4 @@
+
 import { AlertCircle, Archive, MapPin, Package } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -21,14 +22,14 @@ export interface ShopifyOrder {
   status: string;
   imported_at?: string;
   archived_at?: string;
-  location_id?: string;
-  location_name?: string;
   line_items?: Array<{
     id?: string;
     sku?: string;
     title: string;
     quantity: number;
     price?: number;
+    location_id?: string;
+    location_name?: string;
   }>;
 }
 
@@ -99,6 +100,7 @@ const OrdersTable = ({ orders, showStatus = true, emptyMessage = "No orders to d
                   <TableHead className="text-zinc-400">Item</TableHead>
                   <TableHead className="text-zinc-400 text-right">Qty</TableHead>
                   <TableHead className="text-zinc-400 text-right">Price</TableHead>
+                  <TableHead className="text-zinc-400">Location</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -116,11 +118,21 @@ const OrdersTable = ({ orders, showStatus = true, emptyMessage = "No orders to d
                     <TableCell className="text-zinc-300 text-right">
                       {item.price ? `$${parseFloat(item.price.toString()).toFixed(2)}` : 'N/A'}
                     </TableCell>
+                    <TableCell className="text-zinc-300">
+                      {item.location_name ? (
+                        <div className="flex items-center">
+                          <MapPin className="h-3.5 w-3.5 mr-1 text-orange-400" />
+                          {item.location_name}
+                        </div>
+                      ) : (
+                        <span className="text-zinc-500">Unknown</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {(!order.line_items || order.line_items.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-zinc-500 py-4">
+                    <TableCell colSpan={5} className="text-center text-zinc-500 py-4">
                       No line items available for this order
                     </TableCell>
                   </TableRow>
@@ -155,7 +167,6 @@ const OrdersTable = ({ orders, showStatus = true, emptyMessage = "No orders to d
             <TableHead className="text-zinc-400">Created</TableHead>
             <TableHead className="text-zinc-400">Customer</TableHead>
             <TableHead className="text-zinc-400">Items</TableHead>
-            <TableHead className="text-zinc-400">Location</TableHead>
             {showStatus && (
               <TableHead className="text-zinc-400">Status</TableHead>
             )}
@@ -181,16 +192,6 @@ const OrdersTable = ({ orders, showStatus = true, emptyMessage = "No orders to d
               </TableCell>
               <TableCell className="text-zinc-300">
                 {renderLineItemsDialog(order)}
-              </TableCell>
-              <TableCell className="text-zinc-300">
-                {order.location_name ? (
-                  <div className="flex items-center">
-                    <MapPin className="h-3.5 w-3.5 mr-1 text-orange-400" />
-                    {order.location_name}
-                  </div>
-                ) : (
-                  <span className="text-zinc-500">Not specified</span>
-                )}
               </TableCell>
               {showStatus && (
                 <TableCell>

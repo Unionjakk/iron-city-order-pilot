@@ -32,11 +32,23 @@ export interface ShopifyOrder {
     email?: string;
     phone?: string;
   };
-  line_items?: any[];
+  line_items?: ShopifyLineItem[];
   shipping_address?: any;
   fulfillment_status?: string | null;
   note?: string | null;
   line_item_count?: number;
+}
+
+// Shopify API line item interface with location data
+export interface ShopifyLineItem {
+  id?: string;
+  title?: string;
+  quantity?: number;
+  price?: string;
+  sku?: string;
+  product_id?: string;
+  variant_id?: string;
+  properties?: any;
   location_id?: string;
   location_name?: string;
 }

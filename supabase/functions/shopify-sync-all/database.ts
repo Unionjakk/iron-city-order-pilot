@@ -1,6 +1,6 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
-import { ShopifyOrder } from "./types.ts";
+import { ShopifyOrder, ShopifyLineItem } from "./types.ts";
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -39,9 +39,7 @@ export async function importOrder(
         .from("shopify_orders")
         .update({
           status: shopifyOrder.fulfillment_status || "unfulfilled",
-          imported_at: new Date().toISOString(),
-          location_id: shopifyOrder.location_id || null,
-          location_name: shopifyOrder.location_name || null
+          imported_at: new Date().toISOString()
         })
         .eq("id", existingOrder.id);
 
@@ -77,9 +75,7 @@ export async function importOrder(
           items_count: shopifyOrder.line_items?.length || 0,
           imported_at: new Date().toISOString(),
           note: shopifyOrder.note,
-          shipping_address: shopifyOrder.shipping_address,
-          location_id: shopifyOrder.location_id || null,
-          location_name: shopifyOrder.location_name || null
+          shipping_address: shopifyOrder.shipping_address
         })
         .select()
         .single();
@@ -112,7 +108,9 @@ export async function importOrder(
         price: item.price || "0.00",
         product_id: item.product_id || "",
         variant_id: item.variant_id || "",
-        properties: item.properties || null
+        properties: item.properties || null,
+        location_id: item.location_id || null, // Add location_id
+        location_name: item.location_name || null // Add location_name
       }));
 
       // Insert in small batches to avoid potential size limits

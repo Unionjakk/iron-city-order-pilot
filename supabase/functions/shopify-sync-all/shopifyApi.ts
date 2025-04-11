@@ -1,5 +1,5 @@
 
-import { ShopifyOrder } from "./types.ts";
+import { ShopifyOrder, ShopifyLineItem } from "./types.ts";
 
 /**
  * Fetches all orders from Shopify with pagination
@@ -18,7 +18,7 @@ export async function fetchAllShopifyOrdersWithPagination(
     }
     
     if (!url.searchParams.has('fields')) {
-      url.searchParams.set('fields', 'id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status,location_id');
+      url.searchParams.set('fields', 'id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status');
     }
     
     console.log(`Fetching orders from: ${url.toString()}`);
@@ -60,15 +60,45 @@ export async function fetchAllShopifyOrdersWithPagination(
       throw new Error("Received unexpected data format from Shopify API");
     }
     
-    // Process the orders to extract location_name from the locations field if present
+    // Process line items to extract location information if available
     const processedOrders = data.orders.map((order: any) => {
-      // Try to find location_name if we have location_id
-      if (order.location_id && data.locations && Array.isArray(data.locations)) {
-        const location = data.locations.find((loc: any) => loc.id === order.location_id);
-        if (location) {
-          order.location_name = location.name;
-        }
+      // Process line items to add location information
+      if (order.line_items && Array.isArray(order.line_items)) {
+        order.line_items = order.line_items.map((item: any) => {
+          // Extract location information from the line item
+          if (item.location_id) {
+            // Try to get location name from the locations array if present in the response
+            if (data.locations && Array.isArray(data.locations)) {
+              const location = data.locations.find((loc: any) => loc.id === item.location_id);
+              if (location) {
+                item.location_name = location.name;
+              }
+            }
+          }
+          
+          // For fulfillment items check if they have location info
+          if (item.fulfillment_line_item_id && data.fulfillments && Array.isArray(data.fulfillments)) {
+            const fulfillment = data.fulfillments.find((f: any) => 
+              f.line_items && f.line_items.some((l: any) => l.id === item.fulfillment_line_item_id)
+            );
+            
+            if (fulfillment && fulfillment.location_id) {
+              item.location_id = fulfillment.location_id;
+              
+              // Try to get location name
+              if (data.locations && Array.isArray(data.locations)) {
+                const location = data.locations.find((loc: any) => loc.id === fulfillment.location_id);
+                if (location) {
+                  item.location_name = location.name;
+                }
+              }
+            }
+          }
+          
+          return item as ShopifyLineItem;
+        });
       }
+      
       return order;
     });
     
@@ -145,15 +175,45 @@ export async function fetchNextPage(
       throw new Error("Received unexpected data format from Shopify API");
     }
     
-    // Process the orders to extract location_name from the locations field if present
+    // Process line items to extract location information if available
     const processedOrders = data.orders.map((order: any) => {
-      // Try to find location_name if we have location_id
-      if (order.location_id && data.locations && Array.isArray(data.locations)) {
-        const location = data.locations.find((loc: any) => loc.id === order.location_id);
-        if (location) {
-          order.location_name = location.name;
-        }
+      // Process line items to add location information
+      if (order.line_items && Array.isArray(order.line_items)) {
+        order.line_items = order.line_items.map((item: any) => {
+          // Extract location information from the line item
+          if (item.location_id) {
+            // Try to get location name from the locations array if present in the response
+            if (data.locations && Array.isArray(data.locations)) {
+              const location = data.locations.find((loc: any) => loc.id === item.location_id);
+              if (location) {
+                item.location_name = location.name;
+              }
+            }
+          }
+          
+          // For fulfillment items check if they have location info
+          if (item.fulfillment_line_item_id && data.fulfillments && Array.isArray(data.fulfillments)) {
+            const fulfillment = data.fulfillments.find((f: any) => 
+              f.line_items && f.line_items.some((l: any) => l.id === item.fulfillment_line_item_id)
+            );
+            
+            if (fulfillment && fulfillment.location_id) {
+              item.location_id = fulfillment.location_id;
+              
+              // Try to get location name
+              if (data.locations && Array.isArray(data.locations)) {
+                const location = data.locations.find((loc: any) => loc.id === fulfillment.location_id);
+                if (location) {
+                  item.location_name = location.name;
+                }
+              }
+            }
+          }
+          
+          return item as ShopifyLineItem;
+        });
       }
+      
       return order;
     });
     

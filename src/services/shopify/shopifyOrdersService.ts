@@ -81,7 +81,7 @@ export const fetchActiveOrders = async (): Promise<{
 }> => {
   const { data: activeData, error: activeError } = await supabase
     .from('shopify_orders')
-    .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, location_id, location_name, shopify_order_number');
+    .select('id, shopify_order_id, created_at, customer_name, items_count, status, imported_at, shopify_order_number');
   
   if (activeError) {
     console.error('Error fetching active orders:', activeError);
@@ -96,10 +96,10 @@ export const fetchActiveOrders = async (): Promise<{
   
   const orderIds = activeData.map(order => order.id);
   
-  // Fetch line items for all orders in one query
+  // Fetch line items for all orders in one query, now including location data
   const { data: lineItemsData, error: lineItemsError } = await supabase
     .from('shopify_order_items')
-    .select('order_id, shopify_line_item_id, sku, title, quantity, price')
+    .select('order_id, shopify_line_item_id, sku, title, quantity, price, location_id, location_name')
     .in('order_id', orderIds);
   
   if (lineItemsError) {
@@ -121,7 +121,9 @@ export const fetchActiveOrders = async (): Promise<{
         sku: item.sku,
         title: item.title,
         quantity: item.quantity,
-        price: item.price
+        price: item.price,
+        location_id: item.location_id,
+        location_name: item.location_name
       });
       return acc;
     }, {});

@@ -444,6 +444,8 @@ export type Database = {
           archived_order_id: string
           created_at: string
           id: string
+          location_id: string | null
+          location_name: string | null
           price: number | null
           product_id: string | null
           properties: Json | null
@@ -458,6 +460,8 @@ export type Database = {
           archived_order_id: string
           created_at?: string
           id?: string
+          location_id?: string | null
+          location_name?: string | null
           price?: number | null
           product_id?: string | null
           properties?: Json | null
@@ -472,6 +476,8 @@ export type Database = {
           archived_order_id?: string
           created_at?: string
           id?: string
+          location_id?: string | null
+          location_name?: string | null
           price?: number | null
           product_id?: string | null
           properties?: Json | null
@@ -502,8 +508,6 @@ export type Database = {
           imported_at: string
           items_count: number
           line_items: Json | null
-          location_id: string | null
-          location_name: string | null
           metadata: Json | null
           note: string | null
           shipping_address: Json | null
@@ -521,8 +525,6 @@ export type Database = {
           imported_at?: string
           items_count: number
           line_items?: Json | null
-          location_id?: string | null
-          location_name?: string | null
           metadata?: Json | null
           note?: string | null
           shipping_address?: Json | null
@@ -540,8 +542,6 @@ export type Database = {
           imported_at?: string
           items_count?: number
           line_items?: Json | null
-          location_id?: string | null
-          location_name?: string | null
           metadata?: Json | null
           note?: string | null
           shipping_address?: Json | null
@@ -555,6 +555,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          location_id: string | null
+          location_name: string | null
           order_id: string
           price: number | null
           product_id: string | null
@@ -568,6 +570,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          location_id?: string | null
+          location_name?: string | null
           order_id: string
           price?: number | null
           product_id?: string | null
@@ -581,6 +585,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          location_id?: string | null
+          location_name?: string | null
           order_id?: string
           price?: number | null
           product_id?: string | null
@@ -611,8 +617,6 @@ export type Database = {
           imported_at: string
           items_count: number
           line_items: Json | null
-          location_id: string | null
-          location_name: string | null
           metadata: Json | null
           note: string | null
           shipping_address: Json | null
@@ -629,8 +633,6 @@ export type Database = {
           imported_at?: string
           items_count: number
           line_items?: Json | null
-          location_id?: string | null
-          location_name?: string | null
           metadata?: Json | null
           note?: string | null
           shipping_address?: Json | null
@@ -647,8 +649,6 @@ export type Database = {
           imported_at?: string
           items_count?: number
           line_items?: Json | null
-          location_id?: string | null
-          location_name?: string | null
           metadata?: Json | null
           note?: string | null
           shipping_address?: Json | null
@@ -732,8 +732,6 @@ export type Database = {
           imported_at: string
           items_count: number
           line_items: Json | null
-          location_id: string | null
-          location_name: string | null
           metadata: Json | null
           note: string | null
           shipping_address: Json | null
