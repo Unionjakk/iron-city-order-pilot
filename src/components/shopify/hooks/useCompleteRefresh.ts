@@ -13,11 +13,53 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
   const [isImporting, setIsImporting] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const { toast } = useToast();
 
   const addDebugMessage = (message: string) => {
     console.log(`[DEBUG] ${message}`);
-    setDebugInfo(prev => [message, ...prev].slice(0, 50)); // Keep last 50 messages
+    setDebugInfo(prev => [message, ...prev].slice(0, 100)); // Keep last 100 messages
+  };
+
+  const handleImportOnly = async () => {
+    setIsImporting(true);
+    setError(null);
+    
+    try {
+      addDebugMessage("Starting import-only operation (recovery mode)");
+      
+      // Import all orders from Shopify
+      addDebugMessage("Importing all orders from Shopify...");
+      const importResult = await importAllOrders(addDebugMessage);
+      
+      // Update last sync time
+      addDebugMessage("Updating last sync time...");
+      await updateLastSyncTime(addDebugMessage);
+      
+      toast({
+        title: "Recovery Import Complete",
+        description: `Successfully imported ${importResult.imported || 0} orders from Shopify`,
+        variant: "default",
+      });
+      
+      addDebugMessage("Recovery import operation finished successfully");
+      setIsRecoveryMode(false);
+      
+      // Refresh the orders list in the parent component
+      await onRefreshComplete();
+    } catch (error: any) {
+      console.error("Error during recovery import:", error);
+      setError(error.message || "An unknown error occurred during recovery import");
+      addDebugMessage(`ERROR: ${error.message || "Unknown error"}`);
+      
+      toast({
+        title: "Recovery Import Failed",
+        description: error.message || "Failed to complete the recovery import operation",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleCompleteRefresh = async () => {
@@ -79,8 +121,11 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
     isImporting,
     debugInfo,
     error,
+    isRecoveryMode,
     handleCompleteRefresh,
+    handleRecoveryImport: handleImportOnly,
     addDebugMessage,
-    setError
+    setError,
+    setIsRecoveryMode
   };
 };

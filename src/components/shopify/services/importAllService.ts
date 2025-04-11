@@ -16,13 +16,21 @@ export const importAllOrders = async (addDebugMessage: (message: string) => void
     
     addDebugMessage("Calling shopify-sync-all edge function...");
     
-    // Call the edge function for complete refresh
-    const response = await supabase.functions.invoke('shopify-sync-all', {
+    // Add a timeout to the API call to prevent hanging indefinitely
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("API call timed out after 60 seconds")), 60000);
+    });
+    
+    // Actual API call
+    const apiCallPromise = supabase.functions.invoke('shopify-sync-all', {
       body: { 
         apiToken: token,
         operation: "import" // Specify operation type
       }
     });
+    
+    // Use Promise.race to implement the timeout
+    const response = await Promise.race([apiCallPromise, timeoutPromise]) as any;
 
     if (response.error) {
       console.error('Error invoking shopify-sync-all function:', response.error);
@@ -32,6 +40,29 @@ export const importAllOrders = async (addDebugMessage: (message: string) => void
     const data = response.data;
     
     if (!data || !data.success) {
+      // Check for specific error conditions in the debug messages
+      if (data?.debugMessages && Array.isArray(data.debugMessages)) {
+        // Log all debug messages for troubleshooting
+        data.debugMessages.forEach((msg: string) => addDebugMessage(`API: ${msg}`));
+        
+        // Look for rate limiting or authentication issues
+        const rateLimitMsg = data.debugMessages.find((msg: string) => 
+          msg.includes('rate limit') || msg.includes('429') || msg.includes('too many requests')
+        );
+        
+        if (rateLimitMsg) {
+          throw new Error("Shopify API rate limit exceeded. Please wait a few minutes and try again.");
+        }
+        
+        const authMsg = data.debugMessages.find((msg: string) => 
+          msg.includes('authentication failed') || msg.includes('401') || msg.includes('unauthorized')
+        );
+        
+        if (authMsg) {
+          throw new Error("Authentication failed. Your Shopify API token might be invalid or expired.");
+        }
+      }
+      
       const errorMsg = data?.error || 'Unknown error occurred during Shopify sync';
       console.error('Shopify sync failed:', errorMsg);
       throw new Error(`Shopify sync failed: ${errorMsg}`);
