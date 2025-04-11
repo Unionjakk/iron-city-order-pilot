@@ -16,6 +16,7 @@ import CompleteRefresh from '@/components/shopify/CompleteRefresh';
 import LocationInfoImport from '@/components/shopify/LocationInfoImport';
 import SingleLineItemLocationUpdate from '@/components/shopify/SingleLineItemLocationUpdate';
 import LocationsExplorer from '@/components/shopify/LocationsExplorer';
+import BatchLocationUpdate from '@/components/shopify/BatchLocationUpdate';
 
 // IMPORTANT: This component interacts with a PRODUCTION Shopify API
 // Any changes must maintain compatibility with the live system
@@ -174,6 +175,11 @@ const ShopifyAPIPage = () => {
         />
       )}
       
+      {/* Batch Location Update - New Component */}
+      {hasToken && (
+        <BatchLocationUpdate />
+      )}
+      
       {/* Location Info Import */}
       {hasToken && (
         <LocationInfoImport
@@ -188,7 +194,7 @@ const ShopifyAPIPage = () => {
         />
       )}
       
-      {/* Locations Explorer - Added to view all Shopify locations */}
+      {/* Locations Explorer */}
       {hasToken && (
         <LocationsExplorer />
       )}
