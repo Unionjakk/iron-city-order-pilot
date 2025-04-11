@@ -27,6 +27,7 @@ import OpenOrdersUpload from "@/pages/admin/uploads/harley/OpenOrdersUpload";
 import OrderLinesUpload from "@/pages/admin/uploads/harley/OrderLinesUpload";
 import BackordersUpload from "@/pages/admin/uploads/harley/BackordersUpload";
 import LineItemsExclude from "@/pages/admin/uploads/harley/LineItemsExclude";
+import OpenLinesCheckIn from "@/pages/admin/uploads/harley/OpenLinesCheckIn";
 
 // User Pages
 import UsersPage from "@/pages/users/UsersPage";
@@ -77,6 +78,7 @@ const App = () => (
                 <Route path="/admin/uploads/harley/order-lines" element={<OrderLinesUpload />} />
                 <Route path="/admin/uploads/harley/backorders" element={<BackordersUpload />} />
                 <Route path="/admin/uploads/harley/open-order-check-in" element={<LineItemsExclude />} />
+                <Route path="/admin/uploads/harley/open-lines-check-in" element={<OpenLinesCheckIn />} />
                 
                 <Route path="/admin/uploads/shopify" element={<ShopifyAPI />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
