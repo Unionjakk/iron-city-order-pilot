@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,8 @@ import {
   Users, 
   Settings, 
   Upload,
-  BarChart3
+  BarChart3,
+  Search
 } from "lucide-react";
 
 const Index = () => {
@@ -143,11 +143,11 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Visual Order Progressor Section */}
+      {/* Other Tools Section */}
       <section>
-        <h2 className="text-xl font-semibold mb-4 text-zinc-200">Visual Order Progressor</h2>
-        <div className="flex justify-center">
-          <Link to="/visualiser" className="w-full md:w-1/3">
+        <h2 className="text-xl font-semibold mb-4 text-zinc-200">Other Tools</h2>
+        <div className="flex flex-col md:flex-row justify-center gap-4">
+          <Link to="/visualiser" className="w-full md:w-1/2 lg:w-1/3">
             <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
               <CardContent className="p-6 flex flex-col items-center text-center">
                 <BarChart3 className="h-10 w-10 text-orange-500 mb-3" />
@@ -156,6 +156,16 @@ const Index = () => {
               </CardContent>
             </Card>
           </Link>
+          <div className="w-full md:w-1/2 lg:w-1/3">
+            <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700/50 transition-colors cursor-not-allowed h-full">
+              <CardContent className="p-6 flex flex-col items-center text-center">
+                <Search className="h-10 w-10 text-orange-500/60 mb-3" />
+                <h3 className="text-lg font-medium text-white mb-2">Order Lookup</h3>
+                <p className="text-zinc-400 text-sm">Search for orders by number, customer email, or name</p>
+                <span className="mt-2 text-xs px-2 py-1 bg-amber-500/20 text-amber-300 rounded-full">Coming Soon</span>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </section>
 

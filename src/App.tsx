@@ -44,6 +44,9 @@ import BackorderReportPage from "@/pages/actions/BackorderReportPage";
 // Visualiser Page
 import VisualiserPage from "@/pages/VisualiserPage";
 
+// Placeholder Pages
+import OrderLookupPlaceholder from "@/components/placeholder/OrderLookupPlaceholder";
+
 // Main index page
 import Index from "@/pages/Index";
 
@@ -79,8 +82,10 @@ const App = () => (
                 <Route path="/actions/dispatch" element={<DispatchPage />} />
                 <Route path="/actions/backorder-report" element={<BackorderReportPage />} />
                 
-                {/* Visualiser route */}
+                {/* Tools routes */}
                 <Route path="/visualiser" element={<VisualiserPage />} />
+                <Route path="/order-lookup" element={<OrderLookupPlaceholder />} />
+                <Route path="/tools" element={<Navigate to="/visualiser" replace />} />
                 
                 {/* Admin routes */}
                 <Route path="/admin" element={<AdminDashboard />} />
