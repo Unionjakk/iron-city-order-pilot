@@ -1,7 +1,6 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -10,6 +9,11 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Check, X, Plus } from 'lucide-react';
 import { ExcludeReason } from '../LineItemsExclude';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ExcludeOrderFormProps {
   onAddExclusion: (orderNumber: string, reason: ExcludeReason) => void;
@@ -26,6 +30,10 @@ type FormValues = z.infer<typeof formSchema>;
 
 const ExcludeOrderForm = ({ onAddExclusion }: ExcludeOrderFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [orderNumbers, setOrderNumbers] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -46,6 +54,33 @@ const ExcludeOrderForm = ({ onAddExclusion }: ExcludeOrderFormProps) => {
     }
   };
 
+  // Fetch order numbers from database
+  useEffect(() => {
+    const fetchOrderNumbers = async () => {
+      if (searchValue.length < 2) return;
+      
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('hd_orders')
+          .select('hd_order_number')
+          .ilike('hd_order_number', `%${searchValue}%`)
+          .limit(10);
+        
+        if (error) throw error;
+        
+        setOrderNumbers(data.map(order => order.hd_order_number));
+      } catch (error) {
+        console.error('Error fetching order numbers:', error);
+        toast.error('Failed to load order suggestions');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrderNumbers();
+  }, [searchValue]);
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -53,15 +88,69 @@ const ExcludeOrderForm = ({ onAddExclusion }: ExcludeOrderFormProps) => {
           control={form.control}
           name="orderNumber"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="flex flex-col">
               <FormLabel className="text-zinc-300">HD Order Number</FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder="Enter order number" 
-                  className="bg-zinc-800 border-zinc-700 text-zinc-200" 
-                  {...field} 
-                />
-              </FormControl>
+              <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={open}
+                      className={cn(
+                        "w-full justify-between bg-zinc-800 border-zinc-700 text-zinc-200",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      {field.value
+                        ? field.value
+                        : "Select an order number"}
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0 bg-zinc-800 border-zinc-700">
+                  <Command className="bg-zinc-800">
+                    <CommandInput 
+                      placeholder="Search order number..." 
+                      onValueChange={setSearchValue}
+                      className="border-zinc-700 text-zinc-200"
+                    />
+                    {loading && (
+                      <div className="py-6 text-center text-sm text-zinc-400">
+                        Loading...
+                      </div>
+                    )}
+                    <CommandEmpty className="py-6 text-center text-sm text-zinc-400">
+                      {searchValue.length < 2 
+                        ? "Type at least 2 characters to search" 
+                        : "No order number found"}
+                    </CommandEmpty>
+                    <CommandGroup className="max-h-60 overflow-auto">
+                      {orderNumbers.map((orderNumber) => (
+                        <CommandItem
+                          key={orderNumber}
+                          value={orderNumber}
+                          onSelect={() => {
+                            form.setValue("orderNumber", orderNumber);
+                            setOpen(false);
+                          }}
+                          className="text-zinc-200 hover:bg-zinc-700"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              orderNumber === field.value
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
+                          {orderNumber}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <FormMessage />
             </FormItem>
           )}
@@ -111,7 +200,7 @@ const ExcludeOrderForm = ({ onAddExclusion }: ExcludeOrderFormProps) => {
             </span>
           ) : (
             <span className="flex items-center">
-              <Plus className="mr-1.5 h-4 w-4" /> Add Exclusion
+              <Plus className="mr-1.5 h-4 w-4" /> Check In / Exclude
             </span>
           )}
         </Button>
