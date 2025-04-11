@@ -25,7 +25,7 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
   };
 
   return (
-    <React.Fragment>
+    <>
       <TableRow key={`order-${order.id}`} className="bg-zinc-800/20">
         <TableCell colSpan={9} className="py-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between">
@@ -73,7 +73,7 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
           refreshData={refreshData} 
         />
       ))}
-    </React.Fragment>
+    </>
   );
 };
 

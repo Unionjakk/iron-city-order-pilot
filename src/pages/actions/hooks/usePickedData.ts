@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { PicklistOrder, PicklistDebugInfo, PicklistDataResult } from "../types/picklistTypes";
 import { LEEDS_LOCATION_ID } from "../constants/picklistConstants";
@@ -25,14 +24,21 @@ const processPickedOrdersData = (
   stockMap: Map<string, any>,
   progressMap: Map<string, any>
 ): PicklistOrder[] => {
-  // Get all order IDs that have at least one picked item
+  // Build a mapping of order_id -> shopify_order_id
+  const orderIdToShopifyOrderId = {};
+  orders.forEach(order => {
+    orderIdToShopifyOrderId[order.id] = order.shopify_order_id;
+  });
+  
+  // Create a Set of order IDs that have at least one picked item
   const orderIdsWithPickedItems = new Set(
     Array.from(progressMap.values())
       .filter(progress => progress.progress === "Picked")
       .map(progress => progress.shopify_order_id)
   );
   
-  return orders
+  // Map orders to the final format, handling both regular SKUs and "No SKU" items
+  const result = orders
     .filter(order => orderIdsWithPickedItems.has(order.shopify_order_id))
     .map(order => {
       // Find all line items for this order
@@ -40,11 +46,39 @@ const processPickedOrdersData = (
         .filter(item => item.order_id === order.id)
         .map(item => {
           const stock = stockMap.get(item.sku);
-          const progressKey = `${order.shopify_order_id}_${item.sku}`;
-          const progress = progressMap.get(progressKey);
+          const shopifyOrderId = order.shopify_order_id;
+          
+          // Initialize progress and notes to null
+          let progress = null;
+          let notes = null;
+          
+          // First try to match with specific SKU
+          if (item.sku) {
+            const progressKey = `${shopifyOrderId}_${item.sku}`;
+            const progressData = progressMap.get(progressKey);
+            if (progressData) {
+              progress = progressData.progress;
+              notes = progressData.notes;
+            }
+          }
+          
+          // If no match and sku is empty/null, check for "No SKU" entries
+          if (!progress && (!item.sku || item.sku.trim() === '')) {
+            const noSkuKey = `${shopifyOrderId}_No SKU`;
+            const noSkuProgressData = progressMap.get(noSkuKey);
+            if (noSkuProgressData) {
+              progress = noSkuProgressData.progress;
+              notes = noSkuProgressData.notes;
+              console.log(`Matched "No SKU" progress for order ${shopifyOrderId}`);
+            }
+          }
+          
+          // Log what we're doing
+          console.log(`Processing item for order ${order.id}, SKU: ${item.sku || 'No SKU'}, ` +
+                      `Progress: ${progress}, Notes: ${notes}`);
           
           // Only include line items that have "Picked" progress status
-          if (!progress || progress.progress !== "Picked") {
+          if (progress !== "Picked") {
             return null;
           }
           
@@ -65,12 +99,46 @@ const processPickedOrdersData = (
             bin_location: stock?.bin_location || null,
             cost: stock?.cost || null,
             // Progress data
-            progress: progress?.progress || null,
-            notes: progress?.notes || null
+            progress: progress,
+            notes: notes
           };
         })
         .filter(Boolean); // Remove null items (ones without "Picked" progress status)
         
+      // If we have "No SKU" progress data but no matching line item, we need to create a "dummy" item
+      const noSkuProgressKey = `${order.shopify_order_id}_No SKU`;
+      const noSkuProgress = progressMap.get(noSkuProgressKey);
+      
+      if (noSkuProgress && noSkuProgress.progress === "Picked") {
+        // Check if we already have an item with "No SKU"
+        const hasNoSkuItem = orderItems.some(item => item.sku === "No SKU");
+        
+        if (!hasNoSkuItem) {
+          console.log(`Creating a "No SKU" item for order ${order.id} because it has "No SKU" progress`);
+          // Add a dummy item for "No SKU"
+          orderItems.push({
+            id: `no-sku-${order.id}`,
+            order_id: order.id,
+            shopify_line_item_id: `no-sku-${order.shopify_order_id}`,
+            sku: "No SKU",
+            title: "No SKU Item",
+            quantity: 1,
+            price: null,
+            created_at: order.created_at,
+            location_id: LEEDS_LOCATION_ID,
+            location_name: "Leeds",
+            // Stock data
+            in_stock: false,
+            stock_quantity: null,
+            bin_location: null,
+            cost: null,
+            // Progress data
+            progress: noSkuProgress.progress,
+            notes: noSkuProgress.notes
+          });
+        }
+      }
+      
       // Only return the order if it has at least one picked item
       if (orderItems.length === 0) return null;
       
@@ -85,6 +153,12 @@ const processPickedOrdersData = (
       };
     })
     .filter(Boolean); // Remove orders with no picked items
+    
+  console.log(`Final orders with picked items: ${result.length}, total items: ${
+    result.reduce((count, order) => count + order.items.length, 0)
+  }`);
+  
+  return result;
 };
 
 /**

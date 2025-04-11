@@ -90,7 +90,7 @@ const PickedOrderItem = ({ item, order, refreshData }: PickedOrderItemProps) => 
   };
 
   return (
-    <React.Fragment>
+    <>
       <TableRow className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
         <TableCell className="font-mono text-zinc-300 pr-1">{item.sku || "No SKU"}</TableCell>
         <TableCell className="pl-1 text-emerald-500 flex items-center">
@@ -169,7 +169,7 @@ const PickedOrderItem = ({ item, order, refreshData }: PickedOrderItemProps) => 
           />
         </TableCell>
       </TableRow>
-    </React.Fragment>
+    </>
   );
 };
 

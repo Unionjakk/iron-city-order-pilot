@@ -6,6 +6,30 @@ import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
  * Fetch unfulfilled orders from Supabase that have items marked as "Picked"
  */
 export const fetchOrdersWithPickedItems = async () => {
+  console.log("Fetching orders with 'Picked' items...");
+  
+  // First get the shopify order IDs that have "Picked" progress
+  const { data: progressData, error: progressError } = await supabase
+    .from('iron_city_order_progress')
+    .select('shopify_order_id, sku')
+    .eq('progress', 'Picked');
+    
+  if (progressError) {
+    console.error("Progress fetch error:", progressError);
+    throw new Error(`Progress fetch error: ${progressError.message}`);
+  }
+  
+  // If no orders have "Picked" items, return empty array
+  if (!progressData || progressData.length === 0) {
+    console.log("No orders have 'Picked' items");
+    return [];
+  }
+  
+  console.log(`Found ${progressData.length} orders with 'Picked' progress items:`, progressData);
+  
+  // Extract the order IDs
+  const orderIds = [...new Set(progressData.map(item => item.shopify_order_id))];
+  
   const { data, error } = await supabase
     .from('shopify_orders')
     .select(`
@@ -17,9 +41,15 @@ export const fetchOrdersWithPickedItems = async () => {
       created_at,
       status
     `)
-    .eq('status', UNFULFILLED_STATUS);
+    .eq('status', UNFULFILLED_STATUS)
+    .in('shopify_order_id', orderIds);
     
-  if (error) throw new Error(`Orders fetch error: ${error.message}`);
+  if (error) {
+    console.error("Orders fetch error:", error);
+    throw new Error(`Orders fetch error: ${error.message}`);
+  }
+  
+  console.log(`Fetched ${data?.length || 0} unfulfilled orders with 'Picked' items`);
   return data || [];
 };
 
@@ -27,25 +57,58 @@ export const fetchOrdersWithPickedItems = async () => {
  * Fetch line items for given order IDs
  */
 export const fetchLineItemsForOrders = async (orderIds: string[]) => {
+  console.log(`Fetching line items for ${orderIds.length} orders:`, orderIds);
+  
+  if (orderIds.length === 0) {
+    console.log("No order IDs provided, skipping line items fetch");
+    return [];
+  }
+  
   const { data, error } = await supabase
     .from('shopify_order_items')
     .select('*')
     .in('order_id', orderIds);
     
-  if (error) throw new Error(`Line items fetch error: ${error.message}`);
+  if (error) {
+    console.error("Line items fetch error:", error);
+    throw new Error(`Line items fetch error: ${error.message}`);
+  }
+  
+  console.log(`Fetched ${data?.length || 0} line items for the orders`);
   return data || [];
 };
 
 /**
- * Fetch progress information for order line items that are marked as "Picked"
+ * Fetch progress information specifically for "Picked" items
  */
 export const fetchPickedItemsProgress = async () => {
+  console.log("Fetching 'Picked' progress items...");
+  
+  // Debug query to see all progress values
+  const { data: allProgress, error: allProgressError } = await supabase
+    .from('iron_city_order_progress')
+    .select('progress')
+    .limit(10);
+    
+  if (allProgressError) {
+    console.error("Progress fetch error:", allProgressError);
+  } else {
+    // Log unique progress values to debug case issues
+    const uniqueProgresses = [...new Set(allProgress.map(p => p.progress))];
+    console.log("Debug - Available progress values:", uniqueProgresses);
+  }
+  
   const { data, error } = await supabase
     .from('iron_city_order_progress')
     .select('shopify_order_id, sku, progress, notes')
     .eq('progress', 'Picked');
     
-  if (error) throw new Error(`Progress fetch error: ${error.message}`);
+  if (error) {
+    console.error("Progress fetch error:", error);
+    throw new Error(`Progress fetch error: ${error.message}`);
+  }
+  
+  console.log(`Fetched ${data?.length || 0} 'Picked' progress items:`, data);
   return data || [];
 };
 
@@ -53,12 +116,24 @@ export const fetchPickedItemsProgress = async () => {
  * Fetch stock information for given SKUs
  */
 export const fetchStockForSkus = async (skus: string[]) => {
+  if (!skus.length) {
+    console.log("No SKUs provided, skipping stock fetch");
+    return [];
+  }
+  
+  console.log(`Fetching stock for ${skus.length} SKUs`);
+  
   const { data, error } = await supabase
     .from('pinnacle_stock')
     .select('part_no, stock_quantity, bin_location, cost')
     .in('part_no', skus);
     
-  if (error) throw new Error(`Stock fetch error: ${error.message}`);
+  if (error) {
+    console.error("Stock fetch error:", error);
+    throw new Error(`Stock fetch error: ${error.message}`);
+  }
+  
+  console.log(`Fetched stock data for ${data?.length || 0} SKUs`);
   return data || [];
 };
 
