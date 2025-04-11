@@ -15,7 +15,7 @@ const HarleyUploadDashboard = () => {
   } = useHarleyDashboardData();
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-orange-500">Harley Davidson Import Dashboard</h1>
         <p className="text-orange-400/80">Upload and manage Harley Davidson order data</p>
@@ -25,7 +25,9 @@ const HarleyUploadDashboard = () => {
       <HarleyStatsCard stats={stats} isLoading={isLoadingStats} />
       
       {/* Upload Tiles */}
-      <HarleyUploadTiles />
+      <div className="my-8">
+        <HarleyUploadTiles />
+      </div>
       
       {/* Processing Instructions */}
       <HarleyUploadInstructions />

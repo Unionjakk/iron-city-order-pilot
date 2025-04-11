@@ -30,8 +30,13 @@ const OpenLinesCheckIn = () => {
                 similar to the Open Order Check In functionality but at the line item level.
               </p>
               <p className="text-zinc-400 text-sm">
-                Check back soon for this functionality.
+                Check back soon for this functionality. When implemented, you'll be able to:
               </p>
+              <ul className="list-disc pl-6 text-zinc-400 text-sm">
+                <li>Select specific line items to check in</li>
+                <li>Exclude line items from being processed</li>
+                <li>Manage line item exceptions</li>
+              </ul>
             </div>
           </div>
         </CardContent>

@@ -36,7 +36,7 @@ const HarleyUploadTiles = () => {
     },
     {
       title: 'Open Lines Check In',
-      description: 'Coming soon: Check in and exclude line items',
+      description: 'Check in and exclude line items',
       icon: <AlertCircle className="h-8 w-8 text-orange-500" />,
       link: '/admin/uploads/harley/open-lines-check-in',
       color: 'from-orange-600/20 to-amber-600/20',
@@ -67,7 +67,7 @@ const HarleyUploadTiles = () => {
       className={tile.disabled ? 'pointer-events-none opacity-70' : ''}
     >
       <Card className="h-full border-zinc-800 bg-gradient-to-br hover:shadow-lg hover:border-orange-500/50 transition-all duration-200 overflow-hidden">
-        <div className={`p-6 bg-gradient-to-br ${tile.color}`}>
+        <div className={`p-6 bg-gradient-to-br ${tile.color} flex flex-col items-center justify-center text-center min-h-[180px]`}>
           <div className="flex flex-col items-center text-center space-y-2">
             {tile.icon}
             <h3 className="font-medium text-zinc-200 mt-2">{tile.title}</h3>
