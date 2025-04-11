@@ -1,10 +1,21 @@
+
 // Supabase Edge Function
 // This function handles updating location info for existing line items in Shopify orders
 
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { RequestBody, SyncResponse, corsHeaders } from "./types.ts";
-import { updateLineItemLocations, getLineItemsWithoutLocations, getSingleLineItemInfo, updateSingleLineItemLocation } from "./database.ts";
-import { fetchOrdersWithLineItems, fetchSingleLineItem } from "./shopifyApi.ts";
+import { 
+  updateLineItemLocations, 
+  getLineItemsWithoutLocations, 
+  getSingleLineItemInfo, 
+  updateSingleLineItemLocation,
+  updateAllLineItemsForOrder
+} from "./database.ts";
+import { 
+  fetchOrdersWithLineItems, 
+  fetchSingleLineItem,
+  fetchAllLineItemsForOrder
+} from "./shopifyApi.ts";
 
 serve(async (req) => {
   console.log("=== Shopify Locations Sync Function Started ===");
@@ -53,6 +64,43 @@ serve(async (req) => {
     }
 
     debug("API token validated successfully");
+    
+    // Check if we're handling a batch update for all line items for an order
+    if (body.mode === "batch" && body.orderId) {
+      debug(`Starting batch update for all line items in Order ID: ${body.orderId}`);
+      
+      try {
+        // Fetch all line items for the order from Shopify
+        const lineItems = await fetchAllLineItemsForOrder(apiToken, body.orderId, debug);
+        
+        if (!lineItems || lineItems.length === 0) {
+          debug(`No line items found for order ${body.orderId} in Shopify API`);
+          throw new Error(`No line items found for order ${body.orderId}`);
+        }
+        
+        debug(`Retrieved ${lineItems.length} line items from Shopify for order ${body.orderId}`);
+        
+        // Update all line items in the database
+        const updatedCount = await updateAllLineItemsForOrder(body.orderId, lineItems, debug);
+        
+        responseData.success = true;
+        responseData.updated = updatedCount;
+        responseData.totalItems = lineItems.length;
+        
+        return new Response(JSON.stringify(responseData), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      } catch (error: any) {
+        debug(`Error in batch line items update: ${error.message}`);
+        responseData.error = `Error updating line items: ${error.message}`;
+        
+        return new Response(JSON.stringify(responseData), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+    }
     
     // Check if we're handling a single line item update
     if (body.mode === "single" && body.orderId && body.lineItemId) {

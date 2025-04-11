@@ -191,7 +191,7 @@ export async function fetchSingleLineItem(
     // Log line items for debugging
     debug(`Order has ${data.order.line_items.length} line items. Available IDs: ${data.order.line_items.map((item: any) => item.id).join(', ')}`);
     
-    // Find the specific line item
+    // Find the specific line item - IMPORTANT: Convert both to strings for comparison
     const lineItem = data.order.line_items.find((item: any) => String(item.id) === String(lineItemId));
     
     if (!lineItem) {
@@ -213,6 +213,36 @@ export async function fetchSingleLineItem(
     return lineItem;
   } catch (error: any) {
     debug(`Exception in fetchSingleLineItem: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Fetches all line items for an order and extracts location information
+ * This allows updating all line items for an order at once
+ */
+export async function fetchAllLineItemsForOrder(
+  apiToken: string,
+  orderId: string,
+  debug: (message: string) => void
+): Promise<ShopifyLineItem[]> {
+  try {
+    debug(`Fetching all line items for order: ${orderId}`);
+    
+    // Use the existing function to get the complete order
+    const order = await fetchOrdersWithLineItems(apiToken, orderId, debug);
+    
+    if (!order.line_items || !Array.isArray(order.line_items) || order.line_items.length === 0) {
+      debug(`No line items found for order ${orderId}`);
+      return [];
+    }
+    
+    debug(`Retrieved ${order.line_items.length} line items for order ${orderId}`);
+    
+    // Return all line items with their location information
+    return order.line_items;
+  } catch (error: any) {
+    debug(`Error fetching all line items for order ${orderId}: ${error.message}`);
     throw error;
   }
 }
