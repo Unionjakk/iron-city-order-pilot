@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -57,7 +58,10 @@ const ExcludeOrderForm = ({ onAddExclusion }: ExcludeOrderFormProps) => {
   // Fetch order numbers from database
   useEffect(() => {
     const fetchOrderNumbers = async () => {
-      if (searchValue.length < 2) return;
+      if (searchValue.length < 2) {
+        setOrderNumbers([]);
+        return;
+      }
       
       setLoading(true);
       try {
@@ -69,10 +73,22 @@ const ExcludeOrderForm = ({ onAddExclusion }: ExcludeOrderFormProps) => {
         
         if (error) throw error;
         
-        setOrderNumbers(data.map(order => order.hd_order_number));
+        if (data && Array.isArray(data)) {
+          // Safely map the data to strings
+          const numbers = data.map(order => 
+            order && typeof order.hd_order_number === 'string' 
+              ? order.hd_order_number 
+              : ''
+          ).filter(Boolean); // Remove any empty strings
+          
+          setOrderNumbers(numbers);
+        } else {
+          setOrderNumbers([]);
+        }
       } catch (error) {
         console.error('Error fetching order numbers:', error);
         toast.error('Failed to load order suggestions');
+        setOrderNumbers([]);
       } finally {
         setLoading(false);
       }
@@ -126,7 +142,7 @@ const ExcludeOrderForm = ({ onAddExclusion }: ExcludeOrderFormProps) => {
                         : "No order number found"}
                     </CommandEmpty>
                     <CommandGroup className="max-h-60 overflow-auto">
-                      {orderNumbers.map((orderNumber) => (
+                      {orderNumbers.length > 0 && orderNumbers.map((orderNumber) => (
                         <CommandItem
                           key={orderNumber}
                           value={orderNumber}
