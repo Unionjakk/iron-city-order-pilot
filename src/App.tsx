@@ -36,6 +36,13 @@ import ActionsIndex from "@/pages/actions/ActionsIndex";
 import PicklistPage from "@/pages/actions/PicklistPage";
 import ToOrderPage from "@/pages/actions/ToOrderPage";
 import BackorderPage from "@/pages/actions/BackorderPage";
+import PickedPage from "@/pages/actions/PickedPage";
+import OrderedPage from "@/pages/actions/OrderedPage";
+import DispatchPage from "@/pages/actions/DispatchPage";
+import BackorderReportPage from "@/pages/actions/BackorderReportPage";
+
+// Main index page
+import Index from "@/pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -54,7 +61,7 @@ const App = () => (
             <Route element={<ProtectedRoute />}>
               <Route element={<AdminLayout />}>
                 {/* Main Dashboard */}
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<Index />} />
                 
                 {/* Users management */}
                 <Route path="/users" element={<UsersPage />} />
@@ -64,6 +71,10 @@ const App = () => (
                 <Route path="/actions/picklist" element={<PicklistPage />} />
                 <Route path="/actions/toorder" element={<ToOrderPage />} />
                 <Route path="/actions/backorder" element={<BackorderPage />} />
+                <Route path="/actions/picked" element={<PickedPage />} />
+                <Route path="/actions/ordered" element={<OrderedPage />} />
+                <Route path="/actions/dispatch" element={<DispatchPage />} />
+                <Route path="/actions/backorder-report" element={<BackorderReportPage />} />
                 
                 {/* Admin routes */}
                 <Route path="/admin" element={<AdminDashboard />} />
