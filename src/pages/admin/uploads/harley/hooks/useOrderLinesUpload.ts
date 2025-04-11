@@ -43,6 +43,8 @@ export const useOrderLinesUpload = () => {
     setUploadStats({ processed: 0, replaced: 0, errors: 0 });
     
     try {
+      let finalStats = { processed: 0, replaced: 0, errors: 0 };
+      
       for (const file of files) {
         console.log(`Processing file: ${file.name}`);
         
@@ -54,16 +56,20 @@ export const useOrderLinesUpload = () => {
           continue;
         }
         
-        await processOrderLineItems(parsedData, uploadStats, setUploadStats);
+        await processOrderLineItems(parsedData, finalStats, setUploadStats);
         
         await recordUploadHistory(
           file.name, 
           parsedData.length, 
-          uploadStats.replaced > 0
+          finalStats.replaced > 0
         );
+        
+        // Update the finalStats for toast message
+        finalStats = { ...uploadStats };
       }
       
       console.log('Upload completed successfully!');
+      // Only show the toast message once with the final stats
       toast.success(`Successfully uploaded ${uploadStats.processed} line items (${uploadStats.replaced} replaced)`);
       setUploadSuccess(true);
       setIsProcessing(false);
