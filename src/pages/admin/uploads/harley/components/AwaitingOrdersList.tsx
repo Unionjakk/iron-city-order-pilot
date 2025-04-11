@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,7 +12,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { ExcludeReason } from '../LineItemsExclude';
+import { ExcludeReason } from '../types/excludeTypes';
 
 interface AwaitingOrder {
   hd_order_number: string;
@@ -41,7 +40,6 @@ const AwaitingOrdersList = ({
   const fetchAwaitingOrders = async () => {
     setIsLoadingOrders(true);
     try {
-      // Query to get orders that aren't in the exclusions table
       const { data, error } = await supabase
         .from('hd_orders')
         .select('hd_order_number, dealer_po_number, order_type')
@@ -52,7 +50,6 @@ const AwaitingOrdersList = ({
         throw error;
       }
       
-      // Filter out any orders that are already in the excluded list
       const filteredOrders = data.filter(
         order => !excludedOrderNumbers.includes(order.hd_order_number)
       );
