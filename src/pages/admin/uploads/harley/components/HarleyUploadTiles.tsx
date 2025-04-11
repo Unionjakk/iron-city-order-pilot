@@ -1,67 +1,55 @@
 
+import { Card } from '@/components/ui/card';
+import { UploadCloud, FileSpreadsheet, List, Ban } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, FileSpreadsheet, FileText, Truck } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const HarleyUploadTiles = () => {
+  const tiles = [
+    {
+      title: 'Open Orders Upload',
+      description: 'Upload Open Orders data from H-D NET',
+      icon: <FileSpreadsheet className="h-8 w-8 text-orange-500" />,
+      link: '/admin/uploads/harley/open-orders',
+      color: 'from-orange-600/20 to-amber-600/20',
+    },
+    {
+      title: 'Order Lines Upload',
+      description: 'Upload Order Line Items data from H-D NET',
+      icon: <List className="h-8 w-8 text-orange-500" />,
+      link: '/admin/uploads/harley/order-lines',
+      color: 'from-orange-600/20 to-amber-600/20',
+    },
+    {
+      title: 'Backorders Upload',
+      description: 'Upload Backorder data from H-D NET',
+      icon: <UploadCloud className="h-8 w-8 text-orange-500" />,
+      link: '/admin/uploads/harley/backorders',
+      color: 'from-orange-600/20 to-amber-600/20',
+    },
+    {
+      title: 'Line Items Exclusions',
+      description: 'Manage orders to exclude from line item processing',
+      icon: <Ban className="h-8 w-8 text-orange-500" />,
+      link: '/admin/uploads/harley/exclusions',
+      color: 'from-orange-600/20 to-amber-600/20',
+    }
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Open Orders Upload */}
-      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center text-orange-500">
-            <FileSpreadsheet className="mr-2 h-5 w-5" />
-            Open Orders Upload
-          </CardTitle>
-          <CardDescription className="text-zinc-400">Import order information from H-D NET</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4 text-zinc-300">
-            Upload Open Orders list exports from H-D NET to initialize order tracking.
-          </p>
-          <Link to="/admin/uploads/harley/open-orders" className="inline-flex items-center text-orange-500 hover:text-orange-400">
-            Go to Open Orders Upload <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </CardContent>
-      </Card>
-      
-      {/* Order Line Items Upload */}
-      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center text-orange-500">
-            <FileText className="mr-2 h-5 w-5" />
-            Order Line Items Upload
-          </CardTitle>
-          <CardDescription className="text-zinc-400">Import detailed part information</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4 text-zinc-300">
-            Upload Order Line Items exports to add detailed part information to orders.
-          </p>
-          <Link to="/admin/uploads/harley/order-lines" className="inline-flex items-center text-orange-500 hover:text-orange-400">
-            Go to Line Items Upload <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </CardContent>
-      </Card>
-      
-      {/* Backorder Report Upload */}
-      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center text-orange-500">
-            <Truck className="mr-2 h-5 w-5" />
-            Backorder Report Upload
-          </CardTitle>
-          <CardDescription className="text-zinc-400">Update backorder status information</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4 text-zinc-300">
-            Upload Backorder Reports to update status and projected shipping dates.
-          </p>
-          <Link to="/admin/uploads/harley/backorders" className="inline-flex items-center text-orange-500 hover:text-orange-400">
-            Go to Backorder Upload <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {tiles.map((tile) => (
+        <Link to={tile.link} key={tile.title}>
+          <Card className="h-full border-zinc-800 bg-gradient-to-br hover:shadow-lg hover:border-orange-500/50 transition-all duration-200 overflow-hidden">
+            <div className={`p-6 bg-gradient-to-br ${tile.color}`}>
+              <div className="flex flex-col items-center text-center space-y-2">
+                {tile.icon}
+                <h3 className="font-medium text-zinc-200 mt-2">{tile.title}</h3>
+                <p className="text-xs text-zinc-400">{tile.description}</p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      ))}
     </div>
   );
 };

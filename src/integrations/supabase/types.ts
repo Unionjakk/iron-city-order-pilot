@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      hd_lineitems_exclude: {
+        Row: {
+          created_at: string
+          hd_order_number: string
+          id: string
+          reason: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hd_order_number: string
+          id?: string
+          reason: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hd_order_number?: string
+          id?: string
+          reason?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hd_order_line_items: {
         Row: {
           backorder_clear_by: string | null

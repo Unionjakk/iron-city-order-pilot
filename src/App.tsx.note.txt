@@ -1,0 +1,8 @@
+
+// Note: You'll need to add this route to your App.tsx:
+// In the existing routes, add the following route under the Harley uploads section:
+//
+// <Route path="/admin/uploads/harley/exclusions" element={<LineItemsExclude />} />
+//
+// Don't forget to import the component:
+// import LineItemsExclude from "./pages/admin/uploads/harley/LineItemsExclude";
