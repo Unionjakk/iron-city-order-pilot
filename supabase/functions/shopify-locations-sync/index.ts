@@ -57,6 +57,10 @@ serve(async (req) => {
 
     // Get API token from request
     let apiToken = body.apiToken;
+    const includeDebugData = body.includeDebugData || false;
+    
+    // Initialize debug data container if detailed debugging is requested
+    let debugData: { request?: string; response?: string } = {};
     
     // Validate the API token
     if (!apiToken) {
@@ -71,8 +75,14 @@ serve(async (req) => {
       debug("Fetching all Shopify locations for debugging");
       
       try {
+        // Store the request URL if detailed debugging is requested
+        const locationsEndpoint = "/locations.json";
+        if (includeDebugData) {
+          debugData.request = `GET ${locationsEndpoint}`;
+        }
+        
         const data = await retryOnRateLimit(
-          () => makeShopifyApiRequest(apiToken!, "/locations.json", debug),
+          () => makeShopifyApiRequest(apiToken!, locationsEndpoint, debug, debugData),
           debug
         );
         
@@ -86,6 +96,11 @@ serve(async (req) => {
         responseData.success = true;
         responseData.locations = data.locations;
         
+        // Include debug data if requested
+        if (includeDebugData) {
+          responseData.debugData = debugData;
+        }
+        
         return new Response(JSON.stringify(responseData), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -93,6 +108,11 @@ serve(async (req) => {
       } catch (error: any) {
         debug(`Error fetching locations: ${error.message}`);
         responseData.error = `Error fetching locations: ${error.message}`;
+        
+        // Include debug data even on error if requested
+        if (includeDebugData) {
+          responseData.debugData = debugData;
+        }
         
         return new Response(JSON.stringify(responseData), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -108,8 +128,16 @@ serve(async (req) => {
       try {
         // CRITICAL: First, try to get the "assigned_location" for this order via the assigned_fulfillment_orders endpoint
         debug("Checking for assigned locations via fulfillment orders endpoint");
+        
+        const fulfillmentOrdersEndpoint = `/orders/${body.orderId}/fulfillment_orders.json`;
+        
+        // Store the request URL if detailed debugging is requested
+        if (includeDebugData) {
+          debugData.request = `GET ${fulfillmentOrdersEndpoint}`;
+        }
+        
         const fulfillmentOrdersData = await retryOnRateLimit(
-          () => makeShopifyApiRequest(apiToken!, `/orders/${body.orderId}/fulfillment_orders.json`, debug),
+          () => makeShopifyApiRequest(apiToken!, fulfillmentOrdersEndpoint, debug, debugData),
           debug
         );
         
@@ -148,12 +176,12 @@ serve(async (req) => {
             }
           }
         } else {
-          debug("No fulfillment orders found, will need to check inventory locations");
+          debug("No fulfillment orders found or invalid format, will need to check inventory locations");
         }
         
         // If we didn't find location info, we still need to fetch line items to update
         // Fetch all line items for the order from Shopify
-        const lineItems = await fetchAllLineItemsForOrder(apiToken!, body.orderId, debug);
+        const lineItems = await fetchAllLineItemsForOrder(apiToken!, body.orderId, debug, debugData, includeDebugData);
         
         if (!lineItems || lineItems.length === 0) {
           debug(`No line items found for order ${body.orderId} in Shopify API`);
@@ -186,6 +214,11 @@ serve(async (req) => {
         responseData.updated = updatedCount;
         responseData.totalItems = lineItems.length;
         
+        // Include debug data if requested
+        if (includeDebugData) {
+          responseData.debugData = debugData;
+        }
+        
         return new Response(JSON.stringify(responseData), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -193,6 +226,11 @@ serve(async (req) => {
       } catch (error: any) {
         debug(`Error in batch line items update: ${error.message}`);
         responseData.error = `Error updating line items: ${error.message}`;
+        
+        // Include debug data even on error if requested
+        if (includeDebugData) {
+          responseData.debugData = debugData;
+        }
         
         return new Response(JSON.stringify(responseData), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -221,8 +259,15 @@ serve(async (req) => {
         let location = { id: null, name: null };
         
         try {
+          const fulfillmentOrdersEndpoint = `/orders/${body.orderId}/fulfillment_orders.json`;
+          
+          // Store the request URL if detailed debugging is requested
+          if (includeDebugData) {
+            debugData.request = `GET ${fulfillmentOrdersEndpoint}`;
+          }
+          
           const fulfillmentOrdersData = await retryOnRateLimit(
-            () => makeShopifyApiRequest(apiToken!, `/orders/${body.orderId}/fulfillment_orders.json`, debug),
+            () => makeShopifyApiRequest(apiToken!, fulfillmentOrdersEndpoint, debug, debugData),
             debug
           );
           
@@ -258,7 +303,7 @@ serve(async (req) => {
           debug("No location found in fulfillment orders, trying standard method");
           
           // Fetch the updated info from Shopify API
-          const shopifyLineItem = await fetchSingleLineItem(apiToken!, body.orderId, body.lineItemId, debug);
+          const shopifyLineItem = await fetchSingleLineItem(apiToken!, body.orderId, body.lineItemId, debug, debugData, includeDebugData);
           
           if (!shopifyLineItem) {
             debug(`Line item ${body.lineItemId} not found in Shopify API response`);
@@ -288,6 +333,11 @@ serve(async (req) => {
         responseData.updated = updated ? 1 : 0;
         responseData.apiResponse = { location };
         
+        // Include debug data if requested  
+        if (includeDebugData) {
+          responseData.debugData = debugData;
+        }
+        
         return new Response(JSON.stringify(responseData), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -295,6 +345,11 @@ serve(async (req) => {
       } catch (error: any) {
         debug(`Error in single line item update: ${error.message}`);
         responseData.error = `Error updating single line item: ${error.message}`;
+        
+        // Include debug data even on error if requested
+        if (includeDebugData) {
+          responseData.debugData = debugData;
+        }
         
         return new Response(JSON.stringify(responseData), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -360,8 +415,15 @@ serve(async (req) => {
           let lineItemLocationMap: Record<string, { id: string, name: string }> = {};
           
           try {
+            const fulfillmentOrdersEndpoint = `/orders/${orderId}/fulfillment_orders.json`;
+            
+            // Store the request URL if detailed debugging is requested
+            if (includeDebugData) {
+              debugData.request = `GET ${fulfillmentOrdersEndpoint}`;
+            }
+            
             const fulfillmentOrdersData = await retryOnRateLimit(
-              () => makeShopifyApiRequest(apiToken!, `/orders/${orderId}/fulfillment_orders.json`, debug),
+              () => makeShopifyApiRequest(apiToken!, fulfillmentOrdersEndpoint, debug, debugData),
               debug
             );
             
@@ -393,7 +455,7 @@ serve(async (req) => {
           
           // Standard method as fallback
           debug(`Fetching order ${orderId} from Shopify API`);
-          const order = await fetchOrdersWithLineItems(apiToken!, orderId, debug);
+          const order = await fetchOrdersWithLineItems(apiToken!, orderId, debug, debugData, includeDebugData);
           
           if (!order || !order.line_items || !Array.isArray(order.line_items)) {
             debug(`No valid line items found for order ${orderId}`);
@@ -455,7 +517,7 @@ serve(async (req) => {
       
       // Add delay between batches to respect rate limits
       if (i + batchSize < orderIds.length) {
-        const delayMs = 1000; // 1 second delay between batches
+        const delayMs = 2000; // 2 second delay between batches
         debug(`Waiting ${delayMs}ms before processing next batch to respect rate limits`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
@@ -466,6 +528,11 @@ serve(async (req) => {
     
     responseData.success = true;
     responseData.updated = updatedLineItems;
+    
+    // Include debug data if requested
+    if (includeDebugData) {
+      responseData.debugData = debugData;
+    }
 
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

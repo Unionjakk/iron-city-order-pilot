@@ -1,67 +1,37 @@
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
-export interface RequestBody {
-  apiToken?: string;
-  mode?: "batch" | "single" | "bulk" | "list_locations";
-  orderId?: string;
-  lineItemId?: string;
-}
-
-export interface SyncResponse {
-  success: boolean;
-  error: string | null;
-  updated: number;
-  debugMessages: string[];
-  totalItems?: number;
-  apiResponse?: any;
-  locations?: any[];
-}
+// Types for Shopify Orders API
 
 export interface ShopifyOrder {
   id: string;
   name: string;
-  created_at: string;
-  customer?: {
-    first_name?: string;
-    last_name?: string;
-    email?: string;
-    phone?: string;
-  };
-  line_items: ShopifyLineItem[];
-  shipping_address?: any;
-  note?: string;
-  fulfillment_status?: string;
-  fulfillments?: any[];
-  locations?: any[];
   order_number?: string;
+  created_at?: string;
+  customer?: any;
+  line_items?: ShopifyLineItem[];
+  fulfillment_status?: string | null;
+  financial_status?: string;
+  fulfillments?: any[];
+  cancelled_at?: string | null;
+  closed_at?: string | null;
 }
 
 export interface ShopifyLineItem {
   id: string;
-  title: string;
-  quantity: number;
-  price: string;
-  sku?: string;
-  product_id?: string;
   variant_id?: string;
-  properties?: any;
-  origin_location?: {
-    id: string;
-    name: string;
-  };
+  title?: string;
+  quantity?: number;
+  sku?: string;
+  variant_title?: string;
+  vendor?: string;
+  fulfillment_service?: string;
+  requires_shipping?: boolean;
+  taxable?: boolean;
+  gift_card?: boolean;
+  name?: string;
+  price?: string;
+  fulfillment_status?: string | null;
   location_id?: string | null;
   location_name?: string | null;
-}
-
-export interface DbLineItem {
-  id: string;
-  order_id: string;
-  shopify_line_item_id: string;
-  shopify_order_id: string;
-  title: string;
 }
 
 export interface LineItemLocationUpdate {
@@ -69,3 +39,40 @@ export interface LineItemLocationUpdate {
   location_id: string | null;
   location_name: string | null;
 }
+
+export interface DbLineItem {
+  id: string;
+  shopify_line_item_id: string;
+  title?: string;
+  order_id: string;
+  location_id?: string | null;
+  location_name?: string | null;
+}
+
+export interface RequestBody {
+  apiToken?: string;
+  mode?: "batch" | "single" | "list_locations";
+  orderId?: string;
+  lineItemId?: string;
+  includeDebugData?: boolean;
+}
+
+export interface SyncResponse {
+  success: boolean;
+  error: string | null;
+  updated: number;
+  totalItems?: number;
+  locations?: any[];
+  apiResponse?: any;
+  debugMessages: string[];
+  debugData?: {
+    request?: string;
+    response?: string;
+  };
+}
+
+export const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};

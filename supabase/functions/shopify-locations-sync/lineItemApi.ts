@@ -10,13 +10,15 @@ export async function fetchSingleLineItem(
   apiToken: string,
   orderId: string,
   lineItemId: string,
-  debug: (message: string) => void
+  debug: (message: string) => void,
+  debugData?: { request?: string; response?: string },
+  includeDebugData = false
 ): Promise<ShopifyLineItem | null> {
   try {
     debug(`Fetching single line item: Order ID ${orderId}, Line Item ID ${lineItemId}`);
     
     // Get the complete order first - this ensures we have all the needed context
-    const order = await fetchOrdersWithLineItems(apiToken, orderId, debug);
+    const order = await fetchOrdersWithLineItems(apiToken, orderId, debug, debugData, includeDebugData);
     
     if (!order.line_items || !Array.isArray(order.line_items)) {
       debug(`No line items found in order ${orderId}`);
@@ -47,13 +49,15 @@ export async function fetchSingleLineItem(
 export async function fetchAllLineItemsForOrder(
   apiToken: string,
   orderId: string,
-  debug: (message: string) => void
+  debug: (message: string) => void,
+  debugData?: { request?: string; response?: string },
+  includeDebugData = false
 ): Promise<ShopifyLineItem[]> {
   try {
     debug(`Fetching all line items for order: ${orderId}`);
     
     // Use the existing function to get the complete order
-    const order = await fetchOrdersWithLineItems(apiToken, orderId, debug);
+    const order = await fetchOrdersWithLineItems(apiToken, orderId, debug, debugData, includeDebugData);
     
     if (!order.line_items || !Array.isArray(order.line_items) || order.line_items.length === 0) {
       debug(`No line items found for order ${orderId}`);

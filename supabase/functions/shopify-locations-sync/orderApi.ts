@@ -9,7 +9,9 @@ import { getLocationInfoForOrder, applyLocationToLineItems } from "./locationUti
 export async function fetchOrdersWithLineItems(
   apiToken: string,
   orderId: string,
-  debug: (message: string) => void
+  debug: (message: string) => void,
+  debugData?: { request?: string; response?: string },
+  includeDebugData = false
 ): Promise<ShopifyOrder> {
   try {
     // Get the order with necessary fields
@@ -17,7 +19,7 @@ export async function fetchOrdersWithLineItems(
     
     // Use retry logic for API calls
     const data = await retryOnRateLimit(
-      () => makeShopifyApiRequest(apiToken, endpoint, debug),
+      () => makeShopifyApiRequest(apiToken, endpoint, debug, debugData),
       debug
     );
     
@@ -35,7 +37,7 @@ export async function fetchOrdersWithLineItems(
       debug(`Found ${order.line_items.length} line items in the order`);
       
       // Get location information for the order
-      const locationInfo = await getLocationInfoForOrder(apiToken, order, debug);
+      const locationInfo = await getLocationInfoForOrder(apiToken, order, debug, debugData, includeDebugData);
       
       // Apply location information to line items
       order.line_items = applyLocationToLineItems(order.line_items, locationInfo, debug);

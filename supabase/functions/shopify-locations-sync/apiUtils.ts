@@ -12,12 +12,18 @@ export const SHOPIFY_API_BASE_URL = "https://opus-harley-davidson.myshopify.com/
 export async function makeShopifyApiRequest(
   apiToken: string,
   endpoint: string,
-  debug: (message: string) => void
+  debug: (message: string) => void,
+  debugData?: { request?: string; response?: string }
 ): Promise<any> {
   const url = `${SHOPIFY_API_BASE_URL}${endpoint}`;
   
   debug(`Fetching from Shopify API: ${url}`);
   debug(`Using API token: ${apiToken.substring(0, 4)}...${apiToken.substring(apiToken.length - 4)}`);
+  
+  // If debugData is provided, store the full URL for debugging
+  if (debugData) {
+    debugData.request = `${url} [GET]`;
+  }
   
   const response = await fetch(url, {
     method: "GET",
@@ -30,7 +36,14 @@ export async function makeShopifyApiRequest(
 
   // Log response status and headers
   debug(`Response status: ${response.status} ${response.statusText}`);
-  debug(`Response headers: ${JSON.stringify(Object.fromEntries([...response.headers]))}`);
+  const responseHeaders = Object.fromEntries([...response.headers]);
+  debug(`Response headers: ${JSON.stringify(responseHeaders)}`);
+  
+  // Store X-Shopify-Shop-Api-Call-Limit header for rate limit monitoring
+  const rateLimit = response.headers.get("X-Shopify-Shop-Api-Call-Limit");
+  if (rateLimit) {
+    debug(`API Rate Limit: ${rateLimit}`);
+  }
   
   if (!response.ok) {
     let errorText = "";
@@ -38,6 +51,11 @@ export async function makeShopifyApiRequest(
       // Try to get the response as text
       errorText = await response.text();
       debug(`Shopify API error response body: ${errorText}`);
+      
+      // If debugData is provided, store the error response
+      if (debugData) {
+        debugData.response = `Error ${response.status}: ${errorText}`;
+      }
     } catch (e) {
       debug(`Could not read error response text: ${e.message}`);
     }
@@ -66,6 +84,16 @@ export async function makeShopifyApiRequest(
     
     // Log the complete raw JSON response for debugging
     const rawResponseText = await responseClone.text();
+    
+    // If debugData is provided, store a shortened version of the response
+    if (debugData) {
+      // Limit the size of the captured response data to avoid excessive size
+      const maxLength = 2000;
+      debugData.response = rawResponseText.length > maxLength 
+        ? `${rawResponseText.substring(0, maxLength)}... [truncated, full length: ${rawResponseText.length}]`
+        : rawResponseText;
+    }
+    
     debug(`RAW JSON RESPONSE: ${rawResponseText}`);
     
     // Also log a shorter preview for quick reference
@@ -84,7 +112,7 @@ export async function makeShopifyApiRequest(
 export async function retryOnRateLimit<T>(
   apiCallFn: () => Promise<T>,
   debug: (message: string) => void,
-  maxRetries = 3,
+  maxRetries = 5,
   initialDelayMs = 2000
 ): Promise<T> {
   let retries = 0;
@@ -98,8 +126,9 @@ export async function retryOnRateLimit<T>(
         retries++;
         debug(`Rate limit hit, retry ${retries}/${maxRetries} after ${delay}ms`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        // Exponential backoff
-        delay *= 1.5;
+        // Exponential backoff with jitter for better rate limit handling
+        delay = Math.floor(delay * 1.5 * (0.9 + Math.random() * 0.2));
+        debug(`Next retry will wait ${delay}ms if needed`);
       } else {
         throw error;
       }
