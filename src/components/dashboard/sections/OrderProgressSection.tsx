@@ -1,8 +1,10 @@
 
 import React from "react";
 import ProgressCard from "../ProgressCard";
-import ComingSoonStats from "../ComingSoonStats";
 import PickStats from "@/components/stats/PickStats";
+import PickedStats from "@/components/stats/PickedStats"; 
+import OrderedStats from "@/components/stats/OrderedStats";
+import ComingSoonStats from "../ComingSoonStats";
 import { 
   ShoppingBag, 
   CheckCircle, 
@@ -38,7 +40,7 @@ const OrderProgressSection = () => {
             to="/actions/picked"
             className="md:w-1/3"
           />
-          <ComingSoonStats title="Picked Stats" className="md:w-2/3" />
+          <PickedStats className="md:w-2/3" />
         </div>
 
         {/* To Order */}
@@ -50,7 +52,7 @@ const OrderProgressSection = () => {
             to="/actions/toorder"
             className="md:w-1/3"
           />
-          <ComingSoonStats title="Order Stats" className="md:w-2/3" />
+          <OrderedStats className="md:w-2/3" />
         </div>
 
         {/* Ordered */}
