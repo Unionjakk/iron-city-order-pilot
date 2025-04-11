@@ -46,6 +46,8 @@ const ExcludeOrderList = ({ excludedOrders, isLoading, onRemoveExclusion }: Excl
         <TableHeader>
           <TableRow className="border-zinc-700">
             <TableHead className="text-zinc-300">Order Number</TableHead>
+            <TableHead className="text-zinc-300">Dealer PO Number</TableHead>
+            <TableHead className="text-zinc-300">Order Type</TableHead>
             <TableHead className="text-zinc-300">Reason</TableHead>
             <TableHead className="text-zinc-300">Added On</TableHead>
             <TableHead className="text-zinc-300 text-right">Actions</TableHead>
@@ -55,6 +57,8 @@ const ExcludeOrderList = ({ excludedOrders, isLoading, onRemoveExclusion }: Excl
           {excludedOrders.map((order) => (
             <TableRow key={order.id} className="border-zinc-800">
               <TableCell className="font-medium text-zinc-200">{order.hd_order_number}</TableCell>
+              <TableCell className="text-zinc-300">{order.dealer_po_number || '-'}</TableCell>
+              <TableCell className="text-zinc-300">{order.order_type || '-'}</TableCell>
               <TableCell>
                 <div className="flex items-center text-zinc-300">
                   {getReasonIcon(order.reason)}

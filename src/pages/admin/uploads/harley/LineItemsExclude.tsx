@@ -12,6 +12,8 @@ export type ExcludeReason = 'Check In' | 'Not Shopify';
 export type ExcludedOrder = {
   id: string;
   hd_order_number: string;
+  dealer_po_number?: string;
+  order_type?: string;
   reason: ExcludeReason;
   created_at: string;
 };
@@ -23,16 +25,33 @@ const LineItemsExclude = () => {
   const fetchExcludedOrders = async () => {
     setIsLoading(true);
     try {
+      // Join with hd_orders to get dealer_po_number and order_type
       const { data, error } = await supabase
         .from('hd_lineitems_exclude')
-        .select('*')
-        .order('created_at', { ascending: false }) as { data: ExcludedOrder[] | null, error: any };
+        .select(`
+          id,
+          hd_order_number,
+          reason,
+          created_at,
+          hd_orders!inner(dealer_po_number, order_type)
+        `)
+        .order('created_at', { ascending: false });
 
       if (error) {
         throw error;
       }
 
-      setExcludedOrders(data || []);
+      // Transform the data to match the ExcludedOrder type
+      const transformedData = data?.map(item => ({
+        id: item.id,
+        hd_order_number: item.hd_order_number,
+        dealer_po_number: item.hd_orders?.dealer_po_number,
+        order_type: item.hd_orders?.order_type,
+        reason: item.reason,
+        created_at: item.created_at
+      })) || [];
+
+      setExcludedOrders(transformedData);
     } catch (error) {
       console.error('Error fetching excluded orders:', error);
       toast.error('Failed to load excluded orders');

@@ -17,6 +17,8 @@ import { ExcludeReason } from '../LineItemsExclude';
 
 interface AwaitingOrder {
   hd_order_number: string;
+  dealer_po_number?: string;
+  order_type?: string;
 }
 
 interface AwaitingOrdersListProps {
@@ -42,7 +44,7 @@ const AwaitingOrdersList = ({
       // Query to get orders that aren't in the exclusions table
       const { data, error } = await supabase
         .from('hd_orders')
-        .select('hd_order_number')
+        .select('hd_order_number, dealer_po_number, order_type')
         .order('hd_order_number', { ascending: true })
         .limit(50);
         
@@ -107,6 +109,8 @@ const AwaitingOrdersList = ({
           <TableHeader>
             <TableRow className="border-zinc-700">
               <TableHead className="text-zinc-300">Order Number</TableHead>
+              <TableHead className="text-zinc-300">Dealer PO Number</TableHead>
+              <TableHead className="text-zinc-300">Order Type</TableHead>
               <TableHead className="text-zinc-300 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -115,6 +119,12 @@ const AwaitingOrdersList = ({
               <TableRow key={order.hd_order_number} className="border-zinc-800">
                 <TableCell className="font-medium text-zinc-200">
                   {order.hd_order_number}
+                </TableCell>
+                <TableCell className="text-zinc-300">
+                  {order.dealer_po_number || '-'}
+                </TableCell>
+                <TableCell className="text-zinc-300">
+                  {order.order_type || '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   <Dialog open={isDialogOpen && selectedOrder === order.hd_order_number} 
