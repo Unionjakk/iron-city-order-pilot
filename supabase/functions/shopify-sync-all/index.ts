@@ -108,23 +108,26 @@ serve(async (req) => {
     try {
       // Get API endpoint from database
       const apiEndpoint = await getShopifyApiEndpoint(debug);
-      debug(`Using Shopify API endpoint: ${apiEndpoint}`);
+      debug(`Base Shopify API endpoint: ${apiEndpoint}`);
+      
+      // Modify the endpoint URL to specifically filter for open orders with unfulfilled or partial status
+      // This is the key change to ensure we ONLY get active, unfulfilled orders
+      const url = new URL(apiEndpoint);
+      
+      // Add specific filters for status and fulfillment_status
+      url.searchParams.set('status', 'open'); // Only get open (active) orders
+      url.searchParams.set('fulfillment_status', 'partial,unfulfilled'); // Only unfulfilled or partially fulfilled
+      
+      const filteredApiEndpoint = url.toString();
+      debug(`Using filtered Shopify API endpoint: ${filteredApiEndpoint}`);
 
-      // STEP 1: Fetch orders from Shopify with proper pagination
-      debug("Fetching orders from Shopify");
+      // STEP 1: Fetch orders from Shopify with proper pagination and filtering
+      debug("Fetching orders from Shopify with status=open and fulfillment_status=partial,unfulfilled");
       let shopifyOrders: ShopifyOrder[] = [];
       let nextPageUrl: string | null = null;
       
-      // First page of orders - get all orders with status filter
-      // Adding status=any parameter to include orders without a status field (which are unfulfilled)
-      const statusParam = "status=any";
-      const apiEndpointWithStatus = apiEndpoint.includes('?') 
-        ? `${apiEndpoint}&${statusParam}` 
-        : `${apiEndpoint}?${statusParam}`;
-        
-      debug(`Using API endpoint with status filter: ${apiEndpointWithStatus}`);
-      
-      const firstPageResult = await fetchAllShopifyOrdersWithPagination(apiToken, apiEndpointWithStatus);
+      // First page of orders - with our specific filters already applied
+      const firstPageResult = await fetchAllShopifyOrdersWithPagination(apiToken, filteredApiEndpoint);
       shopifyOrders = firstPageResult.orders;
       nextPageUrl = firstPageResult.nextPageUrl;
       
@@ -154,24 +157,24 @@ serve(async (req) => {
       
       debug(`Total orders retrieved: ${shopifyOrders.length}`);
 
-      // IMPORTANT: Filter orders to only include active unfulfilled or partially_fulfilled orders
-      debug("Filtering orders to include only ACTIVE unfulfilled and partially fulfilled orders");
+      // Even though we're already filtering in the API call, do a double-check on the orders
+      debug("Double-checking orders to confirm only ACTIVE unfulfilled and partially fulfilled orders are included");
       const filteredOrders = shopifyOrders.filter(order => {
         // Include orders that are unfulfilled or partially_fulfilled
-        // or ones where fulfillment_status is null/undefined (which means unfulfilled)
         const status = order.fulfillment_status || "unfulfilled";
         
         // Check if order is cancelled or archived
         const isCancelled = order.cancelled_at != null;
         const isArchived = order.closed_at != null;
         
-        // Only include active (not cancelled or archived) unfulfilled/partially fulfilled orders
+        // Extra verification that we only include active (not cancelled or archived) 
+        // unfulfilled/partially fulfilled orders
         return (status === "unfulfilled" || status === "partially_fulfilled") && 
                !isCancelled && 
                !isArchived;
       });
       
-      debug(`Filtered to ${filteredOrders.length} active unfulfilled/partially fulfilled orders out of ${shopifyOrders.length} total orders`);
+      debug(`After double-check: ${filteredOrders.length} active unfulfilled/partially fulfilled orders out of ${shopifyOrders.length} total orders`);
 
       // Count total line items for logging
       let totalLineItems = 0;

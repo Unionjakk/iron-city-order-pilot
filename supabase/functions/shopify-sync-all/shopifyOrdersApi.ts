@@ -21,11 +21,17 @@ export async function fetchAllShopifyOrdersWithPagination(
     }
     
     if (!url.searchParams.has('fields')) {
-      url.searchParams.set('fields', 'id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status');
+      url.searchParams.set('fields', 'id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status,cancelled_at,closed_at');
+    } else {
+      // Make sure cancelled_at and closed_at are in the fields list for proper filtering
+      const currentFields = url.searchParams.get('fields') || '';
+      if (!currentFields.includes('cancelled_at')) {
+        url.searchParams.set('fields', `${currentFields},cancelled_at,closed_at`);
+      }
     }
     
     const fullUrl = url.toString();
-    console.log(`API URL: ${fullUrl}`);
+    console.log(`API URL with full parameters: ${fullUrl}`);
     
     console.log(`Fetching orders from: ${fullUrl}`);
     
@@ -79,10 +85,20 @@ export async function fetchNextPage(
   nextPageUrl: string
 ): Promise<{ orders: ShopifyOrder[]; nextPageUrl: string | null }> {
   try {
-    console.log(`API URL: ${nextPageUrl}`);
-    console.log(`Fetching next page of orders from: ${nextPageUrl}`);
+    // Since nextPageUrl might not include the fields we need, ensure we have them
+    const url = new URL(nextPageUrl);
+    if (url.searchParams.has('fields')) {
+      const currentFields = url.searchParams.get('fields') || '';
+      if (!currentFields.includes('cancelled_at')) {
+        url.searchParams.set('fields', `${currentFields},cancelled_at,closed_at`);
+      }
+    }
     
-    const response = await fetch(nextPageUrl, {
+    const updatedNextPageUrl = url.toString();
+    console.log(`API URL: ${updatedNextPageUrl}`);
+    console.log(`Fetching next page of orders from: ${updatedNextPageUrl}`);
+    
+    const response = await fetch(updatedNextPageUrl, {
       headers: {
         "X-Shopify-Access-Token": apiToken,
         "Content-Type": "application/json",
@@ -94,7 +110,7 @@ export async function fetchNextPage(
     console.log(`Response headers: ${JSON.stringify(Object.fromEntries([...response.headers]))}`);
     
     // Handle API response (errors, rate limiting, etc.)
-    await handleApiResponse(response, apiToken, nextPageUrl, fetchNextPage);
+    await handleApiResponse(response, apiToken, updatedNextPageUrl, fetchNextPage);
 
     const data = await response.json();
     
