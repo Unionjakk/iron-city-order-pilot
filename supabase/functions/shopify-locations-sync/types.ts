@@ -1,4 +1,3 @@
-
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -6,7 +5,7 @@ export const corsHeaders = {
 
 export interface RequestBody {
   apiToken?: string;
-  mode?: 'single' | 'batch';
+  mode?: "batch" | "single" | "bulk" | "list_locations";
   orderId?: string;
   lineItemId?: string;
 }
@@ -15,9 +14,10 @@ export interface SyncResponse {
   success: boolean;
   error: string | null;
   updated: number;
-  totalItems?: number;
   debugMessages: string[];
+  totalItems?: number;
   apiResponse?: any;
+  locations?: any[];
 }
 
 export interface ShopifyOrder {

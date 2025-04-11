@@ -14,6 +14,7 @@ export function extractLocationFromFulfillments(
   }
   
   debug(`Examining ${fulfillments.length} fulfillments for location information`);
+  debug(`RAW FULFILLMENTS DATA: ${JSON.stringify(fulfillments)}`);
   
   // Extract location from the first fulfillment
   const fulfillment = fulfillments[0];
@@ -74,6 +75,9 @@ export async function getLocationInfoForOrder(
 ): Promise<{ id: string | null; name: string | null }> {
   let locationInfo = { id: null, name: null };
   
+  // Log the complete order structure for debugging
+  debug(`RAW ORDER DATA: ${JSON.stringify(order)}`);
+  
   // First check if there are fulfillments in the order data
   if (order.fulfillments && Array.isArray(order.fulfillments) && order.fulfillments.length > 0) {
     debug(`Order has ${order.fulfillments.length} fulfillments, extracting location data`);
@@ -92,6 +96,34 @@ export async function getLocationInfoForOrder(
     }
   }
   
+  // Check if there's location info in the line items
+  if ((!locationInfo.id || !locationInfo.name) && order.line_items && Array.isArray(order.line_items)) {
+    debug(`Checking line items for location information`);
+    
+    for (const item of order.line_items) {
+      if (item.origin_location) {
+        debug(`Found origin_location in line item: ${JSON.stringify(item.origin_location)}`);
+        locationInfo.id = String(item.origin_location.id);
+        locationInfo.name = item.origin_location.name;
+        break;
+      }
+      
+      if (item.location_id) {
+        debug(`Found location_id in line item: ${item.location_id}`);
+        locationInfo.id = String(item.location_id);
+        // Try to find matching location name
+        if (order.locations && Array.isArray(order.locations)) {
+          const location = order.locations.find(loc => String(loc.id) === String(item.location_id));
+          if (location && location.name) {
+            locationInfo.name = location.name;
+            debug(`Found location name from item location_id: ${locationInfo.name}`);
+          }
+        }
+        break;
+      }
+    }
+  }
+  
   // If we still don't have complete location info, try to fetch fulfillments directly
   if (!locationInfo.name || !locationInfo.id) {
     debug(`No complete location data found in order, making one final check with fulfillments API`);
@@ -105,6 +137,24 @@ export async function getLocationInfoForOrder(
         locationInfo = fulfillmentLocationInfo;
         debug(`Found location from direct fulfillments API: ${locationInfo.name}`);
       }
+    }
+  }
+  
+  // If we still don't have location info, try fetching locations directly
+  if (!locationInfo.name && locationInfo.id) {
+    debug(`Have location ID ${locationInfo.id} but no name, trying to fetch location details`);
+    try {
+      const locationData = await retryOnRateLimit(
+        () => makeShopifyApiRequest(apiToken, `/locations/${locationInfo.id}.json`, debug),
+        debug
+      );
+      
+      if (locationData && locationData.location && locationData.location.name) {
+        locationInfo.name = locationData.location.name;
+        debug(`Found location name from direct location API: ${locationInfo.name}`);
+      }
+    } catch (error) {
+      debug(`Error fetching location details: ${error.message}`);
     }
   }
   

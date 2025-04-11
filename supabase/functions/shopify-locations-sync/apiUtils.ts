@@ -57,10 +57,20 @@ export async function makeShopifyApiRequest(
     }
   }
 
+  // Clone the response so we can use it twice
+  const responseClone = response.clone();
+  
   // Try to parse the JSON response
   try {
     const data = await response.json();
+    
+    // Log the complete raw JSON response for debugging
+    const rawResponseText = await responseClone.text();
+    debug(`RAW JSON RESPONSE: ${rawResponseText}`);
+    
+    // Also log a shorter preview for quick reference
     debug(`Received JSON response from Shopify: ${JSON.stringify(data).substring(0, 200)}...`);
+    
     return data;
   } catch (e) {
     debug(`Error parsing JSON response: ${e.message}`);

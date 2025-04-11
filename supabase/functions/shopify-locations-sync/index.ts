@@ -1,4 +1,3 @@
-
 // Supabase Edge Function
 // This function handles updating location info for existing line items in Shopify orders
 
@@ -64,6 +63,41 @@ serve(async (req) => {
     }
 
     debug("API token validated successfully");
+    
+    // Check if we're requesting a list of all locations (for debugging)
+    if (body.mode === "list_locations") {
+      debug("Fetching all Shopify locations for debugging");
+      
+      try {
+        const data = await retryOnRateLimit(
+          () => makeShopifyApiRequest(apiToken, "/locations.json", debug),
+          debug
+        );
+        
+        if (!data.locations || !Array.isArray(data.locations)) {
+          debug("No locations found in Shopify");
+          throw new Error("No locations found in Shopify API response");
+        }
+        
+        debug(`Found ${data.locations.length} locations in Shopify`);
+        
+        responseData.success = true;
+        responseData.locations = data.locations;
+        
+        return new Response(JSON.stringify(responseData), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      } catch (error: any) {
+        debug(`Error fetching locations: ${error.message}`);
+        responseData.error = `Error fetching locations: ${error.message}`;
+        
+        return new Response(JSON.stringify(responseData), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+    }
     
     // Check if we're handling a batch update for all line items for an order
     if (body.mode === "batch" && body.orderId) {

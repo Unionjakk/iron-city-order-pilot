@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import DebugInfoPanel from './DebugInfoPanel';
+import LocationsExplorer from './LocationsExplorer';
 
 interface LocationInfoImportProps {
   onImportComplete: () => Promise<void>;
@@ -118,57 +119,61 @@ const LocationInfoImport = ({ onImportComplete }: LocationInfoImportProps) => {
   };
 
   return (
-    <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm mt-4">
-      <CardHeader>
-        <CardTitle className="text-blue-500 flex items-center">
-          <MapPin className="mr-2 h-5 w-5" /> Location Information Import
-        </CardTitle>
-        <CardDescription className="text-zinc-400">
-          Update location data for existing line items
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Alert className="bg-blue-900/20 border-blue-500/50">
-          <AlertCircle className="h-5 w-5 text-blue-500" />
-          <AlertTitle className="text-blue-400">API Permissions Required</AlertTitle>
-          <AlertDescription className="text-zinc-300">
-            Make sure your Shopify API token has the <strong>read_locations</strong> and <strong>read_assigned_fulfillment_orders</strong> permissions 
-            enabled in the Shopify Admin API access scopes. This operation will query the Shopify API for each 
-            line item to retrieve its location information.
-          </AlertDescription>
-        </Alert>
-        
-        <Button 
-          onClick={handleImportLocationInfo} 
-          className="w-full bg-blue-600 hover:bg-blue-700"
-          disabled={isImporting}
-        >
-          {isImporting ? (
-            <>
-              <MapPin className="mr-2 h-4 w-4 animate-pulse" />
-              Importing Location Data...
-            </>
-          ) : (
-            <>
-              <MapPin className="mr-2 h-4 w-4" />
-              Import Location Information
-            </>
-          )}
-        </Button>
-        
-        {error && (
-          <Alert className="bg-red-900/20 border-red-500/50">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            <AlertTitle className="text-red-400">Error</AlertTitle>
+    <>
+      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm mt-4">
+        <CardHeader>
+          <CardTitle className="text-blue-500 flex items-center">
+            <MapPin className="mr-2 h-5 w-5" /> Location Information Import
+          </CardTitle>
+          <CardDescription className="text-zinc-400">
+            Update location data for existing line items
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert className="bg-blue-900/20 border-blue-500/50">
+            <AlertCircle className="h-5 w-5 text-blue-500" />
+            <AlertTitle className="text-blue-400">API Permissions Required</AlertTitle>
             <AlertDescription className="text-zinc-300">
-              {error}
+              Make sure your Shopify API token has the <strong>read_locations</strong> and <strong>read_assigned_fulfillment_orders</strong> permissions 
+              enabled in the Shopify Admin API access scopes. This operation will query the Shopify API for each 
+              line item to retrieve its location information.
             </AlertDescription>
           </Alert>
-        )}
-        
-        <DebugInfoPanel debugInfo={debugInfo} />
-      </CardContent>
-    </Card>
+          
+          <Button 
+            onClick={handleImportLocationInfo} 
+            className="w-full bg-blue-600 hover:bg-blue-700"
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <>
+                <MapPin className="mr-2 h-4 w-4 animate-pulse" />
+                Importing Location Data...
+              </>
+            ) : (
+              <>
+                <MapPin className="mr-2 h-4 w-4" />
+                Import Location Information
+              </>
+            )}
+          </Button>
+          
+          {error && (
+            <Alert className="bg-red-900/20 border-red-500/50">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              <AlertTitle className="text-red-400">Error</AlertTitle>
+              <AlertDescription className="text-zinc-300">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          <DebugInfoPanel debugInfo={debugInfo} />
+        </CardContent>
+      </Card>
+      
+      <LocationsExplorer />
+    </>
   );
 };
 
