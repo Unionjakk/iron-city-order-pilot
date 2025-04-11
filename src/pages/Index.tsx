@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import {
   Search,
   Calculator
 } from "lucide-react";
+import PickStats from "@/components/stats/PickStats";
 
 const Index = () => {
   return (
@@ -40,12 +40,7 @@ const Index = () => {
                 </CardContent>
               </Card>
             </Link>
-            <Card className="bg-zinc-800 border-zinc-700 md:w-2/3">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-medium text-white mb-2">Pick Stats</h3>
-                <p className="text-zinc-400">Coming soon</p>
-              </CardContent>
-            </Card>
+            <PickStats className="md:w-2/3" />
           </div>
 
           {/* Picked */}
