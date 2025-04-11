@@ -44,6 +44,13 @@ export const importAllOrders = async (addDebugMessage: (message: string) => void
           throw new Error(`Failed to connect to Shopify API: ${response.error.message || 'Unknown error'}`);
         }
         
+        // Check if the response indicates a successful import
+        if (!response.success) {
+          addDebugMessage(`Warning: API returned success=false, message: ${response.error || 'No error message provided'}`);
+        } else {
+          addDebugMessage(`Successfully imported ${response.imported || 0} active unfulfilled orders`);
+        }
+        
         return response;
       } catch (error: any) {
         lastError = error;

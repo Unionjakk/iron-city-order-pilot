@@ -37,9 +37,9 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
 
   const getButtonText = () => {
     if (isDeleting) return "Deleting All Data...";
-    if (isImporting) return "Importing Active Unfulfilled & Partial Orders...";
+    if (isImporting) return "Importing ONLY Active Unfulfilled & Partial Orders...";
     if (isSuccess) return "Import Completed Successfully";
-    return "Delete All & Import Active Unfulfilled Orders";
+    return "Delete All & Import ONLY Active Unfulfilled Orders";
   };
 
   const getIcon = () => {
