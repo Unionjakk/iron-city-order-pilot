@@ -81,13 +81,12 @@ export const useHarleyDashboardData = () => {
       try {
         setIsLoadingUploads(true);
         
-        // Use execute_sql to fetch the recent uploads
+        // Fix: Use a direct query instead of rpc to avoid type mismatch issues
         const { data, error } = await supabase
-          .rpc('execute_sql', {
-            sql: `SELECT id, upload_type, filename, upload_date, items_count, status
-                  FROM hd_upload_history
-                  ORDER BY upload_date DESC LIMIT 5`
-          });
+          .from('hd_upload_history')
+          .select('id, upload_type, filename, upload_date, items_count, status')
+          .order('upload_date', { ascending: false })
+          .limit(5);
         
         if (error) {
           console.error('Error fetching recent uploads:', error);
