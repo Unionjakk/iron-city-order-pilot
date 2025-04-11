@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Mail } from "lucide-react";
 import { PicklistOrder } from "../hooks/usePicklistData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -106,26 +106,24 @@ const PicklistTable = ({ orders, refreshData }: PicklistTableProps) => {
       <Table>
         <TableHeader>
           <TableRow className="bg-zinc-800/50">
-            <TableHead className="text-orange-500">Order</TableHead>
+            <TableHead className="text-orange-500 w-24"></TableHead>
             <TableHead className="text-orange-500">Date</TableHead>
-            <TableHead className="text-orange-500">SKU</TableHead>
-            <TableHead className="text-orange-500">Item</TableHead>
+            <TableHead className="text-orange-500"></TableHead>
             <TableHead className="text-orange-500">Qty</TableHead>
             <TableHead className="text-orange-500">Price</TableHead>
             <TableHead className="text-orange-500">Stock</TableHead>
             <TableHead className="text-orange-500">Location</TableHead>
             <TableHead className="text-orange-500">Cost</TableHead>
             <TableHead className="text-orange-500">Action</TableHead>
-            <TableHead className="text-orange-500">Notes</TableHead>
-            <TableHead className="text-orange-500">Submit</TableHead>
+            <TableHead className="text-orange-500"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {orders.map((order) => (
             <>
               <TableRow key={`order-${order.id}`} className="bg-zinc-800/20">
-                <TableCell colSpan={12} className="py-2">
-                  <div className="flex items-center justify-between">
+                <TableCell colSpan={10} className="py-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between">
                     <div className="flex items-center">
                       <span className="font-semibold text-orange-400">Order:</span>
                       <a 
@@ -138,7 +136,7 @@ const PicklistTable = ({ orders, refreshData }: PicklistTableProps) => {
                         <ExternalLink className="ml-1 h-3 w-3" />
                       </a>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 sm:mt-0">
                       <div>
                         <span className="text-zinc-400 mr-2">Date:</span>
                         <span className="text-zinc-300">{formatDate(order.created_at)}</span>
@@ -147,77 +145,85 @@ const PicklistTable = ({ orders, refreshData }: PicklistTableProps) => {
                         <span className="text-zinc-400 mr-2">Customer:</span>
                         <span className="text-zinc-300">{order.customer_name}</span>
                       </div>
+                      <div className="flex items-center">
+                        <Mail className="mr-1 h-3 w-3 text-zinc-400" />
+                        <span className="text-zinc-300">{order.customer_email || "No email"}</span>
+                      </div>
                     </div>
                   </div>
                 </TableCell>
               </TableRow>
               {order.items.map((item) => (
-                <TableRow key={item.id} className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
-                  <TableCell></TableCell>
-                  <TableCell></TableCell>
-                  <TableCell className="font-mono text-zinc-300">{item.sku}</TableCell>
-                  <TableCell>{item.title}</TableCell>
-                  <TableCell className="text-center">{item.quantity}</TableCell>
-                  <TableCell>
-                    {item.price ? `$${item.price.toFixed(2)}` : "N/A"}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {item.in_stock ? (
-                      <span className="text-green-500">{item.stock_quantity || 0}</span>
-                    ) : (
-                      <span className="text-red-500">0</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {item.in_stock ? (
-                      <span className="text-zinc-300">{item.bin_location || "No location"}</span>
-                    ) : (
-                      <span className="text-zinc-500">N/A</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {item.in_stock && item.cost ? (
-                      <span className="text-zinc-300">${item.cost.toFixed(2)}</span>
-                    ) : (
-                      <span className="text-zinc-500">N/A</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Select 
-                      value={actions[item.id] || ""} 
-                      onValueChange={(value) => handleActionChange(item.id, value)}
-                    >
-                      <SelectTrigger className="w-full border-zinc-700 bg-zinc-800/50 text-zinc-300">
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Picked">Picked</SelectItem>
-                        <SelectItem value="To Order">To Order</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Textarea 
-                      placeholder="Add notes here..." 
-                      className="min-h-[60px] max-h-[100px] border-zinc-700 bg-zinc-800/50 text-zinc-300"
-                      value={notes[item.id] || ""}
-                      onChange={(e) => handleNotesChange(item.id, e.target.value)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button 
-                      onClick={() => handleSubmit(order, item.id, item.sku)}
-                      disabled={!actions[item.id] || processing[item.id]}
-                      size="sm"
-                      className="button-primary w-full"
-                    >
-                      {processing[item.id] ? "Saving..." : "Save"}
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                <>
+                  <TableRow key={item.id} className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
+                    <TableCell className="font-mono text-zinc-300">{item.sku}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell>{item.title}</TableCell>
+                    <TableCell className="text-center">{item.quantity}</TableCell>
+                    <TableCell>
+                      {item.price ? `£${item.price.toFixed(2)}` : "N/A"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {item.in_stock ? (
+                        <span className="text-green-500">{item.stock_quantity || 0}</span>
+                      ) : (
+                        <span className="text-red-500">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {item.in_stock ? (
+                        <span className="text-zinc-300">{item.bin_location || "No location"}</span>
+                      ) : (
+                        <span className="text-zinc-500">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {item.in_stock && item.cost ? (
+                        <span className="text-zinc-300">£{item.cost.toFixed(2)}</span>
+                      ) : (
+                        <span className="text-zinc-500">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Select 
+                        value={actions[item.id] || ""} 
+                        onValueChange={(value) => handleActionChange(item.id, value)}
+                      >
+                        <SelectTrigger className="w-full border-zinc-700 bg-zinc-800/50 text-zinc-300">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Picked">Picked</SelectItem>
+                          <SelectItem value="To Order">To Order</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Button 
+                        onClick={() => handleSubmit(order, item.id, item.sku)}
+                        disabled={!actions[item.id] || processing[item.id]}
+                        size="sm"
+                        className="button-primary w-full"
+                      >
+                        {processing[item.id] ? "Saving..." : "Save"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className="border-none">
+                    <TableCell colSpan={9}></TableCell>
+                    <TableCell className="pt-0 pb-4">
+                      <Textarea 
+                        placeholder="Add notes here..." 
+                        className="min-h-[60px] border-zinc-700 bg-zinc-800/50 text-zinc-300"
+                        value={notes[item.id] || ""}
+                        onChange={(e) => handleNotesChange(item.id, e.target.value)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                </>
               ))}
               <TableRow className="h-4">
-                <TableCell colSpan={12} className="p-0">
+                <TableCell colSpan={10} className="p-0">
                   <Separator className="bg-zinc-800/50" />
                 </TableCell>
               </TableRow>

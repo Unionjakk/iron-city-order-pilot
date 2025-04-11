@@ -28,6 +28,7 @@ export interface PicklistOrder {
   shopify_order_id: string;
   shopify_order_number: string | null;
   customer_name: string;
+  customer_email: string | null;
   created_at: string;
   items: PicklistOrderItem[];
 }
@@ -65,6 +66,7 @@ export const usePicklistData = () => {
           shopify_order_id,
           shopify_order_number,
           customer_name,
+          customer_email,
           created_at,
           status
         `)
@@ -235,6 +237,7 @@ export const usePicklistData = () => {
             shopify_order_id: order.shopify_order_id,
             shopify_order_number: order.shopify_order_number,
             customer_name: order.customer_name,
+            customer_email: order.customer_email,
             created_at: order.created_at,
             items: orderItems
           };
