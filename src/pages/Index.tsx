@@ -26,81 +26,129 @@ const Index = () => {
       {/* Progress Buttons Section */}
       <section>
         <h2 className="text-xl font-semibold mb-4 text-zinc-200">Order Progress</h2>
-        <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-4">
           {/* To Pick */}
-          <Link to="/actions/picklist">
-            <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer">
-              <CardContent className="p-6 flex flex-col items-center text-center">
-                <ShoppingBag className="h-10 w-10 text-orange-500 mb-3" />
-                <h3 className="text-lg font-medium text-white mb-2">To Pick</h3>
-                <p className="text-zinc-400 text-sm">Manage orders ready to be picked from inventory</p>
+          <div className="flex flex-col md:flex-row gap-4">
+            <Link to="/actions/picklist" className="md:w-1/3">
+              <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <ShoppingBag className="h-10 w-10 text-orange-500 mb-3" />
+                  <h3 className="text-lg font-medium text-white mb-2">To Pick</h3>
+                  <p className="text-zinc-400 text-sm">Manage orders ready to be picked from inventory</p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Card className="bg-zinc-800 border-zinc-700 md:w-2/3">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-medium text-white mb-2">Pick Stats</h3>
+                <p className="text-zinc-400">Coming soon</p>
               </CardContent>
             </Card>
-          </Link>
+          </div>
 
           {/* Picked */}
-          <Link to="/actions/picked">
-            <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer">
-              <CardContent className="p-6 flex flex-col items-center text-center">
-                <CheckCircle className="h-10 w-10 text-orange-500 mb-3" />
-                <h3 className="text-lg font-medium text-white mb-2">Picked</h3>
-                <p className="text-zinc-400 text-sm">View all orders that have been picked</p>
+          <div className="flex flex-col md:flex-row gap-4">
+            <Link to="/actions/picked" className="md:w-1/3">
+              <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <CheckCircle className="h-10 w-10 text-orange-500 mb-3" />
+                  <h3 className="text-lg font-medium text-white mb-2">Picked</h3>
+                  <p className="text-zinc-400 text-sm">View all orders that have been picked</p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Card className="bg-zinc-800 border-zinc-700 md:w-2/3">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-medium text-white mb-2">Picked Stats</h3>
+                <p className="text-zinc-400">Coming soon</p>
               </CardContent>
             </Card>
-          </Link>
+          </div>
 
           {/* To Order */}
-          <Link to="/actions/toorder">
-            <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer">
-              <CardContent className="p-6 flex flex-col items-center text-center">
-                <ShoppingCart className="h-10 w-10 text-orange-500 mb-3" />
-                <h3 className="text-lg font-medium text-white mb-2">To Order</h3>
-                <p className="text-zinc-400 text-sm">Manage orders that need to be ordered from suppliers</p>
+          <div className="flex flex-col md:flex-row gap-4">
+            <Link to="/actions/toorder" className="md:w-1/3">
+              <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <ShoppingCart className="h-10 w-10 text-orange-500 mb-3" />
+                  <h3 className="text-lg font-medium text-white mb-2">To Order</h3>
+                  <p className="text-zinc-400 text-sm">Manage orders that need to be ordered from suppliers</p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Card className="bg-zinc-800 border-zinc-700 md:w-2/3">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-medium text-white mb-2">Order Stats</h3>
+                <p className="text-zinc-400">Coming soon</p>
               </CardContent>
             </Card>
-          </Link>
+          </div>
 
           {/* Ordered */}
-          <Link to="/actions/ordered">
-            <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer">
-              <CardContent className="p-6 flex flex-col items-center text-center">
-                <PackageCheck className="h-10 w-10 text-orange-500 mb-3" />
-                <h3 className="text-lg font-medium text-white mb-2">Ordered</h3>
-                <p className="text-zinc-400 text-sm">View all orders that have been placed with suppliers</p>
+          <div className="flex flex-col md:flex-row gap-4">
+            <Link to="/actions/ordered" className="md:w-1/3">
+              <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <PackageCheck className="h-10 w-10 text-orange-500 mb-3" />
+                  <h3 className="text-lg font-medium text-white mb-2">Ordered</h3>
+                  <p className="text-zinc-400 text-sm">View all orders that have been placed with suppliers</p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Card className="bg-zinc-800 border-zinc-700 md:w-2/3">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-medium text-white mb-2">Ordered Stats</h3>
+                <p className="text-zinc-400">Coming soon</p>
               </CardContent>
             </Card>
-          </Link>
+          </div>
 
           {/* To Dispatch */}
-          <Link to="/actions/dispatch">
-            <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer">
-              <CardContent className="p-6 flex flex-col items-center text-center">
-                <Truck className="h-10 w-10 text-orange-500 mb-3" />
-                <h3 className="text-lg font-medium text-white mb-2">To Dispatch</h3>
-                <p className="text-zinc-400 text-sm">Manage orders ready to be dispatched to customers</p>
+          <div className="flex flex-col md:flex-row gap-4">
+            <Link to="/actions/dispatch" className="md:w-1/3">
+              <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <Truck className="h-10 w-10 text-orange-500 mb-3" />
+                  <h3 className="text-lg font-medium text-white mb-2">To Dispatch</h3>
+                  <p className="text-zinc-400 text-sm">Manage orders ready to be dispatched to customers</p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Card className="bg-zinc-800 border-zinc-700 md:w-2/3">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-medium text-white mb-2">Dispatch Stats</h3>
+                <p className="text-zinc-400">Coming soon</p>
               </CardContent>
             </Card>
-          </Link>
+          </div>
 
           {/* Back Order Report */}
-          <Link to="/actions/backorder-report">
-            <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer">
-              <CardContent className="p-6 flex flex-col items-center text-center">
-                <Package className="h-10 w-10 text-orange-500 mb-3" />
-                <h3 className="text-lg font-medium text-white mb-2">Back Order Report</h3>
-                <p className="text-zinc-400 text-sm">View detailed back order reports</p>
+          <div className="flex flex-col md:flex-row gap-4">
+            <Link to="/actions/backorder-report" className="md:w-1/3">
+              <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
+                <CardContent className="p-6 flex flex-col items-center text-center">
+                  <Package className="h-10 w-10 text-orange-500 mb-3" />
+                  <h3 className="text-lg font-medium text-white mb-2">Back Order Report</h3>
+                  <p className="text-zinc-400 text-sm">View detailed back order reports</p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Card className="bg-zinc-800 border-zinc-700 md:w-2/3">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-medium text-white mb-2">Backorder Stats</h3>
+                <p className="text-zinc-400">Coming soon</p>
               </CardContent>
             </Card>
-          </Link>
+          </div>
         </div>
       </section>
 
       {/* Visual Order Progressor Section */}
       <section>
         <h2 className="text-xl font-semibold mb-4 text-zinc-200">Visual Order Progressor</h2>
-        <div className="grid grid-cols-1 gap-4">
-          <Link to="/visualiser">
-            <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer">
+        <div className="flex flex-col md:flex-row gap-4">
+          <Link to="/visualiser" className="md:w-1/3">
+            <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
               <CardContent className="p-6 flex flex-col items-center text-center">
                 <BarChart3 className="h-10 w-10 text-orange-500 mb-3" />
                 <h3 className="text-lg font-medium text-white mb-2">Visualiser</h3>
@@ -108,6 +156,12 @@ const Index = () => {
               </CardContent>
             </Card>
           </Link>
+          <Card className="bg-zinc-800 border-zinc-700 md:w-2/3">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-medium text-white mb-2">Visualiser Stats</h3>
+              <p className="text-zinc-400">Coming soon</p>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
