@@ -50,7 +50,8 @@ export const usePicklistData = () => {
       progressItemCount: 0,
       finalOrderCount: 0,
       finalItemCount: 0,
-      orderStatus: []
+      orderStatus: [],
+      fetchStartTime: new Date().toISOString()
     };
     
     try {
@@ -74,7 +75,8 @@ export const usePicklistData = () => {
       // Save first few order statuses for debugging
       debug.orderStatus = ordersData?.slice(0, 5).map(o => ({
         id: o.shopify_order_id,
-        status: o.status
+        status: o.status,
+        number: o.shopify_order_number
       }));
       
       if (!ordersData || ordersData.length === 0) {
@@ -86,8 +88,10 @@ export const usePicklistData = () => {
           .select('status')
           .limit(20);
           
-        debug.availableStatuses = statusCheck?.map(s => s.status);
+        debug.availableStatuses = Array.from(new Set(statusCheck?.map(s => s.status)));
         
+        debug.endTime = new Date().toISOString();
+        debug.timeTaken = (new Date(debug.endTime).getTime() - new Date(debug.fetchStartTime).getTime()) / 1000;
         setDebugInfo({ ...debug, ordersFetchResult: "No orders found" });
         setOrders([]);
         setIsLoading(false);
@@ -109,6 +113,7 @@ export const usePicklistData = () => {
       if (allLineItemsError) throw new Error(`All line items fetch error: ${allLineItemsError.message}`);
       
       console.log(`Found ${allLineItemsData?.length || 0} total line items for all orders`);
+      debug.totalLineItems = allLineItemsData?.length || 0;
       
       // Now filter for Leeds location
       const lineItemsData = allLineItemsData?.filter(item => 
@@ -124,19 +129,19 @@ export const usePicklistData = () => {
         // Add detail about the locations found
         debug.locationDistribution = {};
         allLineItemsData?.forEach(item => {
-          if (item.location_id) {
-            debug.locationDistribution[item.location_id] = (debug.locationDistribution[item.location_id] || 0) + 1;
-          } else {
-            debug.locationDistribution['null'] = (debug.locationDistribution['null'] || 0) + 1;
-          }
+          const locId = item.location_id || 'null';
+          debug.locationDistribution[locId] = (debug.locationDistribution[locId] || 0) + 1;
         });
         
         debug.lineItemsFirstFew = allLineItemsData?.slice(0, 5).map(item => ({
           id: item.id,
           location_id: item.location_id,
-          sku: item.sku
+          sku: item.sku,
+          title: item.title
         }));
         
+        debug.endTime = new Date().toISOString();
+        debug.timeTaken = (new Date(debug.endTime).getTime() - new Date(debug.fetchStartTime).getTime()) / 1000;
         setDebugInfo({ 
           ...debug, 
           lineItemsFetchResult: "No line items found for Leeds location",
@@ -240,11 +245,15 @@ export const usePicklistData = () => {
       debug.finalOrderCount = processedOrders.length;
       debug.finalItemCount = processedOrders.reduce((count, order) => count + order.items.length, 0);
       
+      debug.endTime = new Date().toISOString();
+      debug.timeTaken = (new Date(debug.endTime).getTime() - new Date(debug.fetchStartTime).getTime()) / 1000;
       setDebugInfo(debug);
       setOrders(processedOrders as PicklistOrder[]);
     } catch (err: any) {
       console.error("Error fetching picklist data:", err);
       setError(err.message);
+      debug.endTime = new Date().toISOString();
+      debug.timeTaken = (new Date(debug.endTime).getTime() - new Date(debug.fetchStartTime).getTime()) / 1000;
       setDebugInfo({ ...debug, error: err.message });
       setOrders([]);
     } finally {
