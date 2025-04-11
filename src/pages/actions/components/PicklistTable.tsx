@@ -101,14 +101,20 @@ const PicklistTable = ({ orders, refreshData }: PicklistTableProps) => {
     return `https://admin.shopify.com/store/opus-harley-davidson/orders/${orderId}`;
   };
 
+  // Updated color functions to use shades of green
   const getStockColor = (inStock: boolean, quantity: number | null, orderQuantity: number): string => {
-    if (!inStock || quantity === null) return "text-red-500";
-    if (quantity < orderQuantity) return "text-amber-500";
+    if (!inStock || quantity === null || quantity === 0) return "text-green-800";
+    if (quantity < orderQuantity) return "text-green-600";
     return "text-green-500";
   };
 
   const getLocationColor = (inStock: boolean): string => {
-    return inStock ? "text-green-500" : "text-zinc-500";
+    return inStock ? "text-green-500" : "text-green-800";
+  };
+
+  const getCostColor = (inStock: boolean, cost: number | null): string => {
+    if (!inStock || cost === null) return "text-green-800";
+    return "text-green-500";
   };
 
   return (
@@ -116,20 +122,20 @@ const PicklistTable = ({ orders, refreshData }: PicklistTableProps) => {
       <Table>
         <TableHeader>
           <TableRow className="bg-zinc-800/50">
-            <TableHead className="text-orange-500 w-[10%]"></TableHead>
-            <TableHead className="text-orange-500 w-[35%]"></TableHead>
-            <TableHead className="text-orange-500 w-[5%] text-center">Qty</TableHead>
-            <TableHead className="text-orange-500 w-[8%] text-center">Price</TableHead>
-            <TableHead className="text-orange-500 w-[8%] text-center">Stock</TableHead>
-            <TableHead className="text-orange-500 w-[8%]">Location</TableHead>
-            <TableHead className="text-orange-500 w-[8%]">Cost</TableHead>
-            <TableHead className="text-orange-500 w-[10%]">Action</TableHead>
-            <TableHead className="text-orange-500 w-[8%]"></TableHead>
+            <TableHead className="w-[10%]"></TableHead>
+            <TableHead className="w-[35%]"></TableHead>
+            <TableHead className="w-[5%] text-center"></TableHead>
+            <TableHead className="w-[8%] text-center"></TableHead>
+            <TableHead className="text-green-500 w-[8%] text-center">Stock</TableHead>
+            <TableHead className="text-green-500 w-[8%]">Location</TableHead>
+            <TableHead className="text-green-500 w-[8%]">Cost</TableHead>
+            <TableHead className="w-[10%]"></TableHead>
+            <TableHead className="w-[8%]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {orders.map((order) => (
-            <>
+            <React.Fragment key={`order-group-${order.id}`}>
               <TableRow key={`order-${order.id}`} className="bg-zinc-800/20">
                 <TableCell colSpan={9} className="py-2">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between">
@@ -145,7 +151,7 @@ const PicklistTable = ({ orders, refreshData }: PicklistTableProps) => {
                         <ExternalLink className="ml-1 h-3 w-3" />
                       </a>
                     </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 sm:mt-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       <div>
                         <span className="text-zinc-400 mr-2">Date:</span>
                         <span className="text-zinc-300">{formatDate(order.created_at)}</span>
@@ -164,33 +170,32 @@ const PicklistTable = ({ orders, refreshData }: PicklistTableProps) => {
                   </div>
                 </TableCell>
               </TableRow>
+              
               {order.items.map((item) => (
-                <TableRow key={item.id} className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
-                  <TableCell className="font-mono text-zinc-300 pr-1">{item.sku}</TableCell>
-                  <TableCell className="pl-1">{item.title}</TableCell>
-                  <TableCell className="text-center">{item.quantity}</TableCell>
-                  <TableCell className="text-center">
-                    {item.price ? `£${item.price.toFixed(2)}` : "N/A"}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className={getStockColor(item.in_stock, item.stock_quantity, item.quantity)}>
-                      {item.stock_quantity || 0}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className={getLocationColor(item.in_stock)}>
-                      {item.bin_location || "N/A"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {item.in_stock && item.cost ? (
-                      <span className="text-zinc-300">£{item.cost.toFixed(2)}</span>
-                    ) : (
-                      <span className="text-zinc-500">N/A</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
+                <React.Fragment key={`item-group-${item.id}`}>
+                  <TableRow key={item.id} className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
+                    <TableCell className="font-mono text-zinc-300 pr-1">{item.sku || "No SKU"}</TableCell>
+                    <TableCell className="pl-1 text-orange-400">{item.title}</TableCell>
+                    <TableCell className="text-center">{item.quantity}</TableCell>
+                    <TableCell className="text-center">
+                      {item.price ? `£${item.price.toFixed(2)}` : "N/A"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className={getStockColor(item.in_stock, item.stock_quantity, item.quantity)}>
+                        {item.stock_quantity || 0}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={getLocationColor(item.in_stock)}>
+                        {item.bin_location || "N/A"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={getCostColor(item.in_stock, item.cost)}>
+                        {item.in_stock && item.cost ? `£${item.cost.toFixed(2)}` : "N/A"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <Select 
                         value={actions[item.id] || ""} 
                         onValueChange={(value) => handleActionChange(item.id, value)}
@@ -203,40 +208,39 @@ const PicklistTable = ({ orders, refreshData }: PicklistTableProps) => {
                           <SelectItem value="To Order">To Order</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button 
-                      onClick={() => handleSubmit(order, item.id, item.sku)}
-                      disabled={!actions[item.id] || processing[item.id]}
-                      size="sm"
-                      className="button-primary w-full"
-                    >
-                      {processing[item.id] ? "Saving..." : "Save"}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {order.items.map((item) => (
-                <TableRow key={`notes-${item.id}`} className="border-none">
-                  <TableCell colSpan={9} className="pt-0 pb-2">
-                    <div className="flex w-full">
+                    </TableCell>
+                    <TableCell>
+                      <Button 
+                        onClick={() => handleSubmit(order, item.id, item.sku)}
+                        disabled={!actions[item.id] || processing[item.id]}
+                        size="sm"
+                        className="button-primary w-full"
+                      >
+                        {processing[item.id] ? "Saving..." : "Save"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                  
+                  {/* Notes field moved under each item */}
+                  <TableRow key={`notes-${item.id}`} className="border-none">
+                    <TableCell colSpan={9} className="pt-0 pb-2">
                       <Input
                         placeholder="Add notes here..." 
-                        className="h-9 border-zinc-700 bg-zinc-800/50 text-zinc-300 w-full"
+                        className="h-8 border-zinc-700 bg-zinc-800/50 text-zinc-300 w-full"
                         value={notes[item.id] || ""}
                         onChange={(e) => handleNotesChange(item.id, e.target.value)}
                       />
-                    </div>
-                  </TableCell>
-                </TableRow>
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
               ))}
+              
               <TableRow className="h-4">
                 <TableCell colSpan={9} className="p-0">
                   <Separator className="bg-zinc-800/50" />
                 </TableCell>
               </TableRow>
-            </>
+            </React.Fragment>
           ))}
         </TableBody>
       </Table>
