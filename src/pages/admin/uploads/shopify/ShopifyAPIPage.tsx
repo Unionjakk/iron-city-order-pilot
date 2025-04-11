@@ -15,6 +15,7 @@ import ApiDocumentationCard from './components/ApiDocumentationCard';
 import CompleteRefresh from '@/components/shopify/CompleteRefresh';
 import LocationInfoImport from '@/components/shopify/LocationInfoImport';
 import SingleLineItemLocationUpdate from '@/components/shopify/SingleLineItemLocationUpdate';
+import LocationsExplorer from '@/components/shopify/LocationsExplorer';
 
 // IMPORTANT: This component interacts with a PRODUCTION Shopify API
 // Any changes must maintain compatibility with the live system
@@ -185,6 +186,11 @@ const ShopifyAPIPage = () => {
         <SingleLineItemLocationUpdate
           onUpdateComplete={fetchRecentOrders}
         />
+      )}
+      
+      {/* Locations Explorer - Added to view all Shopify locations */}
+      {hasToken && (
+        <LocationsExplorer />
       )}
       
       {/* Database Health Check */}
