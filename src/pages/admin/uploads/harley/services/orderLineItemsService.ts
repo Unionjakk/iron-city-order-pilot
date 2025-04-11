@@ -12,7 +12,7 @@ export const processOrderLineItems = async (
   parsedData: OrderLineItem[],
   stats: UploadStats,
   updateStats: (newStats: UploadStats) => void
-): Promise<void> {
+) => {
   if (parsedData.length === 0) {
     console.warn('No data to process');
     return;
