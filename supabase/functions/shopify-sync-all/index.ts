@@ -1,3 +1,4 @@
+
 // Supabase Edge Function
 // This function handles importing ALL orders from Shopify
 // It imports all orders without archiving
@@ -101,7 +102,7 @@ serve(async (req) => {
     }
     
     // Standard import operation
-    debug("Starting import of ALL orders from Shopify");
+    debug("Starting import of UNFULFILLED and PARTIALLY FULFILLED orders from Shopify");
 
     try {
       // Get API endpoint from database
@@ -109,7 +110,7 @@ serve(async (req) => {
       debug(`Using Shopify API endpoint: ${apiEndpoint}`);
 
       // STEP 1: Fetch ALL orders from Shopify with proper pagination
-      debug("Fetching ALL orders from Shopify");
+      debug("Fetching orders from Shopify");
       let shopifyOrders: ShopifyOrder[] = [];
       let nextPageUrl: string | null = null;
       
@@ -145,30 +146,42 @@ serve(async (req) => {
       
       debug(`Total orders retrieved: ${shopifyOrders.length}`);
 
+      // IMPORTANT: Filter orders to only include unfulfilled or partially_fulfilled orders
+      debug("Filtering orders to include only unfulfilled and partially fulfilled orders");
+      const filteredOrders = shopifyOrders.filter(order => {
+        // Include orders that are unfulfilled or partially_fulfilled
+        // or ones where fulfillment_status is null/undefined (which means unfulfilled)
+        const status = order.fulfillment_status || "unfulfilled";
+        return status === "unfulfilled" || status === "partially_fulfilled";
+      });
+      
+      debug(`Filtered to ${filteredOrders.length} unfulfilled/partially fulfilled orders out of ${shopifyOrders.length} total orders`);
+
       // Count total line items for logging
       let totalLineItems = 0;
-      shopifyOrders.forEach(order => {
+      filteredOrders.forEach(order => {
         if (order.line_items && Array.isArray(order.line_items)) {
           totalLineItems += order.line_items.length;
         }
       });
       debug(`Total line items to import: ${totalLineItems}`);
 
-      // STEP 2: Import all orders regardless of fulfillment status
-      for (const shopifyOrder of shopifyOrders) {
+      // STEP 2: Import filtered orders
+      for (const shopifyOrder of filteredOrders) {
         const orderNumber = shopifyOrder.name;
         const orderId = shopifyOrder.id;
+        const orderStatus = shopifyOrder.fulfillment_status || "unfulfilled";
         
         // Log line items count for debugging
         const lineItemsCount = shopifyOrder.line_items?.length || 0;
-        debug(`Processing order: ${orderId} (${orderNumber}) - Status: ${shopifyOrder.fulfillment_status || "unfulfilled"} - Has ${lineItemsCount} line items`);
+        debug(`Processing order: ${orderId} (${orderNumber}) - Status: ${orderStatus} - Has ${lineItemsCount} line items`);
 
         if (!shopifyOrder.line_items || !Array.isArray(shopifyOrder.line_items) || shopifyOrder.line_items.length === 0) {
           debug(`WARNING: Order ${orderId} (${orderNumber}) has no line items or invalid line_items format`);
           debug(`line_items value: ${JSON.stringify(shopifyOrder.line_items)}`);
         }
 
-        // Import all orders into the active orders table
+        // Import order into the active orders table
         const success = await importOrder(shopifyOrder, orderId, orderNumber, debug);
         if (success) {
           responseData.imported++;
@@ -183,15 +196,15 @@ serve(async (req) => {
     await updateLastSyncTime(debug);
     
     responseData.success = true;
-    debug("Shopify sync ALL completed successfully");
-    debug(`Summary: Imported ${responseData.imported} orders`);
+    debug("Shopify sync completed successfully");
+    debug(`Summary: Imported ${responseData.imported} unfulfilled/partially fulfilled orders`);
 
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    debug(`Error in Shopify sync ALL: ${error.message}`);
+    debug(`Error in Shopify sync: ${error.message}`);
     responseData.error = error.message;
     
     return new Response(JSON.stringify(responseData), {
