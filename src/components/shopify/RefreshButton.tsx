@@ -1,15 +1,16 @@
 
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, AlertCircle } from "lucide-react";
+import { RefreshCw, Trash2, CheckCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface RefreshButtonProps {
   isDeleting: boolean;
   isImporting: boolean;
+  isSuccess: boolean;
   onClick: () => void;
 }
 
-const RefreshButton = ({ isDeleting, isImporting, onClick }: RefreshButtonProps) => {
+const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshButtonProps) => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 
   // Reset the disabled state after 2 minutes to prevent permanent disabling on error
@@ -23,24 +24,34 @@ const RefreshButton = ({ isDeleting, isImporting, onClick }: RefreshButtonProps)
         setIsButtonDisabled(false);
       }, 120000);
     } else {
-      setIsButtonDisabled(false);
+      // Small delay before re-enabling button after operation completes
+      timeout = setTimeout(() => {
+        setIsButtonDisabled(false);
+      }, 2000);
     }
     
     return () => {
       if (timeout) clearTimeout(timeout);
     };
-  }, [isDeleting, isImporting]);
+  }, [isDeleting, isImporting, isSuccess]);
 
   const getButtonText = () => {
     if (isDeleting) return "Deleting All Data...";
     if (isImporting) return "Importing All Orders...";
+    if (isSuccess) return "Import Completed Successfully";
     return "Delete All & Re-Import Everything";
   };
 
   const getIcon = () => {
     if (isDeleting) return <Trash2 className="mr-2 h-4 w-4 animate-spin" />;
     if (isImporting) return <RefreshCw className="mr-2 h-4 w-4 animate-spin" />;
+    if (isSuccess) return <CheckCircle2 className="mr-2 h-4 w-4 text-green-400" />;
     return <RefreshCw className="mr-2 h-4 w-4" />;
+  };
+
+  const getButtonClass = () => {
+    if (isSuccess) return "w-full bg-green-700 hover:bg-green-800 text-white";
+    return "w-full bg-red-600 hover:bg-red-700 text-white";
   };
 
   const handleClick = () => {
@@ -52,7 +63,7 @@ const RefreshButton = ({ isDeleting, isImporting, onClick }: RefreshButtonProps)
   return (
     <Button
       onClick={handleClick}
-      className="w-full bg-red-600 hover:bg-red-700 text-white"
+      className={getButtonClass()}
       disabled={isButtonDisabled}
       size="lg"
     >

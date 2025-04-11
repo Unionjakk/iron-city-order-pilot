@@ -11,6 +11,7 @@ export interface UseCompleteRefreshProps {
 export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
@@ -23,6 +24,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
 
   const handleImportOnly = async () => {
     setIsImporting(true);
+    setIsSuccess(false);
     setError(null);
     
     try {
@@ -44,6 +46,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       
       addDebugMessage("Recovery import operation finished successfully");
       setIsRecoveryMode(false);
+      setIsSuccess(true);
       
       // Refresh the orders list in the parent component
       await onRefreshComplete();
@@ -71,6 +74,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
 
     setError(null);
     setIsDeleting(true);
+    setIsSuccess(false);
     setDebugInfo([]);
     
     try {
@@ -84,7 +88,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       setIsDeleting(false);
       setIsImporting(true);
       addDebugMessage("Step 2: Importing all orders from Shopify...");
-      await importAllOrders(addDebugMessage);
+      const importResult = await importAllOrders(addDebugMessage);
       
       // Step 3: Update last sync time
       addDebugMessage("Step 3: Updating last sync time...");
@@ -92,11 +96,12 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       
       toast({
         title: "Refresh Complete",
-        description: "All orders have been refreshed from Shopify",
+        description: `Successfully imported ${importResult.imported || 0} orders from Shopify`,
         variant: "default",
       });
       
       addDebugMessage("Complete refresh operation finished successfully");
+      setIsSuccess(true);
       
       // Refresh the orders list in the parent component
       await onRefreshComplete();
@@ -116,9 +121,17 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
     }
   };
 
+  const resetState = () => {
+    setIsSuccess(false);
+    setIsImporting(false);
+    setIsDeleting(false);
+    setError(null);
+  };
+
   return {
     isDeleting,
     isImporting,
+    isSuccess,
     debugInfo,
     error,
     isRecoveryMode,
@@ -126,6 +139,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
     handleRecoveryImport: handleImportOnly,
     addDebugMessage,
     setError,
-    setIsRecoveryMode
+    setIsRecoveryMode,
+    resetState
   };
 };

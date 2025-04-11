@@ -8,6 +8,7 @@ import RefreshButton from './RefreshButton';
 import DebugInfoPanel from './DebugInfoPanel';
 import { useCompleteRefresh } from './hooks/useCompleteRefresh';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 
 interface CompleteRefreshProps {
   onRefreshComplete: () => Promise<void>;
@@ -17,6 +18,7 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
   const {
     isDeleting,
     isImporting,
+    isSuccess,
     debugInfo,
     error,
     isRecoveryMode,
@@ -87,8 +89,20 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
           <RefreshButton 
             isDeleting={isDeleting}
             isImporting={isImporting}
+            isSuccess={isSuccess}
             onClick={handleCompleteRefresh}
           />
+        )}
+        
+        {(isDeleting || isImporting) && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm text-zinc-400">
+                {isDeleting ? "Deleting data..." : "Importing orders..."}
+              </span>
+            </div>
+            <Progress className="h-2" value={isDeleting ? 25 : (isSuccess ? 100 : 75)} />
+          </div>
         )}
         
         {error && (
