@@ -41,6 +41,9 @@ import OrderedPage from "@/pages/actions/OrderedPage";
 import DispatchPage from "@/pages/actions/DispatchPage";
 import BackorderReportPage from "@/pages/actions/BackorderReportPage";
 
+// Visualiser Page
+import VisualiserPage from "@/pages/VisualiserPage";
+
 // Main index page
 import Index from "@/pages/Index";
 
@@ -75,6 +78,9 @@ const App = () => (
                 <Route path="/actions/ordered" element={<OrderedPage />} />
                 <Route path="/actions/dispatch" element={<DispatchPage />} />
                 <Route path="/actions/backorder-report" element={<BackorderReportPage />} />
+                
+                {/* Visualiser route */}
+                <Route path="/visualiser" element={<VisualiserPage />} />
                 
                 {/* Admin routes */}
                 <Route path="/admin" element={<AdminDashboard />} />

@@ -286,6 +286,47 @@ export type Database = {
         }
         Relationships: []
       }
+      iron_city_order_progress: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          progress: string | null
+          shopify_order_id: string
+          shopify_order_number: string | null
+          sku: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          progress?: string | null
+          shopify_order_id: string
+          shopify_order_number?: string | null
+          sku: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          progress?: string | null
+          shopify_order_id?: string
+          shopify_order_number?: string | null
+          sku?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_iron_city_order_progress_shopify_order"
+            columns: ["shopify_order_id"]
+            isOneToOne: false
+            referencedRelation: "shopify_orders"
+            referencedColumns: ["shopify_order_id"]
+          },
+        ]
+      }
       pinnacle_sku_corrections: {
         Row: {
           corrected_part_no: string
