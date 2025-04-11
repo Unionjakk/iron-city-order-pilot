@@ -17,15 +17,18 @@ export const fetchPickedStatsData = async (): Promise<PickedStatsData> => {
       throw new Error("No cached Picked Stats data available");
     }
     
-    // Convert the returned JSON data to the expected type
+    // Ensure data is the expected object type
+    const statsData = data as Record<string, any>;
+    
+    // Convert the returned JSON data to the expected type with fallbacks
     return {
-      totalOrdersPicked: data.totalOrdersPicked || 0,
-      totalItemsPicked: data.totalItemsPicked || 0,
-      readyToDispatch: data.readyToDispatch || 0,
-      avgTimeToDispatch: data.avgTimeToDispatch || "0m",
-      pickedToday: data.pickedToday || 0,
-      awaitingItems: data.awaitingItems || 0,
-      completionRate: data.completionRate || "0%"
+      totalOrdersPicked: typeof statsData.totalOrdersPicked === 'number' ? statsData.totalOrdersPicked : 0,
+      totalItemsPicked: typeof statsData.totalItemsPicked === 'number' ? statsData.totalItemsPicked : 0,
+      readyToDispatch: typeof statsData.readyToDispatch === 'number' ? statsData.readyToDispatch : 0,
+      avgTimeToDispatch: typeof statsData.avgTimeToDispatch === 'string' ? statsData.avgTimeToDispatch : "0m",
+      pickedToday: typeof statsData.pickedToday === 'number' ? statsData.pickedToday : 0,
+      awaitingItems: typeof statsData.awaitingItems === 'number' ? statsData.awaitingItems : 0,
+      completionRate: typeof statsData.completionRate === 'string' ? statsData.completionRate : "0%"
     };
   } catch (error) {
     console.error("Error fetching Picked Stats data:", error);

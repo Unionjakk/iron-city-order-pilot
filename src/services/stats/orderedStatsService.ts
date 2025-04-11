@@ -17,15 +17,18 @@ export const fetchOrderedStatsData = async (): Promise<OrderedStatsData> => {
       throw new Error("No cached Ordered Stats data available");
     }
     
-    // Convert the returned JSON data to the expected type
+    // Ensure data is the expected object type
+    const statsData = data as Record<string, any>;
+    
+    // Convert the returned JSON data to the expected type with fallbacks
     return {
-      totalOrdersToOrder: data.totalOrdersToOrder || 0,
-      totalItemsToOrder: data.totalItemsToOrder || 0,
-      averageWaitTime: data.averageWaitTime || "0d 0h",
-      readyToOrder: data.readyToOrder || 0,
-      pendingApproval: data.pendingApproval || 0,
-      outOfStock: data.outOfStock || 0,
-      ordersPlacedToday: data.ordersPlacedToday || 0
+      totalOrdersToOrder: typeof statsData.totalOrdersToOrder === 'number' ? statsData.totalOrdersToOrder : 0,
+      totalItemsToOrder: typeof statsData.totalItemsToOrder === 'number' ? statsData.totalItemsToOrder : 0,
+      averageWaitTime: typeof statsData.averageWaitTime === 'string' ? statsData.averageWaitTime : "0d 0h",
+      readyToOrder: typeof statsData.readyToOrder === 'number' ? statsData.readyToOrder : 0,
+      pendingApproval: typeof statsData.pendingApproval === 'number' ? statsData.pendingApproval : 0,
+      outOfStock: typeof statsData.outOfStock === 'number' ? statsData.outOfStock : 0,
+      ordersPlacedToday: typeof statsData.ordersPlacedToday === 'number' ? statsData.ordersPlacedToday : 0
     };
   } catch (error) {
     console.error("Error fetching Ordered Stats data:", error);
