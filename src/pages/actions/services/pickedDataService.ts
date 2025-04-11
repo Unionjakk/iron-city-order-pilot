@@ -11,7 +11,7 @@ export const fetchOrdersWithPickedItems = async () => {
   // First get the shopify order IDs that have "Picked" progress
   const { data: progressData, error: progressError } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku')
+    .select('shopify_order_id, sku, quantity')
     .eq('progress', 'Picked');
     
   if (progressError) {
@@ -100,7 +100,7 @@ export const fetchPickedItemsProgress = async () => {
   
   const { data, error } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, progress, notes')
+    .select('shopify_order_id, sku, progress, notes, quantity')
     .eq('progress', 'Picked');
     
   if (error) {
@@ -135,6 +135,32 @@ export const fetchStockForSkus = async (skus: string[]) => {
   
   console.log(`Fetched stock data for ${data?.length || 0} SKUs`);
   return data || [];
+};
+
+/**
+ * Get total picked quantity for a specific SKU across all orders
+ */
+export const fetchTotalPickedQuantityForSku = async (sku: string) => {
+  if (!sku) {
+    return 0;
+  }
+  
+  console.log(`Fetching total picked quantity for SKU: ${sku}`);
+  
+  const { data, error } = await supabase
+    .from('iron_city_order_progress')
+    .select('quantity')
+    .eq('progress', 'Picked')
+    .eq('sku', sku);
+    
+  if (error) {
+    console.error("Picked quantity fetch error:", error);
+    return 0;
+  }
+  
+  const totalPicked = data?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0;
+  console.log(`Total picked quantity for SKU ${sku}: ${totalPicked}`);
+  return totalPicked;
 };
 
 /**

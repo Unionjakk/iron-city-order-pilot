@@ -64,7 +64,8 @@ const PickedOrderItem = ({ item, order, refreshData }: PickedOrderItemProps) => 
           shopify_order_number: order.shopify_order_number,
           sku: item.sku,
           progress: "To Pick",
-          notes: item.notes || ""
+          notes: item.notes || "",
+          quantity: item.quantity || 1
         });
       
       if (error) throw error;
@@ -97,7 +98,12 @@ const PickedOrderItem = ({ item, order, refreshData }: PickedOrderItemProps) => 
           <CheckCircle className="h-4 w-4 mr-2 text-emerald-500" />
           {item.title}
         </TableCell>
-        <TableCell className="text-center">{item.quantity}</TableCell>
+        <TableCell className="text-center">
+          {item.quantity}
+          {item.pickedQuantity && item.pickedQuantity !== item.quantity && 
+            <span className="ml-1 text-amber-400">({item.pickedQuantity} picked)</span>
+          }
+        </TableCell>
         <TableCell className="text-center">
           {item.price ? `£${item.price.toFixed(2)}` : "N/A"}
         </TableCell>

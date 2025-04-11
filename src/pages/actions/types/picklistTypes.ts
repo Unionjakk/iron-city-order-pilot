@@ -22,6 +22,8 @@ export interface PicklistOrderItem {
   // Progress tracking
   progress: string | null;
   notes: string | null;
+  // Picked quantity
+  pickedQuantity?: number;
 }
 
 export interface PicklistOrder {

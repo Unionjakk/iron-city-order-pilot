@@ -292,6 +292,7 @@ export type Database = {
           id: string
           notes: string | null
           progress: string | null
+          quantity: number | null
           shopify_order_id: string
           shopify_order_number: string | null
           sku: string
@@ -302,6 +303,7 @@ export type Database = {
           id?: string
           notes?: string | null
           progress?: string | null
+          quantity?: number | null
           shopify_order_id: string
           shopify_order_number?: string | null
           sku: string
@@ -312,6 +314,7 @@ export type Database = {
           id?: string
           notes?: string | null
           progress?: string | null
+          quantity?: number | null
           shopify_order_id?: string
           shopify_order_number?: string | null
           sku?: string
