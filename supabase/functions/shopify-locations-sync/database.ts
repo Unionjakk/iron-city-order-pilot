@@ -87,9 +87,10 @@ export async function updateLineItemLocations(
   
   try {
     debug(`Updating location information for ${updates.length} line items`);
+    debug(`Sample update data: ${JSON.stringify(updates[0])}`); // Log an example for debugging
     
     // Split updates into smaller batches for better reliability
-    const batchSize = 50; // Process 50 updates at a time (increased from 25 for better performance)
+    const batchSize = 50; // Process 50 updates at a time
     let updatedCount = 0;
     
     for (let i = 0; i < updates.length; i += batchSize) {
@@ -125,7 +126,7 @@ export async function updateLineItemLocations(
       
       // Add a small delay between batches to prevent database connection issues
       if (i + batchSize < updates.length) {
-        await new Promise(resolve => setTimeout(resolve, 300)); // Reduced delay to 300ms for faster processing
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
     
@@ -203,8 +204,9 @@ export async function updateSingleLineItemLocation(
 ): Promise<boolean> {
   try {
     debug(`Updating single line item location information for item ID: ${update.id}`);
+    debug(`Location data: ID=${update.location_id}, Name=${update.location_name}`);
     
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("shopify_order_items")
       .update({
         location_id: update.location_id,
@@ -279,7 +281,7 @@ export async function getLineItemsForOrder(
  */
 export async function updateAllLineItemsForOrder(
   shopifyOrderId: string,
-  lineItems: ShopifyLineItem[],
+  lineItems: any[],
   debug: (message: string) => void
 ): Promise<number> {
   try {
