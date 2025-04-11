@@ -67,19 +67,19 @@ serve(async (req) => {
     debug(`Found ${lineItemsWithoutLocation.length} line items without location data`);
     
     // Group line items by order ID to minimize API calls
-    const lineItemsByOrderId = lineItemsWithoutLocation.reduce((acc: Record<string, any[]>, item) => {
-      if (!acc[item.shopify_order_id]) {
-        acc[item.shopify_order_id] = [];
+    const lineItemsByOrderId: Record<string, any[]> = {};
+    lineItemsWithoutLocation.forEach(item => {
+      if (!lineItemsByOrderId[item.shopify_order_id]) {
+        lineItemsByOrderId[item.shopify_order_id] = [];
       }
-      acc[item.shopify_order_id].push(item);
-      return acc;
-    }, {});
+      lineItemsByOrderId[item.shopify_order_id].push(item);
+    });
     
     debug(`Grouped into ${Object.keys(lineItemsByOrderId).length} orders to fetch`);
     
     // Process orders in batches to respect rate limits
     const orderIds = Object.keys(lineItemsByOrderId);
-    const batchSize = 5; // Process 5 orders at a time
+    const batchSize = 3; // Process 3 orders at a time (reduced for reliability)
     
     let processedOrders = 0;
     let processedLineItems = 0;
@@ -108,6 +108,7 @@ serve(async (req) => {
           
           for (const dbLineItem of dbLineItems) {
             processedLineItems++;
+            debug(`Looking for match for line item ${dbLineItem.shopify_line_item_id} in Shopify response`);
             
             // Find matching line item in the Shopify response
             const shopifyLineItem = order.line_items.find(item => 
@@ -117,11 +118,16 @@ serve(async (req) => {
             if (shopifyLineItem) {
               debug(`Found matching line item ${shopifyLineItem.id} for order ${orderId}`);
               
-              lineItemUpdates.push({
-                id: dbLineItem.id,
-                location_id: shopifyLineItem.location_id || null,
-                location_name: shopifyLineItem.location_name || null
-              });
+              if (shopifyLineItem.location_id || shopifyLineItem.location_name) {
+                lineItemUpdates.push({
+                  id: dbLineItem.id,
+                  location_id: shopifyLineItem.location_id,
+                  location_name: shopifyLineItem.location_name
+                });
+                debug(`Adding update for line item ${dbLineItem.id} with location ${shopifyLineItem.location_id || 'none'}`);
+              } else {
+                debug(`No location information found for line item ${shopifyLineItem.id}`);
+              }
             } else {
               debug(`No matching line item found for ${dbLineItem.shopify_line_item_id} in order ${orderId}`);
             }
@@ -129,13 +135,16 @@ serve(async (req) => {
           
           // Update location information for line items
           if (lineItemUpdates.length > 0) {
+            debug(`Attempting to update ${lineItemUpdates.length} line items with location data`);
             const updated = await updateLineItemLocations(lineItemUpdates, debug);
             updatedLineItems += updated;
-            debug(`Updated ${updated} line items for order ${orderId}`);
+            debug(`Updated ${updated}/${lineItemUpdates.length} line items for order ${orderId}`);
+          } else {
+            debug(`No location updates to make for order ${orderId}`);
           }
           
           processedOrders++;
-        } catch (error) {
+        } catch (error: any) {
           debug(`Error processing order ${orderId}: ${error.message}`);
           // Continue with other orders even if one fails
         }
@@ -143,7 +152,7 @@ serve(async (req) => {
       
       // Add delay between batches to respect rate limits
       if (i + batchSize < orderIds.length) {
-        const delayMs = 1500; // 1.5 second delay between batches (helps stay under 40 requests/minute)
+        const delayMs = 1500; // 1.5 second delay between batches
         debug(`Waiting ${delayMs}ms before processing next batch to respect rate limits`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
@@ -159,7 +168,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: any) {
     debug(`Error in Shopify locations sync: ${error.message}`);
     responseData.error = error.message;
     

@@ -32,17 +32,17 @@ export async function getLineItemsWithoutLocations(debug: (message: string) => v
     }
     
     // Transform the results to include Shopify order ID directly
-    const transformedItems = lineItems.map(item => ({
+    const transformedItems = lineItems ? lineItems.map(item => ({
       id: item.id,
       shopify_line_item_id: item.shopify_line_item_id,
       title: item.title,
       order_id: item.order_id,
       shopify_order_id: item.shopify_orders.shopify_order_id
-    }));
+    })) : [];
     
     debug(`Found ${transformedItems.length} line items without location information`);
     return transformedItems;
-  } catch (error) {
+  } catch (error: any) {
     debug(`Exception in getLineItemsWithoutLocations: ${error.message}`);
     throw error;
   }
@@ -63,45 +63,48 @@ export async function updateLineItemLocations(
   try {
     debug(`Updating location information for ${updates.length} line items`);
     
-    // Split updates into smaller batches if needed
-    const batchSize = 50; // Process 50 updates at a time
+    // Split updates into smaller batches for better reliability
+    const batchSize = 10; // Process 10 updates at a time (smaller batches)
     let updatedCount = 0;
     
     for (let i = 0; i < updates.length; i += batchSize) {
       const batch = updates.slice(i, i + batchSize);
+      debug(`Processing update batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(updates.length/batchSize)}`);
       
-      // Create array of update operations
-      const updatePromises = batch.map(update => {
-        return supabase
-          .from("shopify_order_items")
-          .update({
-            location_id: update.location_id,
-            location_name: update.location_name,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", update.id);
-      });
-      
-      // Execute all updates in parallel
-      const results = await Promise.all(updatePromises);
-      
-      // Count successful updates
-      const batchSuccessCount = results.filter(result => !result.error).length;
-      updatedCount += batchSuccessCount;
-      
-      // Log errors if any
-      results.forEach((result, index) => {
-        if (result.error) {
-          debug(`Error updating line item ${batch[index].id}: ${result.error.message}`);
+      // Process each update individually for better error handling
+      for (const update of batch) {
+        try {
+          const { error } = await supabase
+            .from("shopify_order_items")
+            .update({
+              location_id: update.location_id,
+              location_name: update.location_name,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", update.id);
+          
+          if (error) {
+            debug(`Error updating line item ${update.id}: ${error.message}`);
+          } else {
+            updatedCount++;
+            debug(`Successfully updated line item ${update.id}`);
+          }
+        } catch (updateError: any) {
+          debug(`Exception updating line item ${update.id}: ${updateError.message}`);
         }
-      });
+      }
       
-      debug(`Updated ${batchSuccessCount}/${batch.length} line items in batch ${Math.floor(i/batchSize) + 1}`);
+      debug(`Updated ${updatedCount}/${updates.length} line items so far`);
+      
+      // Add short delay between batches to avoid overwhelming the database
+      if (i + batchSize < updates.length) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
     }
     
-    debug(`Successfully updated ${updatedCount}/${updates.length} line items`);
+    debug(`Successfully updated ${updatedCount}/${updates.length} line items in total`);
     return updatedCount;
-  } catch (error) {
+  } catch (error: any) {
     debug(`Exception in updateLineItemLocations: ${error.message}`);
     throw error;
   }
