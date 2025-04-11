@@ -25,31 +25,45 @@ const LineItemsExclude = () => {
   const fetchExcludedOrders = async () => {
     setIsLoading(true);
     try {
-      // Join with hd_orders to get dealer_po_number and order_type
-      const { data, error } = await supabase
+      // First fetch the exclusions
+      const { data: exclusions, error: exclusionsError } = await supabase
         .from('hd_lineitems_exclude')
         .select(`
           id,
           hd_order_number,
           reason,
-          created_at,
-          hd_orders!inner(dealer_po_number, order_type)
+          created_at
         `)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        throw error;
+      if (exclusionsError) {
+        throw exclusionsError;
       }
 
-      // Transform the data to match the ExcludedOrder type
-      const transformedData = data?.map(item => ({
-        id: item.id,
-        hd_order_number: item.hd_order_number,
-        dealer_po_number: item.hd_orders?.dealer_po_number,
-        order_type: item.hd_orders?.order_type,
-        reason: item.reason,
-        created_at: item.created_at
-      })) || [];
+      // Now get the order details for each excluded order
+      const transformedData: ExcludedOrder[] = [];
+      
+      for (const exclusion of exclusions) {
+        // Get order details
+        const { data: orderDetails, error: orderError } = await supabase
+          .from('hd_orders')
+          .select('dealer_po_number, order_type')
+          .eq('hd_order_number', exclusion.hd_order_number)
+          .maybeSingle();
+        
+        if (orderError) {
+          console.error('Error fetching order details:', orderError);
+        }
+        
+        transformedData.push({
+          id: exclusion.id,
+          hd_order_number: exclusion.hd_order_number,
+          dealer_po_number: orderDetails?.dealer_po_number || '-',
+          order_type: orderDetails?.order_type || '-',
+          reason: exclusion.reason as ExcludeReason,
+          created_at: exclusion.created_at
+        });
+      }
 
       setExcludedOrders(transformedData);
     } catch (error) {
@@ -70,7 +84,7 @@ const LineItemsExclude = () => {
       const { data: existingOrders, error: checkError } = await supabase
         .from('hd_lineitems_exclude')
         .select('id')
-        .eq('hd_order_number', orderNumber) as { data: any[] | null, error: any };
+        .eq('hd_order_number', orderNumber);
 
       if (checkError) {
         throw checkError;
@@ -83,7 +97,7 @@ const LineItemsExclude = () => {
 
       const { error } = await supabase
         .from('hd_lineitems_exclude')
-        .insert({ hd_order_number: orderNumber, reason }) as { error: any };
+        .insert({ hd_order_number: orderNumber, reason });
 
       if (error) {
         throw error;
@@ -102,7 +116,7 @@ const LineItemsExclude = () => {
       const { error } = await supabase
         .from('hd_lineitems_exclude')
         .delete()
-        .eq('id', id) as { error: any };
+        .eq('id', id);
 
       if (error) {
         throw error;
