@@ -21,82 +21,51 @@ export const importAllOrders = async (addDebugMessage: (message: string) => void
       setTimeout(() => reject(new Error("API call timed out after 90 seconds")), 90000); // Increased timeout
     });
     
-    // Actual API call
-    const apiCallPromise = supabase.functions.invoke('shopify-sync-all', {
-      body: { 
-        apiToken: token,
-        operation: "import" // Specify operation type
-      },
-      // Add retry logic with exponential backoff
-      options: {
-        retries: 3, // Try up to 3 times
-        retryDelay: 2000 // Start with 2 second delay
-      }
-    });
+    // Implement manual retry logic
+    const maxRetries = 3;
+    const baseDelay = 2000; // 2 seconds initial delay
+    let attempt = 0;
+    let lastError: any = null;
     
-    // Use Promise.race to implement the timeout
-    const response = await Promise.race([apiCallPromise, timeoutPromise]) as any;
-
-    if (response.error) {
-      console.error('Error invoking shopify-sync-all function:', response.error);
-      throw new Error(`Failed to connect to Shopify API: ${response.error.message || 'Unknown error'}`);
-    }
-    
-    const data = response.data;
-    
-    if (!data || !data.success) {
-      // Check for specific error conditions in the debug messages
-      if (data?.debugMessages && Array.isArray(data.debugMessages)) {
-        // Log all debug messages for troubleshooting
-        data.debugMessages.forEach((msg: string) => addDebugMessage(`API: ${msg}`));
+    while (attempt < maxRetries) {
+      try {
+        // Actual API call
+        const apiCallPromise = supabase.functions.invoke('shopify-sync-all', {
+          body: { 
+            apiToken: token,
+            operation: "import" // Specify operation type
+          }
+        });
         
-        // Look for rate limiting or authentication issues
-        const rateLimitMsg = data.debugMessages.find((msg: string) => 
-          msg.includes('rate limit') || msg.includes('429') || msg.includes('too many requests')
-        );
+        // Use Promise.race to implement the timeout
+        const response = await Promise.race([apiCallPromise, timeoutPromise]) as any;
         
-        if (rateLimitMsg) {
-          throw new Error("Shopify API rate limit exceeded. Please wait a few minutes and try again.");
+        if (response.error) {
+          throw new Error(`Failed to connect to Shopify API: ${response.error.message || 'Unknown error'}`);
         }
         
-        const authMsg = data.debugMessages.find((msg: string) => 
-          msg.includes('authentication failed') || msg.includes('401') || msg.includes('unauthorized')
-        );
+        return response;
+      } catch (error: any) {
+        lastError = error;
+        attempt++;
         
-        if (authMsg) {
-          throw new Error("Authentication failed. Your Shopify API token might be invalid or expired.");
+        // If we've used all our retries, throw the error
+        if (attempt >= maxRetries) {
+          break;
         }
+        
+        // Calculate exponential backoff delay
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        addDebugMessage(`API call attempt ${attempt} failed, retrying in ${delay/1000} seconds...`);
+        
+        // Wait before next attempt
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-      
-      const errorMsg = data?.error || 'Unknown error occurred during Shopify sync';
-      console.error('Shopify sync failed:', errorMsg);
-      throw new Error(`Shopify sync failed: ${errorMsg}`);
     }
     
-    // Verify that orders were imported with line items
-    const { count: orderCount, error: orderCountError } = await supabase
-      .from('shopify_orders')
-      .select('*', { count: 'exact', head: true });
+    // If we got here, all retries failed
+    throw lastError || new Error("All API call attempts failed");
     
-    if (orderCountError) {
-      console.error('Error checking imported order count:', orderCountError);
-    } else if (!orderCount || orderCount === 0) {
-      throw new Error('No orders were imported from Shopify');
-    }
-    
-    const { count: lineItemCount, error: lineItemCountError } = await supabase
-      .from('shopify_order_items')
-      .select('*', { count: 'exact', head: true })
-      .neq("order_id", "00000000-0000-0000-0000-000000000000");
-    
-    if (lineItemCountError) {
-      console.error('Error checking imported line item count:', lineItemCountError);
-    } else if (!lineItemCount || lineItemCount === 0) {
-      throw new Error('Orders were imported but no line items were created');
-    }
-    
-    addDebugMessage(`Successfully imported ${data.imported || 0} orders with ${lineItemCount || 0} line items`);
-    return data;
   } catch (error) {
     console.error("Error importing orders:", error);
     throw error;
