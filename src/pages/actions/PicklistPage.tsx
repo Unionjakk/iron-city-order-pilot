@@ -10,10 +10,13 @@ import { Package, RefreshCcw, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
+import { PicklistOrder } from "./types/picklistTypes";
 
 const PicklistPage = () => {
   const { orders, isLoading, error, refreshData, debugInfo } = usePicklistData();
   const [showDebug, setShowDebug] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredOrders, setFilteredOrders] = useState<PicklistOrder[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -25,6 +28,48 @@ const PicklistPage = () => {
       });
     }
   }, [error, toast]);
+
+  // Filter orders based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredOrders(orders);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    const filtered = orders.filter(order => {
+      // Search in order number
+      if (order.shopify_order_number?.toLowerCase().includes(query)) {
+        return true;
+      }
+      
+      // Search in order ID if no order number
+      if (!order.shopify_order_number && order.shopify_order_id.toLowerCase().includes(query)) {
+        return true;
+      }
+      
+      // Search in customer information
+      if (order.customer_name.toLowerCase().includes(query)) {
+        return true;
+      }
+      
+      if (order.customer_email?.toLowerCase().includes(query)) {
+        return true;
+      }
+      
+      // Search in order items
+      return order.items.some(item => 
+        item.sku?.toLowerCase().includes(query) || 
+        item.title.toLowerCase().includes(query)
+      );
+    });
+    
+    setFilteredOrders(filtered);
+  }, [searchQuery, orders]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
 
   const toggleDebug = () => setShowDebug(prev => !prev);
 
@@ -58,7 +103,7 @@ const PicklistPage = () => {
         <CardContent className="p-0">
           {isLoading ? (
             <PicklistLoading />
-          ) : orders.length === 0 ? (
+          ) : filteredOrders.length === 0 && !searchQuery ? (
             <div className="p-10 text-center">
               <Package className="mx-auto h-16 w-16 text-orange-500/50" />
               <h3 className="mt-6 text-xl font-semibold text-orange-500">No orders to pick</h3>
@@ -79,12 +124,29 @@ const PicklistPage = () => {
           ) : (
             <>
               <div className="p-4 bg-zinc-800/20">
-                <PicklistFilter />
+                <PicklistFilter onSearch={handleSearch} />
               </div>
-              <PicklistTable 
-                orders={orders}
-                refreshData={refreshData}
-              />
+              
+              {filteredOrders.length === 0 && searchQuery ? (
+                <div className="p-10 text-center">
+                  <h3 className="text-xl font-semibold text-orange-500">No matching orders found</h3>
+                  <p className="mt-2 text-zinc-400 max-w-md mx-auto">
+                    No orders match your search for "{searchQuery}".
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-6 button-outline" 
+                    onClick={() => setSearchQuery("")}
+                  >
+                    Clear Search
+                  </Button>
+                </div>
+              ) : (
+                <PicklistTable 
+                  orders={filteredOrders}
+                  refreshData={refreshData}
+                />
+              )}
             </>
           )}
         </CardContent>
@@ -111,6 +173,9 @@ const PicklistPage = () => {
           <CollapsibleContent>
             {debugInfo && (
               <div className="bg-zinc-900 p-4 text-sm">
+                <div className="mb-2 text-orange-400">
+                  Search Results: {filteredOrders.length} of {orders.length} orders
+                </div>
                 <pre className="text-xs overflow-auto max-h-96 text-zinc-400 font-mono">
                   {JSON.stringify(debugInfo, null, 2)}
                 </pre>
