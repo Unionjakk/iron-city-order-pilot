@@ -60,16 +60,25 @@ export async function fetchAllShopifyOrdersWithPagination(
       throw new Error("Received unexpected data format from Shopify API");
     }
     
-    // Process line items to extract location information if available
+    // Process line items to extract location information if available and ensure IDs are strings
     const processedOrders = data.orders.map((order: any) => {
+      // Ensure order ID is a string
+      order.id = String(order.id);
+      
       // Process line items to add location information
       if (order.line_items && Array.isArray(order.line_items)) {
         order.line_items = order.line_items.map((item: any) => {
+          // Ensure ID is a string
+          item.id = String(item.id);
+          if (item.product_id) item.product_id = String(item.product_id);
+          if (item.variant_id) item.variant_id = String(item.variant_id);
+          
           // Extract location information from the line item
           if (item.location_id) {
+            item.location_id = String(item.location_id);
             // Try to get location name from the locations array if present in the response
             if (data.locations && Array.isArray(data.locations)) {
-              const location = data.locations.find((loc: any) => loc.id === item.location_id);
+              const location = data.locations.find((loc: any) => String(loc.id) === String(item.location_id));
               if (location) {
                 item.location_name = location.name;
               }
@@ -79,15 +88,15 @@ export async function fetchAllShopifyOrdersWithPagination(
           // For fulfillment items check if they have location info
           if (item.fulfillment_line_item_id && data.fulfillments && Array.isArray(data.fulfillments)) {
             const fulfillment = data.fulfillments.find((f: any) => 
-              f.line_items && f.line_items.some((l: any) => l.id === item.fulfillment_line_item_id)
+              f.line_items && f.line_items.some((l: any) => String(l.id) === String(item.fulfillment_line_item_id))
             );
             
             if (fulfillment && fulfillment.location_id) {
-              item.location_id = fulfillment.location_id;
+              item.location_id = String(fulfillment.location_id);
               
               // Try to get location name
               if (data.locations && Array.isArray(data.locations)) {
-                const location = data.locations.find((loc: any) => loc.id === fulfillment.location_id);
+                const location = data.locations.find((loc: any) => String(loc.id) === String(fulfillment.location_id));
                 if (location) {
                   item.location_name = location.name;
                 }
@@ -177,14 +186,23 @@ export async function fetchNextPage(
     
     // Process line items to extract location information if available
     const processedOrders = data.orders.map((order: any) => {
+      // Ensure order ID is a string
+      order.id = String(order.id);
+      
       // Process line items to add location information
       if (order.line_items && Array.isArray(order.line_items)) {
         order.line_items = order.line_items.map((item: any) => {
+          // Ensure ID is a string
+          item.id = String(item.id);
+          if (item.product_id) item.product_id = String(item.product_id);
+          if (item.variant_id) item.variant_id = String(item.variant_id);
+          
           // Extract location information from the line item
           if (item.location_id) {
+            item.location_id = String(item.location_id);
             // Try to get location name from the locations array if present in the response
             if (data.locations && Array.isArray(data.locations)) {
-              const location = data.locations.find((loc: any) => loc.id === item.location_id);
+              const location = data.locations.find((loc: any) => String(loc.id) === String(item.location_id));
               if (location) {
                 item.location_name = location.name;
               }
@@ -194,15 +212,15 @@ export async function fetchNextPage(
           // For fulfillment items check if they have location info
           if (item.fulfillment_line_item_id && data.fulfillments && Array.isArray(data.fulfillments)) {
             const fulfillment = data.fulfillments.find((f: any) => 
-              f.line_items && f.line_items.some((l: any) => l.id === item.fulfillment_line_item_id)
+              f.line_items && f.line_items.some((l: any) => String(l.id) === String(item.fulfillment_line_item_id))
             );
             
             if (fulfillment && fulfillment.location_id) {
-              item.location_id = fulfillment.location_id;
+              item.location_id = String(fulfillment.location_id);
               
               // Try to get location name
               if (data.locations && Array.isArray(data.locations)) {
-                const location = data.locations.find((loc: any) => loc.id === fulfillment.location_id);
+                const location = data.locations.find((loc: any) => String(loc.id) === String(fulfillment.location_id));
                 if (location) {
                   item.location_name = location.name;
                 }

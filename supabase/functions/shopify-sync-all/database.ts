@@ -99,19 +99,24 @@ export async function importOrder(
     if (hasValidLineItems) {
       debug(`Inserting ${shopifyOrder.line_items.length} line items for order ${orderId}`);
       
-      const lineItemsToInsert = shopifyOrder.line_items.map(item => ({
-        order_id: orderDbId,
-        shopify_line_item_id: item.id || `default-${Math.random().toString(36).substring(2, 15)}`,
-        title: item.title || "Unknown Product",
-        sku: item.sku || "",
-        quantity: item.quantity || 1,
-        price: item.price || "0.00",
-        product_id: item.product_id || "",
-        variant_id: item.variant_id || "",
-        properties: item.properties || null,
-        location_id: item.location_id || null, // Add location_id
-        location_name: item.location_name || null // Add location_name
-      }));
+      const lineItemsToInsert = shopifyOrder.line_items.map(item => {
+        // Ensure IDs are stored as strings
+        const shopifyLineItemId = String(item.id || `default-${Math.random().toString(36).substring(2, 15)}`);
+        
+        return {
+          order_id: orderDbId,
+          shopify_line_item_id: shopifyLineItemId,
+          title: item.title || "Unknown Product",
+          sku: item.sku || "",
+          quantity: item.quantity || 1,
+          price: item.price || "0.00",
+          product_id: item.product_id ? String(item.product_id) : "",
+          variant_id: item.variant_id ? String(item.variant_id) : "",
+          properties: item.properties || null,
+          location_id: item.location_id ? String(item.location_id) : null,
+          location_name: item.location_name || null
+        };
+      });
 
       // Insert in small batches to avoid potential size limits
       const batchSize = 20;

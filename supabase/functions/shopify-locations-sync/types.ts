@@ -52,8 +52,8 @@ export interface ShopifyLineItem {
     id: string;
     name: string;
   };
-  location_id?: string;
-  location_name?: string;
+  location_id?: string | null;
+  location_name?: string | null;
 }
 
 export interface DbLineItem {

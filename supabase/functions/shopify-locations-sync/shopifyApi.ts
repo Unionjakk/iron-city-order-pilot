@@ -81,24 +81,32 @@ export async function fetchOrdersWithLineItems(
       debug(`Found ${order.line_items.length} line items in the order`);
       
       order.line_items = order.line_items.map((item: any) => {
+        // Ensure ID is always a string for consistent comparison
+        item.id = String(item.id);
+        
         // Extract location information from the line item
         if (item.origin_location) {
           debug(`Item ${item.id} has origin_location: ${JSON.stringify(item.origin_location)}`);
-          item.location_id = item.origin_location.id;
+          item.location_id = String(item.origin_location.id);
           item.location_name = item.origin_location.name;
         } else {
           debug(`Item ${item.id} has no origin_location data`);
+          item.location_id = null;
+          item.location_name = null;
         }
 
         // For fulfillment items check if they have location info
         if (order.fulfillments && Array.isArray(order.fulfillments)) {
           for (const fulfillment of order.fulfillments) {
             if (fulfillment.line_items && Array.isArray(fulfillment.line_items)) {
-              const fulfillmentLineItem = fulfillment.line_items.find((l: any) => String(l.id) === String(item.id));
+              // Convert both IDs to strings for comparison
+              const fulfillmentLineItem = fulfillment.line_items.find((l: any) => 
+                String(l.id) === String(item.id)
+              );
               
               if (fulfillmentLineItem && fulfillment.location_id) {
                 debug(`Item ${item.id} found in fulfillment with location_id: ${fulfillment.location_id}`);
-                item.location_id = fulfillment.location_id;
+                item.location_id = String(fulfillment.location_id);
                 
                 // Try to get location name if available
                 if (fulfillment.location) {
@@ -202,10 +210,16 @@ export async function fetchSingleLineItem(
     
     debug(`Successfully found line item ${lineItemId} in order ${orderId}`);
     
+    // Ensure ID is always a string
+    lineItem.id = String(lineItem.id);
+    
     // Add location info if available
     if (lineItem.origin_location) {
-      lineItem.location_id = lineItem.origin_location.id;
+      lineItem.location_id = String(lineItem.origin_location.id);
       lineItem.location_name = lineItem.origin_location.name;
+    } else {
+      lineItem.location_id = null;
+      lineItem.location_name = null;
     }
     
     debug(`Line item details: ${JSON.stringify(lineItem)}`);
@@ -240,7 +254,13 @@ export async function fetchAllLineItemsForOrder(
     debug(`Retrieved ${order.line_items.length} line items for order ${orderId}`);
     
     // Return all line items with their location information
-    return order.line_items;
+    return order.line_items.map(item => {
+      // Ensure ID is always a string
+      return {
+        ...item,
+        id: String(item.id)
+      };
+    });
   } catch (error: any) {
     debug(`Error fetching all line items for order ${orderId}: ${error.message}`);
     throw error;
