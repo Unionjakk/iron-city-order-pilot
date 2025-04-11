@@ -33,7 +33,7 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
       <CardHeader>
         <CardTitle className="text-red-500">Complete Data Refresh</CardTitle>
         <CardDescription className="text-zinc-400">
-          Delete all existing orders and re-import from Shopify
+          Delete all existing orders and import unfulfilled/partial orders from Shopify
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -50,7 +50,7 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
             <AlertTriangle className="h-5 w-5 text-red-500" />
             <AlertTitle className="text-red-400">Warning: Destructive Operation</AlertTitle>
             <AlertDescription className="text-zinc-300">
-              This will delete ALL current orders and import them fresh from Shopify. 
+              This will delete ALL current orders and import unfulfilled and partially fulfilled orders from Shopify. 
               This is useful if your local data is out of sync with Shopify. 
               This operation cannot be undone.
             </AlertDescription>
@@ -67,12 +67,12 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
               {isImporting ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Importing All Orders...
+                  Importing Unfulfilled Orders...
                 </>
               ) : (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Import All Orders (Recovery Mode)
+                  Import Unfulfilled Orders (Recovery Mode)
                 </>
               )}
             </Button>
@@ -98,7 +98,7 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
           <div className="space-y-2">
             <div className="flex items-center justify-between mb-1">
               <span className="text-sm text-zinc-400">
-                {isDeleting ? "Deleting data..." : "Importing orders..."}
+                {isDeleting ? "Deleting data..." : "Importing unfulfilled orders..."}
               </span>
             </div>
             <Progress className="h-2" value={isDeleting ? 25 : (isSuccess ? 100 : 75)} />
