@@ -2,7 +2,7 @@
 import { ShopifyOrder, ShopifyLineItem } from "./types.ts";
 import { processOrder } from "./orderProcessingUtils.ts";
 import { handleApiResponse, handleRateLimiting } from "./apiUtils.ts";
-import { extractPaginationInfo } from "./paginationUtils.ts"; // Added missing import
+import { extractPaginationInfo } from "./paginationUtils.ts";
 
 /**
  * Fetches all orders from Shopify with pagination
