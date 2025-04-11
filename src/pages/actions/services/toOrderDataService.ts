@@ -80,7 +80,7 @@ export const fetchLineItemsForOrders = async (orderIds: string[]) => {
 };
 
 /**
- * Fetch progress information for order line items that are marked as "To Order"
+ * Fetch progress information specifically for "To Order" items
  */
 export const fetchToOrderItemsProgress = async () => {
   console.log("Fetching 'To Order' progress items...");

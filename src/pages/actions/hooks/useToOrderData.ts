@@ -1,11 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { PicklistOrder, PicklistDebugInfo, PicklistDataResult } from "../types/picklistTypes";
 import { LEEDS_LOCATION_ID } from "../constants/picklistConstants";
 import { 
-  processOrdersData,
-  extractUniqueSkus,
   createProgressMap,
   createStockMap,
+  extractUniqueSkus,
   filterLeedsLineItems
 } from "../utils/picklistDataUtils";
 import {
@@ -41,7 +41,7 @@ export const useToOrderData = (): PicklistDataResult => {
     try {
       console.log("Fetching 'To Order' data for Leeds location ID:", LEEDS_LOCATION_ID);
       
-      // Step 1: Get the progress data first (orders marked as "To Order")
+      // Step 1: Get the progress data first (items marked as "To Order")
       const progressData = await fetchToOrderItemsProgress();
       
       console.log(`Found ${progressData?.length || 0} items with 'To Order' progress data`);
@@ -131,23 +131,54 @@ export const useToOrderData = (): PicklistDataResult => {
       // Create a lookup map for stock data
       const stockMap = createStockMap(stockData || []);
       
-      // Process the data to combine all information
-      const processedOrders = processOrdersData(ordersData, lineItemsData, stockMap, progressMap);
-      
-      // Final filter - only keep orders that have at least one item with "To Order" progress
-      const finalOrders = processedOrders.filter(order => {
-        // Filter items to only those with "To Order" progress
-        const toOrderItems = order.items.filter(item => item.progress === "To Order");
+      // Process the line items data to include stock info and progress status
+      const processedLineItems = lineItemsData.map(item => {
+        const stock = stockMap.get(item.sku);
+        const progressKey = `${item.order_id}_${item.sku}`;
+        const progress = progressMap.get(progressKey);
         
-        // Only keep orders with To Order items
-        return toOrderItems.length > 0;
-      }).map(order => {
-        // For each order, only keep the "To Order" items
         return {
-          ...order,
-          items: order.items.filter(item => item.progress === "To Order")
+          ...item,
+          // Stock data
+          in_stock: !!stock,
+          stock_quantity: stock?.stock_quantity || null,
+          bin_location: stock?.bin_location || null,
+          cost: stock?.cost || null,
+          // Progress data
+          progress: progress?.progress || null,
+          notes: progress?.notes || null
         };
       });
+      
+      // Group line items by order
+      const orderMap = new Map();
+      ordersData.forEach(order => {
+        orderMap.set(order.id, {
+          id: order.id,
+          shopify_order_id: order.shopify_order_id,
+          shopify_order_number: order.shopify_order_number,
+          customer_name: order.customer_name,
+          customer_email: order.customer_email,
+          created_at: order.created_at,
+          items: []
+        });
+      });
+      
+      // Add line items to their respective orders, but ONLY if they have "To Order" progress
+      processedLineItems.forEach(item => {
+        if (item.progress === "To Order") {
+          const order = orderMap.get(item.order_id);
+          if (order) {
+            order.items.push(item);
+          }
+        }
+      });
+      
+      // Convert the map to an array of orders
+      const resultOrders = Array.from(orderMap.values());
+      
+      // Filter out orders with no items (all items might have been filtered out if none had "To Order" progress)
+      const finalOrders = resultOrders.filter(order => order.items.length > 0);
       
       console.log(`Final processing: ${finalOrders.length} orders with ${finalOrders.reduce((count, order) => count + order.items.length, 0)} To Order items`);
       debug.finalOrderCount = finalOrders.length;
