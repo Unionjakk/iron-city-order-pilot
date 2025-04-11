@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Code } from '@/components/ui/code';
+import { FileText } from 'lucide-react'; // Add this import for the FileText icon
 import OrdersNeedingLineItems from './components/OrdersNeedingLineItems';
 import OrderLinesInstructions from './components/OrderLinesInstructions';
 import FileUploadZone from './components/FileUploadZone';
