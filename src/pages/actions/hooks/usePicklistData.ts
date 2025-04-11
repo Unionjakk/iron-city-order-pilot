@@ -36,6 +36,7 @@ export const usePicklistData = () => {
   const [orders, setOrders] = useState<PicklistOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>({});
 
   const LEEDS_LOCATION_ID = "53277786267";
 
@@ -43,7 +44,17 @@ export const usePicklistData = () => {
     setIsLoading(true);
     setError(null);
     
+    const debug: any = {
+      orderCount: 0,
+      lineItemCount: 0,
+      progressItemCount: 0,
+      finalOrderCount: 0,
+      finalItemCount: 0
+    };
+    
     try {
+      console.log("Fetching picklist data for Leeds location ID:", LEEDS_LOCATION_ID);
+      
       // Step 1: Get all unfulfilled orders with items at Leeds location
       const { data: ordersData, error: ordersError } = await supabase
         .from('shopify_orders')
@@ -58,20 +69,52 @@ export const usePicklistData = () => {
       
       if (ordersError) throw new Error(`Orders fetch error: ${ordersError.message}`);
       if (!ordersData || ordersData.length === 0) {
+        console.log("No orders found with status 'imported'");
+        setDebugInfo({ ...debug, ordersFetchResult: "No orders found" });
         setOrders([]);
         setIsLoading(false);
         return;
       }
       
-      // Step 2: Get all line items for these orders
+      console.log(`Found ${ordersData.length} orders with status 'imported'`);
+      debug.orderCount = ordersData.length;
+      
+      // Step 2: Get all line items for these orders that are at Leeds location
       const orderIds = ordersData.map(order => order.id);
-      const { data: lineItemsData, error: lineItemsError } = await supabase
+      
+      // First get all line items for the orders
+      const { data: allLineItemsData, error: allLineItemsError } = await supabase
         .from('shopify_order_items')
         .select('*')
-        .in('order_id', orderIds)
-        .eq('location_id', LEEDS_LOCATION_ID);
+        .in('order_id', orderIds);
       
-      if (lineItemsError) throw new Error(`Line items fetch error: ${lineItemsError.message}`);
+      if (allLineItemsError) throw new Error(`All line items fetch error: ${allLineItemsError.message}`);
+      
+      console.log(`Found ${allLineItemsData?.length || 0} total line items for all orders`);
+      
+      // Now filter for Leeds location
+      const lineItemsData = allLineItemsData?.filter(item => 
+        item.location_id === LEEDS_LOCATION_ID
+      ) || [];
+      
+      console.log(`Found ${lineItemsData.length} line items at Leeds location (ID: ${LEEDS_LOCATION_ID})`);
+      debug.lineItemCount = lineItemsData.length;
+      
+      if (lineItemsData.length === 0) {
+        console.log("No line items found for Leeds location");
+        setDebugInfo({ 
+          ...debug, 
+          lineItemsFetchResult: "No line items found for Leeds location",
+          allLineItems: allLineItemsData?.length || 0,
+          allLineItemsFirstFew: allLineItemsData?.slice(0, 5).map(item => ({
+            id: item.id,
+            location_id: item.location_id
+          }))
+        });
+        setOrders([]);
+        setIsLoading(false);
+        return;
+      }
       
       // Get all unique SKUs for stock lookup
       const skus = [...new Set(lineItemsData.map(item => item.sku).filter(Boolean))];
@@ -104,6 +147,9 @@ export const usePicklistData = () => {
         const key = `${progress.shopify_order_id}_${progress.sku}`;
         progressMap.set(key, progress);
       });
+      
+      console.log(`Found ${progressData?.length || 0} items with progress data`);
+      debug.progressItemCount = progressData?.length || 0;
       
       // Process the data to combine all information
       const processedOrders = ordersData
@@ -156,10 +202,16 @@ export const usePicklistData = () => {
         })
         .filter(Boolean); // Remove orders with no items
       
+      console.log(`Processed ${processedOrders.length} orders with ${processedOrders.reduce((count, order) => count + order.items.length, 0)} items`);
+      debug.finalOrderCount = processedOrders.length;
+      debug.finalItemCount = processedOrders.reduce((count, order) => count + order.items.length, 0);
+      
+      setDebugInfo(debug);
       setOrders(processedOrders as PicklistOrder[]);
     } catch (err: any) {
       console.error("Error fetching picklist data:", err);
       setError(err.message);
+      setDebugInfo({ ...debug, error: err.message });
       setOrders([]);
     } finally {
       setIsLoading(false);
@@ -175,6 +227,7 @@ export const usePicklistData = () => {
     orders,
     isLoading,
     error,
-    refreshData: fetchData
+    refreshData: fetchData,
+    debugInfo
   };
 };
