@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, Clock, CheckCircle, ShoppingBag, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchPickStatsData, refreshAllStats } from "@/services/stats";
+import { fetchAccuratePickStatsData, refreshAllStats } from "@/services/stats";
 import { toast } from "sonner";
 
 interface PickStatsProps {
@@ -31,7 +31,8 @@ const PickStats = ({ className }: PickStatsProps) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await fetchPickStatsData();
+      // Use the accurate data fetching function instead of the cached one
+      const data = await fetchAccuratePickStatsData();
       setStats(data);
     } catch (err: any) {
       console.error("Error loading pick stats:", err);
