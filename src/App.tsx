@@ -17,7 +17,6 @@ import NotFound from "@/pages/NotFound";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import UploadsIndex from "@/pages/admin/uploads/UploadsIndex";
 import PinnacleUpload from "@/pages/admin/uploads/PinnacleUpload";
-import HarleyUpload from "@/pages/admin/uploads/HarleyUpload";
 import ShopifyAPI from "@/pages/admin/uploads/ShopifyAPI";
 import AdminSettings from "@/pages/admin/AdminSettings";
 
@@ -70,10 +69,10 @@ const App = () => (
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/uploads" element={<UploadsIndex />} />
                 <Route path="/admin/uploads/pinnacle" element={<PinnacleUpload />} />
-                <Route path="/admin/uploads/harley" element={<HarleyUpload />} />
                 
-                {/* Harley Davidson Upload routes */}
-                <Route path="/admin/uploads/harley/dashboard" element={<HarleyUploadDashboard />} />
+                {/* Harley Davidson Upload routes - main route displays dashboard */}
+                <Route path="/admin/uploads/harley" element={<HarleyUploadDashboard />} />
+                <Route path="/admin/uploads/harley/dashboard" element={<Navigate to="/admin/uploads/harley" replace />} />
                 <Route path="/admin/uploads/harley/open-orders" element={<OpenOrdersUpload />} />
                 <Route path="/admin/uploads/harley/order-lines" element={<OrderLinesUpload />} />
                 <Route path="/admin/uploads/harley/backorders" element={<BackordersUpload />} />

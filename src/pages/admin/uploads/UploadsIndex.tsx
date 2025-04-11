@@ -31,9 +31,9 @@ const UploadsIndex = () => {
             <CardDescription className="text-zinc-400">Import data from Harley Davidson reports</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-zinc-300">Coming soon: Upload and process Harley Davidson backorders, open orders, and order details.</p>
+            <p className="mb-4 text-zinc-300">Upload and process Harley Davidson backorders, open orders, and order details.</p>
             <Link to="/admin/uploads/harley" className="inline-flex items-center text-orange-500 hover:text-orange-400">
-              Go to Harley Upload <ArrowRight className="ml-2 h-4 w-4" />
+              Go to Harley Dashboard <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </CardContent>
         </Card>
