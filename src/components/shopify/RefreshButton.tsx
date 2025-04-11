@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Trash2, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface RefreshButtonProps {
   isDeleting: boolean;
@@ -9,6 +10,27 @@ interface RefreshButtonProps {
 }
 
 const RefreshButton = ({ isDeleting, isImporting, onClick }: RefreshButtonProps) => {
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+
+  // Reset the disabled state after 2 minutes to prevent permanent disabling on error
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    
+    if (isDeleting || isImporting) {
+      setIsButtonDisabled(true);
+      // Auto-enable after 2 minutes to prevent being permanently stuck
+      timeout = setTimeout(() => {
+        setIsButtonDisabled(false);
+      }, 120000);
+    } else {
+      setIsButtonDisabled(false);
+    }
+    
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [isDeleting, isImporting]);
+
   const getButtonText = () => {
     if (isDeleting) return "Deleting All Data...";
     if (isImporting) return "Importing All Orders...";
@@ -21,11 +43,17 @@ const RefreshButton = ({ isDeleting, isImporting, onClick }: RefreshButtonProps)
     return <RefreshCw className="mr-2 h-4 w-4" />;
   };
 
+  const handleClick = () => {
+    if (!isButtonDisabled) {
+      onClick();
+    }
+  };
+
   return (
     <Button
-      onClick={onClick}
+      onClick={handleClick}
       className="w-full bg-red-600 hover:bg-red-700 text-white"
-      disabled={isDeleting || isImporting}
+      disabled={isButtonDisabled}
       size="lg"
     >
       {getIcon()}
