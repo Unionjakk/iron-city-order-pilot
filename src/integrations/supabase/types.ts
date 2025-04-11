@@ -9,6 +9,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      dashboard_stats: {
+        Row: {
+          id: string
+          last_updated: string
+          stats_data: Json
+          stats_type: string
+        }
+        Insert: {
+          id?: string
+          last_updated?: string
+          stats_data: Json
+          stats_type: string
+        }
+        Update: {
+          id?: string
+          last_updated?: string
+          stats_data?: Json
+          stats_type?: string
+        }
+        Relationships: []
+      }
       hd_backorders: {
         Row: {
           backorder_clear_by: string | null
@@ -743,6 +764,10 @@ export type Database = {
           status: string
         }[]
       }
+      get_dashboard_stats: {
+        Args: { stats_type_param: string }
+        Returns: Json
+      }
       get_hd_stats: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -756,6 +781,10 @@ export type Database = {
         Returns: string
       }
       migrate_existing_order_items: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_dashboard_stats: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

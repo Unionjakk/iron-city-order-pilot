@@ -2,94 +2,30 @@
 import { PickedStatsData } from "@/components/stats/PickedStats";
 import { supabase } from "@/integrations/supabase/client";
 
-// Fetch real data for Picked Stats from the database
+// Fetch stats data for Picked Stats from the cached stats table
 export const fetchPickedStatsData = async (): Promise<PickedStatsData> => {
   try {
-    console.log("Fetching real Picked Stats data from database");
+    console.log("Fetching Picked Stats data from cache");
     
-    // Get total orders picked
-    const { data: pickedData, error: pickedError } = await supabase
-      .from('iron_city_order_progress')
-      .select('shopify_order_id')
-      .eq('progress', 'Picked');
+    // Get the cached stats from our new function
+    const { data, error } = await supabase
+      .rpc('get_dashboard_stats', { stats_type_param: 'picked' });
       
-    if (pickedError) throw pickedError;
+    if (error) throw error;
     
-    // Get unique order count
-    const uniqueOrderIds = [...new Set(pickedData?.map(item => item.shopify_order_id))];
-    const totalOrdersPicked = uniqueOrderIds.length;
-    
-    // Get total items picked
-    const totalItemsPicked = pickedData?.length || 0;
-    
-    // Get ready to dispatch count (these would be picked items ready for shipping)
-    // This would need additional status tracking in the database
-    const { data: dispatchOrders, error: dispatchError } = await supabase
-      .from('shopify_orders')
-      .select('id, shopify_order_id')
-      .eq('status', 'unfulfilled');
-      
-    if (dispatchError) throw dispatchError;
-    
-    // Check which of these orders have all items picked
-    let readyToDispatch = 0;
-    for (const order of dispatchOrders || []) {
-      const { data: orderItems, error: itemsError } = await supabase
-        .from('iron_city_order_progress')
-        .select('progress')
-        .eq('shopify_order_id', order.shopify_order_id);
-        
-      if (itemsError) continue;
-      
-      // If all items are picked, the order is ready to dispatch
-      const allItemsPicked = orderItems?.every(item => item.progress === 'Picked') || false;
-      if (allItemsPicked && orderItems?.length > 0) readyToDispatch++;
+    if (!data) {
+      throw new Error("No cached Picked Stats data available");
     }
     
-    // Get picked today count
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const { data: todayPicked, error: todayError } = await supabase
-      .from('iron_city_order_progress')
-      .select('shopify_order_id')
-      .eq('progress', 'Picked')
-      .gte('updated_at', today.toISOString());
-      
-    if (todayError) throw todayError;
-    
-    const uniqueTodayOrderIds = [...new Set(todayPicked?.map(item => item.shopify_order_id))];
-    const pickedToday = uniqueTodayOrderIds.length;
-    
-    // Get awaiting items (items that are partly picked but order not complete)
-    // This would need additional logic based on your business rules
-    const awaitingItems = 4; // Placeholder until we have proper tracking
-    
-    // Calculate completion rate
-    // This could be total picked orders / (total picked + total to pick)
-    const { data: allOrders, error: allOrdersError } = await supabase
-      .from('shopify_orders')
-      .select('count');
-      
-    if (allOrdersError) throw allOrdersError;
-    
-    // Parse the count result properly - assuming it returns a string
-    const totalOrders = allOrders && allOrders.length > 0 ? 
-      (typeof allOrders[0].count === 'string' ? parseInt(allOrders[0].count) : allOrders[0].count) || 0 : 0;
-    
-    const completionRate = totalOrders > 0 ? Math.round((totalOrdersPicked / totalOrders) * 100) + "%" : "0%";
-    
-    // Average time to dispatch would require tracking timestamps
-    const avgTimeToDispatch = "35m"; // Placeholder until we have timing data
-    
+    // Convert the returned JSON data to the expected type
     return {
-      totalOrdersPicked,
-      totalItemsPicked,
-      readyToDispatch,
-      avgTimeToDispatch,
-      pickedToday,
-      awaitingItems,
-      completionRate
+      totalOrdersPicked: data.totalOrdersPicked || 0,
+      totalItemsPicked: data.totalItemsPicked || 0,
+      readyToDispatch: data.readyToDispatch || 0,
+      avgTimeToDispatch: data.avgTimeToDispatch || "0m",
+      pickedToday: data.pickedToday || 0,
+      awaitingItems: data.awaitingItems || 0,
+      completionRate: data.completionRate || "0%"
     };
   } catch (error) {
     console.error("Error fetching Picked Stats data:", error);
