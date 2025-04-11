@@ -40,14 +40,24 @@ const ExcludeOrderList = ({ excludedOrders, isLoading, onRemoveExclusion }: Excl
     }
   };
 
+  // Check if an order has details available (not just placeholder values)
+  const hasDetails = (order: ExcludedOrder) => {
+    return order.dealer_po_number !== '-' || order.order_type !== '-';
+  };
+
   return (
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className="border-zinc-700">
             <TableHead className="text-zinc-300">Order Number</TableHead>
-            <TableHead className="text-zinc-300">Dealer PO Number</TableHead>
-            <TableHead className="text-zinc-300">Order Type</TableHead>
+            {/* Only show these columns in the header if at least one order has details */}
+            {excludedOrders.some(hasDetails) && (
+              <>
+                <TableHead className="text-zinc-300">Dealer PO Number</TableHead>
+                <TableHead className="text-zinc-300">Order Type</TableHead>
+              </>
+            )}
             <TableHead className="text-zinc-300">Reason</TableHead>
             <TableHead className="text-zinc-300">Added On</TableHead>
             <TableHead className="text-zinc-300 text-right">Actions</TableHead>
@@ -57,8 +67,13 @@ const ExcludeOrderList = ({ excludedOrders, isLoading, onRemoveExclusion }: Excl
           {excludedOrders.map((order) => (
             <TableRow key={order.id} className="border-zinc-800">
               <TableCell className="font-medium text-zinc-200">{order.hd_order_number}</TableCell>
-              <TableCell className="text-zinc-300">{order.dealer_po_number || '-'}</TableCell>
-              <TableCell className="text-zinc-300">{order.order_type || '-'}</TableCell>
+              {/* Only show these cells if we're showing the columns */}
+              {excludedOrders.some(hasDetails) && (
+                <>
+                  <TableCell className="text-zinc-300">{order.dealer_po_number}</TableCell>
+                  <TableCell className="text-zinc-300">{order.order_type}</TableCell>
+                </>
+              )}
               <TableCell>
                 <div className="flex items-center text-zinc-300">
                   {getReasonIcon(order.reason)}
