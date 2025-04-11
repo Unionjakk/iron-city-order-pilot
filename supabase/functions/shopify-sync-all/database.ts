@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 import { ShopifyOrder } from "./types.ts";
 
@@ -38,7 +39,9 @@ export async function importOrder(
         .from("shopify_orders")
         .update({
           status: shopifyOrder.fulfillment_status || "unfulfilled",
-          imported_at: new Date().toISOString()
+          imported_at: new Date().toISOString(),
+          location_id: shopifyOrder.location_id || null,
+          location_name: shopifyOrder.location_name || null
         })
         .eq("id", existingOrder.id);
 
@@ -75,7 +78,8 @@ export async function importOrder(
           imported_at: new Date().toISOString(),
           note: shopifyOrder.note,
           shipping_address: shopifyOrder.shipping_address,
-          location_id: shopifyOrder.location_id
+          location_id: shopifyOrder.location_id || null,
+          location_name: shopifyOrder.location_name || null
         })
         .select()
         .single();

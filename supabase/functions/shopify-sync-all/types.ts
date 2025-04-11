@@ -1,39 +1,42 @@
 
-// CORS Headers for browser access
+// CORS headers for browser requests
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Request body with API token
+// API request body for Shopify sync
 export interface RequestBody {
   apiToken?: string;
+  autoImport?: boolean;
+  timestamp?: number;
 }
 
-// Shopify order interface
-export interface ShopifyOrder {
-  id: string;
-  order_number: string;
-  name: string;
-  created_at: string;
-  customer: {
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone: string;
-  };
-  line_items: any[];
-  shipping_address: any;
-  fulfillment_status: string | null;
-  note: string | null;
-  location_id: string;
-}
-
-// Response data structure
+// API response body for Shopify sync
 export interface SyncResponse {
   success: boolean;
   error: string | null;
   imported: number;
   debugMessages: string[];
-  cleaned?: boolean;
+}
+
+// Shopify API order interface
+export interface ShopifyOrder {
+  id: string;
+  name: string;
+  order_number: string;
+  created_at: string;
+  customer?: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone?: string;
+  };
+  line_items?: any[];
+  shipping_address?: any;
+  fulfillment_status?: string | null;
+  note?: string | null;
+  line_item_count?: number;
+  location_id?: string;
+  location_name?: string;
 }
