@@ -22,10 +22,9 @@ export interface SyncResponse {
 export interface ShopifyOrder {
   id: string;
   name: string;
-  order_number?: string;
+  order_number: string;
   created_at: string;
   line_items?: ShopifyLineItem[];
-  fulfillments?: any[];
 }
 
 // Shopify API line item interface with location data
@@ -38,8 +37,8 @@ export interface ShopifyLineItem {
   product_id?: string;
   variant_id?: string;
   properties?: any;
-  location_id?: string | null;
-  location_name?: string | null;
+  location_id?: string;
+  location_name?: string;
 }
 
 // Database line item type
@@ -48,7 +47,6 @@ export interface DbLineItem {
   shopify_line_item_id: string;
   title: string;
   order_id: string;
-  shopify_order_id: string;
 }
 
 // Batch update type for line items

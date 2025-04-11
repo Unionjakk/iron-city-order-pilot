@@ -12,7 +12,7 @@ export async function fetchOrdersWithLineItems(
   try {
     // Get the base API endpoint
     const baseEndpoint = "https://opus-harley-davidson.myshopify.com/admin/api/2023-07";
-    const url = `${baseEndpoint}/orders/${orderId}.json?fields=id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status,fulfillments`;
+    const url = `${baseEndpoint}/orders/${orderId}.json?fields=id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status`;
     
     debug(`Fetching from: ${url}`);
     
@@ -56,61 +56,34 @@ export async function fetchOrdersWithLineItems(
     // Process the order to extract line items with location information
     const order = data.order;
     
-    // Debug full order for troubleshooting
-    debug(`Full order data for ${orderId}: ${JSON.stringify(order.line_items)}`);
-    
     // Process line items to extract location information if available
     if (order.line_items && Array.isArray(order.line_items)) {
       order.line_items = order.line_items.map((item: any) => {
-        // Debug each line item
-        debug(`Processing line item ${item.id} with name ${item.name}`);
-        
-        // Create a properly structured line item with location info
-        const lineItem: ShopifyLineItem = {
-          id: item.id.toString(),
-          title: item.title || item.name || "Unknown Item",
-          quantity: item.quantity,
-          price: item.price,
-          sku: item.sku,
-          product_id: item.product_id?.toString(),
-          variant_id: item.variant_id?.toString(),
-          location_id: null,
-          location_name: null
-        };
-
         // Extract location information from the line item
         if (item.origin_location) {
-          debug(`Found origin_location for line item ${item.id}: ${JSON.stringify(item.origin_location)}`);
-          lineItem.location_id = item.origin_location.id?.toString();
-          lineItem.location_name = item.origin_location.name;
+          item.location_id = item.origin_location.id;
+          item.location_name = item.origin_location.name;
         }
 
         // For fulfillment items check if they have location info
-        if (order.fulfillments && Array.isArray(order.fulfillments)) {
+        if (item.fulfillment_line_item_id && order.fulfillments && Array.isArray(order.fulfillments)) {
           const fulfillment = order.fulfillments.find((f: any) => 
-            f.line_items && f.line_items.some((l: any) => l.id.toString() === item.id.toString())
+            f.line_items && f.line_items.some((l: any) => l.id === item.fulfillment_line_item_id)
           );
           
           if (fulfillment && fulfillment.location_id) {
-            debug(`Found fulfillment location for line item ${item.id}: ${fulfillment.location_id}`);
-            lineItem.location_id = fulfillment.location_id.toString();
-            
-            // Try to get location name from the fulfillment if available
-            if (fulfillment.location && fulfillment.location.name) {
-              lineItem.location_name = fulfillment.location.name;
-            }
+            item.location_id = fulfillment.location_id;
           }
         }
         
-        debug(`Processed line item ${lineItem.id}, location: ${lineItem.location_id || 'none'}`);
-        return lineItem;
+        return item as ShopifyLineItem;
       });
     }
     
     debug(`Processed order ${orderId} with ${order.line_items?.length || 0} line items`);
     
     return order;
-  } catch (error: any) {
+  } catch (error) {
     debug(`Exception in fetchOrdersWithLineItems: ${error.message}`);
     throw error;
   }
@@ -212,7 +185,7 @@ export async function fetchNextPage(
       orders: processedOrders, 
       nextPageUrl: newNextPageUrl 
     };
-  } catch (error: any) {
+  } catch (error) {
     debug(`Exception in fetchNextPage: ${error.message}`);
     throw error;
   }
