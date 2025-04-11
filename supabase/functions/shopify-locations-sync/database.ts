@@ -102,8 +102,7 @@ export async function updateLineItemLocations(
           .from("shopify_order_items")
           .update({
             location_id: update.location_id,
-            location_name: update.location_name,
-            updated_at: new Date().toISOString()
+            location_name: update.location_name
           })
           .eq("id", update.id);
       });

@@ -157,7 +157,7 @@ serve(async (req) => {
       
       // Add delay between batches to respect rate limits
       if (i + batchSize < orderIds.length) {
-        const delayMs = 1500; // 1.5 second delay between batches (reduced from 2s for better performance)
+        const delayMs = 1000; // 1 second delay between batches (reduced from 1.5s for better performance)
         debug(`Waiting ${delayMs}ms before processing next batch to respect rate limits`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
