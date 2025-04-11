@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { ExternalLink, Package } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { PicklistOrder } from "../hooks/usePicklistData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 interface PicklistTableProps {
   orders: PicklistOrder[];
@@ -100,115 +101,127 @@ const PicklistTable = ({ orders, refreshData }: PicklistTableProps) => {
     return `https://admin.shopify.com/store/opus-harley-davidson/orders/${orderId}`;
   };
 
-  if (orders.length === 0) {
-    return (
-      <div className="p-6 text-center">
-        <Package className="mx-auto h-12 w-12 text-muted-foreground/50" />
-        <h3 className="mt-2 text-lg font-semibold">No orders to pick</h3>
-        <p className="text-muted-foreground">
-          All orders for Leeds Iron City Motorcycles have been processed or there are no unfulfilled orders.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead>Order</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>SKU</TableHead>
-            <TableHead>Item</TableHead>
-            <TableHead>Qty</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead className="bg-green-50 dark:bg-green-900/20">Stock</TableHead>
-            <TableHead className="bg-green-50 dark:bg-green-900/20">Location</TableHead>
-            <TableHead className="bg-green-50 dark:bg-green-900/20">Cost</TableHead>
-            <TableHead className="bg-amber-50 dark:bg-amber-900/20">Action</TableHead>
-            <TableHead className="bg-amber-50 dark:bg-amber-900/20">Notes</TableHead>
-            <TableHead className="bg-amber-50 dark:bg-amber-900/20">Submit</TableHead>
+          <TableRow className="bg-zinc-800/50">
+            <TableHead className="text-orange-500">Order</TableHead>
+            <TableHead className="text-orange-500">Date</TableHead>
+            <TableHead className="text-orange-500">SKU</TableHead>
+            <TableHead className="text-orange-500">Item</TableHead>
+            <TableHead className="text-orange-500">Qty</TableHead>
+            <TableHead className="text-orange-500">Price</TableHead>
+            <TableHead className="text-orange-500">Stock</TableHead>
+            <TableHead className="text-orange-500">Location</TableHead>
+            <TableHead className="text-orange-500">Cost</TableHead>
+            <TableHead className="text-orange-500">Action</TableHead>
+            <TableHead className="text-orange-500">Notes</TableHead>
+            <TableHead className="text-orange-500">Submit</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {orders.map((order) => (
-            order.items.map((item, index) => (
-              <TableRow key={item.id} className={index === 0 ? "border-t-2 border-orange-200" : ""}>
-                {index === 0 && (
-                  <>
-                    <TableCell rowSpan={order.items.length} className="font-medium align-top">
+            <>
+              <TableRow key={`order-${order.id}`} className="bg-zinc-800/20">
+                <TableCell colSpan={12} className="py-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="font-semibold text-orange-400">Order:</span>
                       <a 
                         href={getShopifyOrderUrl(order.shopify_order_id)} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="flex items-center text-blue-600 hover:underline"
+                        className="ml-2 flex items-center link-styled"
                       >
                         {order.shopify_order_number || order.shopify_order_id.substring(0, 8)}
                         <ExternalLink className="ml-1 h-3 w-3" />
                       </a>
-                    </TableCell>
-                    <TableCell rowSpan={order.items.length} className="align-top">
-                      {formatDate(order.created_at)}
-                    </TableCell>
-                  </>
-                )}
-                <TableCell>{item.sku}</TableCell>
-                <TableCell>{item.title}</TableCell>
-                <TableCell>{item.quantity}</TableCell>
-                <TableCell>
-                  {item.price ? `$${item.price.toFixed(2)}` : "N/A"}
-                </TableCell>
-                
-                {/* Pinnacle Stock Data - different color to indicate different data source */}
-                <TableCell className="bg-green-50 dark:bg-green-900/20">
-                  {item.in_stock ? 
-                    `${item.stock_quantity || 0}` : 
-                    "Not in stock"}
-                </TableCell>
-                <TableCell className="bg-green-50 dark:bg-green-900/20">
-                  {item.in_stock ? item.bin_location || "No location" : "N/A"}
-                </TableCell>
-                <TableCell className="bg-green-50 dark:bg-green-900/20">
-                  {item.in_stock && item.cost ? 
-                    `$${item.cost.toFixed(2)}` : 
-                    "N/A"}
-                </TableCell>
-                
-                {/* Action Section */}
-                <TableCell className="bg-amber-50 dark:bg-amber-900/20">
-                  <Select 
-                    value={actions[item.id] || ""} 
-                    onValueChange={(value) => handleActionChange(item.id, value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Picked">Picked</SelectItem>
-                      <SelectItem value="To Order">To Order</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell className="bg-amber-50 dark:bg-amber-900/20">
-                  <Textarea 
-                    placeholder="Add notes here..." 
-                    className="min-h-[60px] max-h-[100px]"
-                    value={notes[item.id] || ""}
-                    onChange={(e) => handleNotesChange(item.id, e.target.value)}
-                  />
-                </TableCell>
-                <TableCell className="bg-amber-50 dark:bg-amber-900/20">
-                  <Button 
-                    onClick={() => handleSubmit(order, item.id, item.sku)}
-                    disabled={!actions[item.id] || processing[item.id]}
-                    size="sm"
-                  >
-                    {processing[item.id] ? "Saving..." : "Save"}
-                  </Button>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <span className="text-zinc-400 mr-2">Date:</span>
+                        <span className="text-zinc-300">{formatDate(order.created_at)}</span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400 mr-2">Customer:</span>
+                        <span className="text-zinc-300">{order.customer_name}</span>
+                      </div>
+                    </div>
+                  </div>
                 </TableCell>
               </TableRow>
-            ))
+              {order.items.map((item) => (
+                <TableRow key={item.id} className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
+                  <TableCell></TableCell>
+                  <TableCell></TableCell>
+                  <TableCell className="font-mono text-zinc-300">{item.sku}</TableCell>
+                  <TableCell>{item.title}</TableCell>
+                  <TableCell className="text-center">{item.quantity}</TableCell>
+                  <TableCell>
+                    {item.price ? `$${item.price.toFixed(2)}` : "N/A"}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {item.in_stock ? (
+                      <span className="text-green-500">{item.stock_quantity || 0}</span>
+                    ) : (
+                      <span className="text-red-500">0</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {item.in_stock ? (
+                      <span className="text-zinc-300">{item.bin_location || "No location"}</span>
+                    ) : (
+                      <span className="text-zinc-500">N/A</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {item.in_stock && item.cost ? (
+                      <span className="text-zinc-300">${item.cost.toFixed(2)}</span>
+                    ) : (
+                      <span className="text-zinc-500">N/A</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Select 
+                      value={actions[item.id] || ""} 
+                      onValueChange={(value) => handleActionChange(item.id, value)}
+                    >
+                      <SelectTrigger className="w-full border-zinc-700 bg-zinc-800/50 text-zinc-300">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Picked">Picked</SelectItem>
+                        <SelectItem value="To Order">To Order</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Textarea 
+                      placeholder="Add notes here..." 
+                      className="min-h-[60px] max-h-[100px] border-zinc-700 bg-zinc-800/50 text-zinc-300"
+                      value={notes[item.id] || ""}
+                      onChange={(e) => handleNotesChange(item.id, e.target.value)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button 
+                      onClick={() => handleSubmit(order, item.id, item.sku)}
+                      disabled={!actions[item.id] || processing[item.id]}
+                      size="sm"
+                      className="button-primary w-full"
+                    >
+                      {processing[item.id] ? "Saving..." : "Save"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              <TableRow className="h-4">
+                <TableCell colSpan={12} className="p-0">
+                  <Separator className="bg-zinc-800/50" />
+                </TableCell>
+              </TableRow>
+            </>
           ))}
         </TableBody>
       </Table>

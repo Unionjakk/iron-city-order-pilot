@@ -1,59 +1,70 @@
 
 import { TableCell, TableRow, Table, TableBody, TableHead, TableHeader } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 
 const PicklistLoading = () => {
   return (
     <div className="p-4">
       <div className="mb-4">
-        <Skeleton className="h-8 w-full max-w-sm" />
+        <Skeleton className="h-10 w-full max-w-lg bg-zinc-800/50" />
       </div>
       
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead>Order</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>SKU</TableHead>
-            <TableHead>Item</TableHead>
-            <TableHead>Qty</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead className="bg-green-50 dark:bg-green-900/20">Stock</TableHead>
-            <TableHead className="bg-green-50 dark:bg-green-900/20">Location</TableHead>
-            <TableHead className="bg-green-50 dark:bg-green-900/20">Cost</TableHead>
-            <TableHead className="bg-amber-50 dark:bg-amber-900/20">Action</TableHead>
-            <TableHead className="bg-amber-50 dark:bg-amber-900/20">Notes</TableHead>
-            <TableHead className="bg-amber-50 dark:bg-amber-900/20">Submit</TableHead>
+          <TableRow className="bg-zinc-800/50">
+            <TableHead className="text-orange-500">Order</TableHead>
+            <TableHead className="text-orange-500">Date</TableHead>
+            <TableHead className="text-orange-500">SKU</TableHead>
+            <TableHead className="text-orange-500">Item</TableHead>
+            <TableHead className="text-orange-500">Qty</TableHead>
+            <TableHead className="text-orange-500">Price</TableHead>
+            <TableHead className="text-orange-500">Stock</TableHead>
+            <TableHead className="text-orange-500">Location</TableHead>
+            <TableHead className="text-orange-500">Cost</TableHead>
+            <TableHead className="text-orange-500">Action</TableHead>
+            <TableHead className="text-orange-500">Notes</TableHead>
+            <TableHead className="text-orange-500">Submit</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {Array(5).fill(0).map((_, i) => (
-            <TableRow key={i}>
-              <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-              <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-              <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-              <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-              <TableCell><Skeleton className="h-5 w-8" /></TableCell>
-              <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-              <TableCell className="bg-green-50 dark:bg-green-900/20">
-                <Skeleton className="h-5 w-12" />
-              </TableCell>
-              <TableCell className="bg-green-50 dark:bg-green-900/20">
-                <Skeleton className="h-5 w-16" />
-              </TableCell>
-              <TableCell className="bg-green-50 dark:bg-green-900/20">
-                <Skeleton className="h-5 w-16" />
-              </TableCell>
-              <TableCell className="bg-amber-50 dark:bg-amber-900/20">
-                <Skeleton className="h-8 w-full" />
-              </TableCell>
-              <TableCell className="bg-amber-50 dark:bg-amber-900/20">
-                <Skeleton className="h-16 w-full" />
-              </TableCell>
-              <TableCell className="bg-amber-50 dark:bg-amber-900/20">
-                <Skeleton className="h-9 w-16" />
-              </TableCell>
-            </TableRow>
+          {Array(2).fill(0).map((_, orderIndex) => (
+            <>
+              <TableRow key={`order-loading-${orderIndex}`} className="bg-zinc-800/20">
+                <TableCell colSpan={12} className="py-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Skeleton className="h-5 w-40 bg-zinc-800" />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <Skeleton className="h-5 w-24 bg-zinc-800" />
+                      <Skeleton className="h-5 w-32 bg-zinc-800" />
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+              {Array(3).fill(0).map((_, itemIndex) => (
+                <TableRow key={`item-loading-${orderIndex}-${itemIndex}`} className="hover:bg-zinc-800/30">
+                  <TableCell><Skeleton className="h-5 w-4 bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-4 bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-32 bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-8 bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-12 bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-full bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-16 w-full bg-zinc-800" /></TableCell>
+                  <TableCell><Skeleton className="h-9 w-16 bg-zinc-800" /></TableCell>
+                </TableRow>
+              ))}
+              <TableRow className="h-4">
+                <TableCell colSpan={12} className="p-0">
+                  <Separator className="bg-zinc-800/50" />
+                </TableCell>
+              </TableRow>
+            </>
           ))}
         </TableBody>
       </Table>
