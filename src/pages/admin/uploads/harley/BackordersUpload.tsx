@@ -7,37 +7,95 @@ import { Code } from '@/components/ui/code';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
-const parseExcelFile = async (file: File): Promise<any[]> => {
+interface BackorderDataItem {
+  hd_order_number: string;
+  line_number: string | number;
+  dealer_po_number?: string;
+  order_date?: string | Date;
+  backorder_clear_by?: string | Date;
+  description?: string;
+  part_number: string;
+  quantity?: number;
+  projected_shipping_date?: string | Date;
+  projected_shipping_quantity?: number;
+  total_price?: number;
+}
+
+const parseExcelFile = async (file: File): Promise<BackorderDataItem[]> => {
   console.log('Parsing file:', file.name);
-  return Promise.resolve([
-    { 
-      hd_order_number: 'HD-' + Math.floor(Math.random() * 1000000), 
-      line_number: Math.floor(Math.random() * 100),
-      dealer_po_number: 'PO-' + Math.floor(Math.random() * 10000),
-      order_date: new Date().toISOString(),
-      backorder_clear_by: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Sample Part',
-      part_number: 'PT-' + Math.floor(Math.random() * 10000),
-      quantity: Math.floor(Math.random() * 10) + 1,
-      projected_shipping_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      projected_shipping_quantity: Math.floor(Math.random() * 5) + 1,
-      total_price: Math.random() * 500
-    },
-    { 
-      hd_order_number: 'HD-' + Math.floor(Math.random() * 1000000), 
-      line_number: Math.floor(Math.random() * 100),
-      dealer_po_number: 'PO-' + Math.floor(Math.random() * 10000),
-      order_date: new Date().toISOString(),
-      backorder_clear_by: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Sample Part',
-      part_number: 'PT-' + Math.floor(Math.random() * 10000),
-      quantity: Math.floor(Math.random() * 10) + 1,
-      projected_shipping_date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
-      projected_shipping_quantity: Math.floor(Math.random() * 5) + 1,
-      total_price: Math.random() * 500
-    }
-  ]);
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        if (!data) {
+          reject(new Error('Failed to read file data'));
+          return;
+        }
+        
+        // Parse the Excel file
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert to JSON with header row
+        const jsonData = XLSX.utils.sheet_to_json<any>(worksheet, { raw: false });
+        console.log('Raw Excel data:', jsonData);
+        
+        if (!jsonData || jsonData.length === 0) {
+          reject(new Error('No data found in Excel file'));
+          return;
+        }
+        
+        // Map the Excel data to our expected format, accounting for different possible column names
+        const mappedData: BackorderDataItem[] = jsonData.map(row => {
+          // Find the HD order number (could have different column names)
+          const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || '';
+          
+          // Find line number (could have different column names)
+          const lineNumber = row['LINE NUMBER'] || row['LINE'] || row['LINE #'] || '';
+          
+          // Get part number (could have different column names)
+          const partNumber = row['PART NUMBER'] || row['PART'] || row['PART #'] || row['PART NO'] || '';
+          
+          if (!hdOrderNumber || !partNumber) {
+            console.warn('Missing required fields in row:', row);
+          }
+          
+          return {
+            hd_order_number: hdOrderNumber,
+            line_number: lineNumber,
+            dealer_po_number: row['PO NUMBER'] || row['PURCHASE ORDER'] || row['DEALER PO'] || '',
+            order_date: row['ORDER DATE'] || null,
+            backorder_clear_by: row['BACKORDER CLEAR BY'] || row['CLEAR BY'] || null,
+            description: row['DESCRIPTION'] || row['PART DESCRIPTION'] || '',
+            part_number: partNumber,
+            quantity: parseFloat(row['QUANTITY'] || row['QTY'] || '0'),
+            projected_shipping_date: row['PROJECTED SHIPPING DATE'] || row['SHIP DATE'] || null,
+            projected_shipping_quantity: parseFloat(row['PROJECTED SHIPPING QUANTITY'] || row['SHIP QTY'] || '0'),
+            total_price: parseFloat(row['TOTAL PRICE'] || row['PRICE'] || '0')
+          };
+        }).filter(item => item.hd_order_number && item.part_number);
+        
+        console.log('Mapped data:', mappedData);
+        resolve(mappedData);
+      } catch (error) {
+        console.error('Error parsing Excel file:', error);
+        reject(error);
+      }
+    };
+    
+    reader.onerror = (error) => {
+      console.error('Error reading file:', error);
+      reject(error);
+    };
+    
+    reader.readAsBinaryString(file);
+  });
 };
 
 const BackordersUpload = () => {

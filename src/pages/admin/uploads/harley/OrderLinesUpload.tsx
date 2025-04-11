@@ -7,37 +7,95 @@ import { Code } from '@/components/ui/code';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
-const parseExcelFile = async (file: File): Promise<any[]> => {
+interface OrderLineItem {
+  hd_order_number: string;
+  line_number: string | number;
+  part_number: string;
+  description?: string;
+  order_quantity?: number;
+  open_quantity?: number;
+  unit_price?: number;
+  total_price?: number;
+  status?: string;
+  dealer_po_number?: string;
+  order_date?: string | Date;
+}
+
+const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
   console.log('Parsing file:', file.name);
-  return Promise.resolve([
-    { 
-      hd_order_number: 'HD-' + Math.floor(Math.random() * 1000000), 
-      line_number: Math.floor(Math.random() * 100),
-      part_number: 'PT-' + Math.floor(Math.random() * 10000),
-      description: 'Sample Part',
-      order_quantity: Math.floor(Math.random() * 10) + 1,
-      open_quantity: Math.floor(Math.random() * 5),
-      unit_price: Math.random() * 100,
-      total_price: Math.random() * 500,
-      status: 'Pending',
-      dealer_po_number: 'PO-' + Math.floor(Math.random() * 10000),
-      order_date: new Date().toISOString(),
-    },
-    { 
-      hd_order_number: 'HD-' + Math.floor(Math.random() * 1000000), 
-      line_number: Math.floor(Math.random() * 100),
-      part_number: 'PT-' + Math.floor(Math.random() * 10000),
-      description: 'Sample Part',
-      order_quantity: Math.floor(Math.random() * 10) + 1,
-      open_quantity: Math.floor(Math.random() * 5),
-      unit_price: Math.random() * 100,
-      total_price: Math.random() * 500,
-      status: 'Pending',
-      dealer_po_number: 'PO-' + Math.floor(Math.random() * 10000),
-      order_date: new Date().toISOString(),
-    }
-  ]);
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        if (!data) {
+          reject(new Error('Failed to read file data'));
+          return;
+        }
+        
+        // Parse the Excel file
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert to JSON with header row
+        const jsonData = XLSX.utils.sheet_to_json<any>(worksheet, { raw: false });
+        console.log('Raw Excel data:', jsonData);
+        
+        if (!jsonData || jsonData.length === 0) {
+          reject(new Error('No data found in Excel file'));
+          return;
+        }
+        
+        // Map the Excel data to our expected format, accounting for different possible column names
+        const mappedData: OrderLineItem[] = jsonData.map(row => {
+          // Find the HD order number (could have different column names)
+          const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || '';
+          
+          // Find line number (could have different column names)
+          const lineNumber = row['LINE NUMBER'] || row['LINE'] || row['LINE #'] || '';
+          
+          // Get part number (could have different column names)
+          const partNumber = row['PART NUMBER'] || row['PART'] || row['PART #'] || row['PART NO'] || '';
+          
+          if (!hdOrderNumber || !partNumber) {
+            console.warn('Missing required fields in row:', row);
+          }
+          
+          return {
+            hd_order_number: hdOrderNumber,
+            line_number: lineNumber,
+            part_number: partNumber,
+            description: row['DESCRIPTION'] || row['PART DESCRIPTION'] || '',
+            order_quantity: parseFloat(row['ORDER QUANTITY'] || row['ORDER QTY'] || '0'),
+            open_quantity: parseFloat(row['OPEN QUANTITY'] || row['OPEN QTY'] || '0'),
+            unit_price: parseFloat(row['UNIT PRICE'] || row['PRICE'] || '0'),
+            total_price: parseFloat(row['TOTAL PRICE'] || row['TOTAL'] || '0'),
+            status: row['STATUS'] || '',
+            dealer_po_number: row['PO NUMBER'] || row['PURCHASE ORDER'] || row['DEALER PO'] || '',
+            order_date: row['ORDER DATE'] || null
+          };
+        }).filter(item => item.hd_order_number && item.part_number);
+        
+        console.log('Mapped data:', mappedData);
+        resolve(mappedData);
+      } catch (error) {
+        console.error('Error parsing Excel file:', error);
+        reject(error);
+      }
+    };
+    
+    reader.onerror = (error) => {
+      console.error('Error reading file:', error);
+      reject(error);
+    };
+    
+    reader.readAsBinaryString(file);
+  });
 };
 
 const OrderLinesUpload = () => {

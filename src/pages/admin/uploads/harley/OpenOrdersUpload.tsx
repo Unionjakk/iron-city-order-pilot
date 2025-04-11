@@ -7,31 +7,83 @@ import { Code } from '@/components/ui/code';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
-const parseExcelFile = async (file: File): Promise<any[]> => {
+interface OpenOrderData {
+  hd_order_number: string;
+  dealer_po_number?: string;
+  order_date?: string | Date;
+  total_price?: number;
+  ship_to?: string;
+  order_type?: string;
+  terms?: string;
+  notes?: string;
+}
+
+const parseExcelFile = async (file: File): Promise<OpenOrderData[]> => {
   console.log('Parsing file:', file.name);
-  return Promise.resolve([
-    { 
-      hd_order_number: 'HD-' + Math.floor(Math.random() * 1000000), 
-      dealer_po_number: 'PO-' + Math.floor(Math.random() * 10000),
-      order_date: new Date().toISOString(),
-      total_price: Math.random() * 1000,
-      ship_to: 'Iron City Harley',
-      order_type: 'Regular',
-      terms: 'Net 30',
-      notes: 'Sample order'
-    },
-    { 
-      hd_order_number: 'HD-' + Math.floor(Math.random() * 1000000), 
-      dealer_po_number: 'PO-' + Math.floor(Math.random() * 10000),
-      order_date: new Date().toISOString(),
-      total_price: Math.random() * 1000,
-      ship_to: 'Iron City Harley',
-      order_type: 'Regular',
-      terms: 'Net 30',
-      notes: 'Sample order'
-    }
-  ]);
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        if (!data) {
+          reject(new Error('Failed to read file data'));
+          return;
+        }
+        
+        // Parse the Excel file
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert to JSON with header row
+        const jsonData = XLSX.utils.sheet_to_json<any>(worksheet, { raw: false });
+        console.log('Raw Excel data:', jsonData);
+        
+        if (!jsonData || jsonData.length === 0) {
+          reject(new Error('No data found in Excel file'));
+          return;
+        }
+        
+        // Map the Excel data to our expected format, accounting for different possible column names
+        const mappedData: OpenOrderData[] = jsonData.map(row => {
+          // Find the HD order number (could have different column names)
+          const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || '';
+          
+          if (!hdOrderNumber) {
+            console.warn('Missing HD Order Number in row:', row);
+          }
+          
+          return {
+            hd_order_number: hdOrderNumber,
+            dealer_po_number: row['PO NUMBER'] || row['PURCHASE ORDER'] || row['DEALER PO'] || '',
+            order_date: row['ORDER DATE'] || null,
+            total_price: parseFloat(row['TOTAL PRICE'] || row['PRICE'] || row['TOTAL'] || '0'),
+            ship_to: row['SHIP TO'] || row['DEALER'] || '',
+            order_type: row['ORDER TYPE'] || row['TYPE'] || '',
+            terms: row['TERMS'] || '',
+            notes: row['NOTES'] || row['COMMENTS'] || ''
+          };
+        }).filter(item => item.hd_order_number);
+        
+        console.log('Mapped data:', mappedData);
+        resolve(mappedData);
+      } catch (error) {
+        console.error('Error parsing Excel file:', error);
+        reject(error);
+      }
+    };
+    
+    reader.onerror = (error) => {
+      console.error('Error reading file:', error);
+      reject(error);
+    };
+    
+    reader.readAsBinaryString(file);
+  });
 };
 
 const OpenOrdersUpload = () => {
@@ -60,6 +112,14 @@ const OpenOrdersUpload = () => {
       console.log('Starting to parse Excel file...');
       const parsedData = await parseExcelFile(file);
       console.log('Parsed data:', parsedData);
+      
+      if (parsedData.length === 0) {
+        console.warn('No data found in file');
+        toast.error('No data found in the uploaded file');
+        setIsUploading(false);
+        setIsProcessing(false);
+        return;
+      }
       
       // First check if there are any existing orders before trying to clear them
       console.log('Checking if there are existing orders to clear...');
@@ -110,7 +170,7 @@ const OpenOrdersUpload = () => {
         has_line_items: false
       }));
       
-      // Insert the orders using the supabase insert method instead of SQL
+      // Insert the orders
       const { error: insertError } = await supabase
         .from('hd_orders')
         .insert(ordersToInsert);
