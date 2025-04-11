@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,6 +53,7 @@ const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
           const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || '';
           const lineNumber = row['LINE NUMBER'] || row['LINE'] || row['LINE #'] || '';
           const partNumber = row['PART NUMBER'] || row['PART'] || row['PART #'] || row['PART NO'] || '';
+          const lineNumberStr = String(lineNumber);
           
           if (!hdOrderNumber || !partNumber) {
             console.warn('Missing required fields in row:', row);
@@ -186,7 +186,6 @@ const OrderLinesUpload = () => {
           const existingLineNumbers = new Map();
           existingLineItems?.forEach(item => existingLineNumbers.set(item.line_number, item.id));
           
-          // Initialize replaced line numbers array for this order
           const replacedLineNumbers: string[] = [];
           
           const { error: deleteError } = await supabase
