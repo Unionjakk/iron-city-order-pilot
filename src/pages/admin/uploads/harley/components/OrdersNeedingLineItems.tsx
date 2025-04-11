@@ -46,17 +46,19 @@ const OrdersNeedingLineItems = () => {
         if (singleItemsError) throw singleItemsError;
         
         // Get orders that already have line items
+        // Instead of using distinct(), we'll select all order numbers and process them
         const { data: ordersWithLineItems, error: lineItemsError } = await supabase
           .from('hd_order_line_items')
-          .select('hd_order_number')
-          .distinct();
+          .select('hd_order_number');
         
         if (lineItemsError) throw lineItemsError;
         
         // Create arrays of excluded order numbers
         const excludedOrderNumbers = excludedOrders.map(o => o.hd_order_number);
         const singleItemsExcludedNumbers = singleItemsExcluded.map(o => o.hd_order_number);
-        const ordersWithLineItemsNumbers = ordersWithLineItems.map(o => o.hd_order_number);
+        
+        // Get unique order numbers with line items using Set
+        const ordersWithLineItemsNumbers = [...new Set(ordersWithLineItems.map(o => o.hd_order_number))];
         
         // Get all orders that are not in any of the excluded lists
         const { data: filteredOrders, error: ordersError } = await supabase
