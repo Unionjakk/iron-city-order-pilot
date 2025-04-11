@@ -27,29 +27,49 @@ export const fetchPickStatsData = async (): Promise<PickStatsData> => {
     // Get ready to pick count (these are items with "Ready" status in stock)
     const { data: readyItems, error: readyError } = await supabase
       .from('iron_city_order_progress')
-      .select('iron_city_order_progress.id, pinnacle_stock.stock_quantity')
-      .eq('progress', 'To Pick')
-      .gt('pinnacle_stock.stock_quantity', 0)
-      .join('pinnacle_stock', { foreignTable: 'pinnacle_stock', column: 'part_no', targetColumn: 'sku' });
+      .select('id, sku')
+      .eq('progress', 'To Pick');
       
     if (readyError) throw readyError;
     
-    const readyToPick = readyItems?.length || 0;
+    // For each item, check stock quantity
+    let readyToPick = 0;
+    
+    if (readyItems && readyItems.length > 0) {
+      for (const item of readyItems) {
+        const { data: stockData, error: stockError } = await supabase
+          .from('pinnacle_stock')
+          .select('stock_quantity')
+          .eq('part_no', item.sku)
+          .gt('stock_quantity', 0)
+          .single();
+          
+        if (!stockError && stockData) {
+          readyToPick++;
+        }
+      }
+    }
     
     // Get pending items (items with "To Pick" progress but not ready)
     const pendingItems = totalItemsToPick - readyToPick;
     
     // Fetch out of stock items
-    const { data: outOfStockItems, error: outOfStockError } = await supabase
-      .from('iron_city_order_progress')
-      .select('iron_city_order_progress.id, pinnacle_stock.stock_quantity')
-      .eq('progress', 'To Pick')
-      .eq('pinnacle_stock.stock_quantity', 0)
-      .join('pinnacle_stock', { foreignTable: 'pinnacle_stock', column: 'part_no', targetColumn: 'sku' });
-      
-    if (outOfStockError) throw outOfStockError;
+    let outOfStock = 0;
     
-    const outOfStock = outOfStockItems?.length || 0;
+    if (readyItems && readyItems.length > 0) {
+      for (const item of readyItems) {
+        const { data: stockData, error: stockError } = await supabase
+          .from('pinnacle_stock')
+          .select('stock_quantity')
+          .eq('part_no', item.sku)
+          .eq('stock_quantity', 0)
+          .single();
+          
+        if (!stockError && stockData) {
+          outOfStock++;
+        }
+      }
+    }
     
     // Get orders processed today
     const today = new Date();
@@ -152,12 +172,14 @@ export const fetchPickedStatsData = async (): Promise<PickedStatsData> => {
     // This could be total picked orders / (total picked + total to pick)
     const { data: allOrders, error: allOrdersError } = await supabase
       .from('shopify_orders')
-      .select('count')
-      .eq('status', 'unfulfilled');
+      .select('count');
       
     if (allOrdersError) throw allOrdersError;
     
-    const totalOrders = parseInt(allOrders?.[0]?.count) || 0;
+    // Parse the count result properly - assuming it returns a string
+    const totalOrders = allOrders && allOrders.length > 0 ? 
+      (typeof allOrders[0].count === 'string' ? parseInt(allOrders[0].count) : allOrders[0].count) || 0 : 0;
+    
     const completionRate = totalOrders > 0 ? Math.round((totalOrdersPicked / totalOrders) * 100) + "%" : "0%";
     
     // Average time to dispatch would require tracking timestamps
@@ -217,14 +239,28 @@ export const fetchOrderedStatsData = async (): Promise<OrderedStatsData> => {
     // Fetch out of stock items
     const { data: outOfStockItems, error: outOfStockError } = await supabase
       .from('iron_city_order_progress')
-      .select('iron_city_order_progress.id, pinnacle_stock.stock_quantity')
-      .eq('progress', 'To Order')
-      .eq('pinnacle_stock.stock_quantity', 0)
-      .join('pinnacle_stock', { foreignTable: 'pinnacle_stock', column: 'part_no', targetColumn: 'sku' });
+      .select('id, sku')
+      .eq('progress', 'To Order');
       
     if (outOfStockError) throw outOfStockError;
     
-    const outOfStock = outOfStockItems?.length || 0;
+    // For each item, check stock quantity
+    let outOfStock = 0;
+    
+    if (outOfStockItems && outOfStockItems.length > 0) {
+      for (const item of outOfStockItems) {
+        const { data: stockData, error: stockError } = await supabase
+          .from('pinnacle_stock')
+          .select('stock_quantity')
+          .eq('part_no', item.sku)
+          .eq('stock_quantity', 0)
+          .single();
+          
+        if (!stockError && stockData) {
+          outOfStock++;
+        }
+      }
+    }
     
     // Get orders placed today
     const today = new Date();
