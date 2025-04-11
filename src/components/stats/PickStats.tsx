@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, Clock, CheckCircle, ShoppingBag } from "lucide-react";
+import { Package, CheckCircle, ShoppingBag, AlertTriangle } from "lucide-react";
 import { fetchAccuratePickStatsData } from "@/services/stats";
 
 interface PickStatsProps {
@@ -95,10 +95,10 @@ const PickStats = ({ className }: PickStatsProps) => {
             </div>
             
             <div className="flex items-center gap-2">
-              <Clock className="h-8 w-8 text-amber-500" />
+              <AlertTriangle className="h-8 w-8 text-amber-500" />
               <div>
-                <p className="text-zinc-400 text-sm">Avg. Pick Time</p>
-                <p className="text-xl font-semibold text-amber-400">{stats.averagePickTime}</p>
+                <p className="text-zinc-400 text-sm">Out of Stock</p>
+                <p className="text-xl font-semibold text-amber-400">{stats.outOfStock}</p>
               </div>
             </div>
           </div>

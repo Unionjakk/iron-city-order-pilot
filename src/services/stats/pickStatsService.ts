@@ -44,44 +44,34 @@ export const fetchAccuratePickStatsData = async (): Promise<PickStatsData> => {
   try {
     console.log("Fetching accurate Pick Stats data directly");
     
-    // First get all order items that don't have a progress entry - these need to be picked
-    const { data: itemsNeedingPick, error: itemsError } = await supabase
+    // Get all order items that don't have a corresponding entry in the iron_city_order_progress table
+    const { data: orderItems, error: orderItemsError } = await supabase
       .from('shopify_order_items')
       .select(`
+        id,
         order_id,
         sku,
         quantity,
         shopify_orders!inner(
           shopify_order_id,
+          shopify_order_number,
           status
         )
       `)
-      .eq('shopify_orders.status', 'imported')
-      .not('shopify_orders.status', 'eq', 'archived');
+      .not('shopify_orders.status', 'in', '(archived)');
       
-    if (itemsError) throw itemsError;
+    if (orderItemsError) throw orderItemsError;
     
-    // Log the raw data to debug
-    console.log("Raw items needing pick:", itemsNeedingPick);
+    console.log(`Total order items: ${orderItems?.length || 0}`);
     
-    if (!itemsNeedingPick) {
-      return {
-        totalOrdersToPick: 0,
-        totalItemsToPick: 0,
-        averagePickTime: "14m",
-        readyToPick: 0,
-        pendingItems: 0,
-        outOfStock: 0,
-        ordersProcessedToday: 0
-      };
-    }
-    
-    // Filter out items that already have progress entries
+    // Get all progress entries
     const { data: progressEntries, error: progressError } = await supabase
       .from('iron_city_order_progress')
       .select('shopify_order_id, sku');
       
     if (progressError) throw progressError;
+    
+    console.log(`Total progress entries: ${progressEntries?.length || 0}`);
     
     // Create a set of order_id+sku combinations that have progress entries
     const progressSet = new Set();
@@ -90,13 +80,15 @@ export const fetchAccuratePickStatsData = async (): Promise<PickStatsData> => {
     });
     
     // Filter out items with progress entries
-    const filteredItems = itemsNeedingPick.filter(item => {
+    const itemsNeedingPick = orderItems?.filter(item => {
       const orderSku = `${item.shopify_orders.shopify_order_id}:${item.sku}`;
       return !progressSet.has(orderSku);
-    });
+    }) || [];
+    
+    console.log(`Items needing pick: ${itemsNeedingPick.length}`);
     
     // Get stock quantities for the SKUs
-    const skus = [...new Set(filteredItems.map(item => item.sku))];
+    const skus = [...new Set(itemsNeedingPick.map(item => item.sku))];
     const { data: stockData, error: stockError } = await supabase
       .from('pinnacle_stock')
       .select('part_no, stock_quantity')
@@ -111,14 +103,14 @@ export const fetchAccuratePickStatsData = async (): Promise<PickStatsData> => {
     });
     
     // Calculate stats
-    const uniqueOrders = new Set(filteredItems.map(item => item.shopify_orders.shopify_order_id));
-    const totalItems = filteredItems.length;
+    const uniqueOrders = new Set(itemsNeedingPick.map(item => item.shopify_orders.shopify_order_id));
+    const totalItems = itemsNeedingPick.length;
     
     let readyToPick = 0;
     let pendingItems = 0;
     let outOfStock = 0;
     
-    filteredItems.forEach(item => {
+    itemsNeedingPick.forEach(item => {
       const stockQuantity = stockMap.get(item.sku);
       if (stockQuantity === undefined || stockQuantity <= 0) {
         pendingItems++;
