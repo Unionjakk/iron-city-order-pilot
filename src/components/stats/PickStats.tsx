@@ -1,10 +1,9 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, Clock, CheckCircle, ShoppingBag, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchPickStatsData } from "@/services/statsService";
+import { fetchPickStatsData } from "@/services/stats";
 
 interface PickStatsProps {
   className?: string;
@@ -29,8 +28,6 @@ const PickStats = ({ className }: PickStatsProps) => {
     setIsLoading(true);
     setError(null);
     try {
-      // In a real implementation, this would fetch from the API
-      // For now, we'll use mock data
       const data = await fetchPickStatsData();
       setStats(data);
     } catch (err: any) {

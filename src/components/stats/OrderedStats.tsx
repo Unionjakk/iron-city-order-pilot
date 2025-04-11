@@ -1,10 +1,9 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingCart, TruckIcon, Clock, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchOrderedStatsData } from "@/services/statsService";
+import { fetchOrderedStatsData } from "@/services/stats";
 
 interface OrderedStatsProps {
   className?: string;

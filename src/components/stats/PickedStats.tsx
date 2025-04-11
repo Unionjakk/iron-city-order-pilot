@@ -1,10 +1,9 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle, Package, Calendar, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchPickedStatsData } from "@/services/statsService";
+import { fetchPickedStatsData } from "@/services/stats";
 
 interface PickedStatsProps {
   className?: string;
