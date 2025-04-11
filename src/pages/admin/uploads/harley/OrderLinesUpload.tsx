@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,7 +61,7 @@ const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
           
           return {
             hd_order_number: hdOrderNumber,
-            line_number: lineNumber,
+            line_number: lineNumberStr,
             part_number: partNumber,
             description: row['DESCRIPTION'] || row['PART DESCRIPTION'] || '',
             order_quantity: parseFloat(row['ORDER QUANTITY'] || row['ORDER QTY'] || '0'),
@@ -184,6 +185,8 @@ const OrderLinesUpload = () => {
           
           const existingLineNumbers = new Map();
           existingLineItems?.forEach(item => existingLineNumbers.set(item.line_number, item.id));
+          
+          // Initialize replaced line numbers array for this order
           const replacedLineNumbers: string[] = [];
           
           const { error: deleteError } = await supabase
@@ -261,7 +264,7 @@ const OrderLinesUpload = () => {
             filename: file.name,
             items_count: parsedData.length,
             status: 'success',
-            replaced_previous: replacedLineNumbers?.length > 0
+            replaced_previous: totalLinesReplaced > 0
           });
         
         if (historyError) {
