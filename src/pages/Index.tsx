@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,8 @@ import {
   Settings, 
   Upload,
   BarChart3,
-  Search
+  Search,
+  Calculator
 } from "lucide-react";
 
 const Index = () => {
@@ -147,7 +149,7 @@ const Index = () => {
       <section>
         <h2 className="text-xl font-semibold mb-4 text-zinc-200">Other Tools</h2>
         <div className="flex flex-col md:flex-row justify-center gap-4">
-          <Link to="/visualiser" className="w-full md:w-1/2 lg:w-1/3">
+          <Link to="/visualiser" className="w-full md:w-1/3 lg:w-1/3">
             <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
               <CardContent className="p-6 flex flex-col items-center text-center">
                 <BarChart3 className="h-10 w-10 text-orange-500 mb-3" />
@@ -156,7 +158,7 @@ const Index = () => {
               </CardContent>
             </Card>
           </Link>
-          <div className="w-full md:w-1/2 lg:w-1/3">
+          <div className="w-full md:w-1/3 lg:w-1/3">
             <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700/50 transition-colors cursor-not-allowed h-full">
               <CardContent className="p-6 flex flex-col items-center text-center">
                 <Search className="h-10 w-10 text-orange-500/60 mb-3" />
@@ -166,6 +168,16 @@ const Index = () => {
               </CardContent>
             </Card>
           </div>
+          <Link to="/accountant-corrections" className="w-full md:w-1/3 lg:w-1/3">
+            <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
+              <CardContent className="p-6 flex flex-col items-center text-center">
+                <Calculator className="h-10 w-10 text-orange-500 mb-3" />
+                <h3 className="text-lg font-medium text-white mb-2">Accountant Corrections</h3>
+                <p className="text-zinc-400 text-sm">Make corrections to Pinnacle for accounting purposes</p>
+                <span className="mt-2 text-xs px-2 py-1 bg-amber-500/20 text-amber-300 rounded-full">Coming Soon</span>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </section>
 

@@ -46,6 +46,7 @@ import VisualiserPage from "@/pages/VisualiserPage";
 
 // Placeholder Pages
 import OrderLookupPlaceholder from "@/components/placeholder/OrderLookupPlaceholder";
+import AccountantCorrectionsPlaceholder from "@/components/placeholder/AccountantCorrectionsPlaceholder";
 
 // Main index page
 import Index from "@/pages/Index";
@@ -85,6 +86,7 @@ const App = () => (
                 {/* Tools routes */}
                 <Route path="/visualiser" element={<VisualiserPage />} />
                 <Route path="/order-lookup" element={<OrderLookupPlaceholder />} />
+                <Route path="/accountant-corrections" element={<AccountantCorrectionsPlaceholder />} />
                 <Route path="/tools" element={<Navigate to="/visualiser" replace />} />
                 
                 {/* Admin routes */}

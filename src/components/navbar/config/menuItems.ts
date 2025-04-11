@@ -1,5 +1,5 @@
 
-import { Users, CheckSquare, List, Clock, ShoppingCart, Settings, CheckCircle, Truck, Package, BarChart3, Search, Wrench } from 'lucide-react';
+import { Users, CheckSquare, List, Clock, ShoppingCart, Settings, CheckCircle, Truck, Package, BarChart3, Search, Wrench, Calculator } from 'lucide-react';
 
 export interface MenuItem {
   path: string;
@@ -78,6 +78,11 @@ export const mainMenuItems: MenuItem[] = [
         path: '/order-lookup',
         label: 'Order Lookup',
         icon: Search,
+      },
+      {
+        path: '/accountant-corrections',
+        label: 'Accountant Corrections',
+        icon: Calculator,
       },
     ],
   },
