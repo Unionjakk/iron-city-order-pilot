@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, FileText, FileSpreadsheet, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const HarleyUpload = () => {
@@ -30,21 +30,30 @@ const HarleyUpload = () => {
               to="/admin/uploads/harley/open-orders" 
               className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition-colors"
             >
-              <span className="text-orange-400 font-medium">Upload Open Orders</span>
+              <div className="flex items-center">
+                <FileText className="h-4 w-4 text-orange-400 mr-2" />
+                <span className="text-orange-400 font-medium">Upload Open Orders</span>
+              </div>
               <ArrowRight className="h-4 w-4 text-orange-400" />
             </Link>
             <Link 
               to="/admin/uploads/harley/order-lines" 
               className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition-colors"
             >
-              <span className="text-orange-400 font-medium">Upload Order Line Items</span>
+              <div className="flex items-center">
+                <FileSpreadsheet className="h-4 w-4 text-orange-400 mr-2" />
+                <span className="text-orange-400 font-medium">Upload Order Line Items</span>
+              </div>
               <ArrowRight className="h-4 w-4 text-orange-400" />
             </Link>
             <Link 
               to="/admin/uploads/harley/backorders" 
               className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition-colors"
             >
-              <span className="text-orange-400 font-medium">Upload Backorders</span>
+              <div className="flex items-center">
+                <Package className="h-4 w-4 text-orange-400 mr-2" />
+                <span className="text-orange-400 font-medium">Upload Backorders</span>
+              </div>
               <ArrowRight className="h-4 w-4 text-orange-400" />
             </Link>
           </div>

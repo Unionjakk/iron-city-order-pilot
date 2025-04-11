@@ -24,7 +24,7 @@ const HarleyUploadDashboard = () => {
       {/* Stats Card */}
       <HarleyStatsCard stats={stats} isLoading={isLoadingStats} />
       
-      {/* Upload Tiles */}
+      {/* Upload Tiles - now organized in groups */}
       <div className="my-8">
         <HarleyUploadTiles />
       </div>

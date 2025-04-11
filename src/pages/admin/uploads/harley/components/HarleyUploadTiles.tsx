@@ -1,6 +1,6 @@
 
 import { Card } from '@/components/ui/card';
-import { AlertCircle, FileSpreadsheet, FileText, ListChecks, Package } from 'lucide-react';
+import { FileSpreadsheet, FileText, ListChecks, AlertCircle, Package, Folders } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface UploadTile {
@@ -12,54 +12,85 @@ interface UploadTile {
   disabled?: boolean;
 }
 
+interface TileGroup {
+  title: string;
+  icon: React.ReactNode;
+  tiles: UploadTile[];
+}
+
 const HarleyUploadTiles = () => {
-  // Define our upload tiles
-  const uploadTiles: UploadTile[] = [
+  // Define our upload tiles organized by group
+  const tileGroups: TileGroup[] = [
     {
-      title: 'Open Orders Upload',
-      description: 'Upload open orders from H-D NET',
-      icon: <FileText className="h-8 w-8 text-orange-500" />,
-      link: '/admin/uploads/harley/open-orders',
-      color: 'from-orange-600/20 to-amber-600/20',
+      title: "Open Order Management",
+      icon: <FileText className="h-5 w-5 text-orange-500" />,
+      tiles: [
+        {
+          title: 'Open Orders Upload',
+          description: 'Upload open orders from H-D NET',
+          icon: <FileText className="h-8 w-8 text-orange-500" />,
+          link: '/admin/uploads/harley/open-orders',
+          color: 'from-orange-600/20 to-amber-600/20',
+        },
+        {
+          title: 'Open Order Check In',
+          description: 'Check in and exclude open orders',
+          icon: <ListChecks className="h-8 w-8 text-orange-500" />,
+          link: '/admin/uploads/harley/open-order-check-in',
+          color: 'from-orange-600/20 to-amber-600/20',
+        },
+      ]
     },
     {
-      title: 'Open Order Check In',
-      description: 'Check in and exclude open orders',
-      icon: <ListChecks className="h-8 w-8 text-orange-500" />,
-      link: '/admin/uploads/harley/open-order-check-in',
-      color: 'from-orange-600/20 to-amber-600/20',
+      title: "Order Line Management",
+      icon: <Folders className="h-5 w-5 text-orange-500" />,
+      tiles: [
+        {
+          title: 'Order Lines Upload',
+          description: 'Upload order line items from H-D NET',
+          icon: <FileSpreadsheet className="h-8 w-8 text-orange-500" />,
+          link: '/admin/uploads/harley/order-lines',
+          color: 'from-orange-600/20 to-amber-600/20',
+        },
+        {
+          title: 'Open Lines Check In',
+          description: 'Check in and exclude line items',
+          icon: <AlertCircle className="h-8 w-8 text-orange-500" />,
+          link: '/admin/uploads/harley/open-lines-check-in',
+          color: 'from-orange-600/20 to-amber-600/20',
+        },
+      ]
     },
     {
-      title: 'Order Lines Upload',
-      description: 'Upload order line items from H-D NET',
-      icon: <FileSpreadsheet className="h-8 w-8 text-orange-500" />,
-      link: '/admin/uploads/harley/order-lines',
-      color: 'from-orange-600/20 to-amber-600/20',
-    },
-    {
-      title: 'Open Lines Check In',
-      description: 'Check in and exclude line items',
-      icon: <AlertCircle className="h-8 w-8 text-orange-500" />,
-      link: '/admin/uploads/harley/open-lines-check-in',
-      color: 'from-orange-600/20 to-amber-600/20',
-    },
-    {
-      title: 'Backorders Upload',
-      description: 'Upload backorder data from H-D NET',
-      icon: <Package className="h-8 w-8 text-orange-500" />,
-      link: '/admin/uploads/harley/backorders',
-      color: 'from-orange-600/20 to-amber-600/20',
-    },
+      title: "Backorders",
+      icon: <Package className="h-5 w-5 text-orange-500" />,
+      tiles: [
+        {
+          title: 'Backorders Upload',
+          description: 'Upload backorder data from H-D NET',
+          icon: <Package className="h-8 w-8 text-orange-500" />,
+          link: '/admin/uploads/harley/backorders',
+          color: 'from-orange-600/20 to-amber-600/20',
+        },
+      ]
+    }
   ];
 
   return (
-    <div>
-      <h2 className="text-xl font-medium text-orange-500 mb-4">Upload & Management</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {uploadTiles.map((tile) => (
-          <UploadTileCard key={tile.title} tile={tile} />
-        ))}
-      </div>
+    <div className="space-y-8">
+      {tileGroups.map((group) => (
+        <div key={group.title} className="space-y-4">
+          <h2 className="text-xl font-medium text-orange-500 flex items-center">
+            {group.icon}
+            <span className="ml-2">{group.title}</span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {group.tiles.map((tile) => (
+              <UploadTileCard key={tile.title} tile={tile} />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
