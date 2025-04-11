@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,17 +61,37 @@ const OpenOrdersUpload = () => {
       const parsedData = await parseExcelFile(file);
       console.log('Parsed data:', parsedData);
       
-      console.log('Clearing existing open orders...');
-      const clearOrdersQuery = `DELETE FROM hd_orders`;
-      const { error: clearError } = await supabase
-        .rpc('execute_sql', { sql: clearOrdersQuery });
+      // First check if there are any existing orders before trying to clear them
+      console.log('Checking if there are existing orders to clear...');
+      const { count, error: countError } = await supabase
+        .from('hd_orders')
+        .select('*', { count: 'exact', head: true });
       
-      if (clearError) {
-        console.error('Error clearing existing orders:', clearError);
-        toast.error('Failed to clear existing orders');
+      if (countError) {
+        console.error('Error checking existing orders count:', countError);
+        toast.error('Failed to check existing orders');
         setIsUploading(false);
         setIsProcessing(false);
         return;
+      }
+      
+      // Only clear existing orders if there are any
+      if (count && count > 0) {
+        console.log(`Found ${count} existing orders, clearing them...`);
+        const clearOrdersQuery = `DELETE FROM hd_orders`;
+        const { error: clearError } = await supabase
+          .rpc('execute_sql', { sql: clearOrdersQuery });
+        
+        if (clearError) {
+          console.error('Error clearing existing orders:', clearError);
+          toast.error('Failed to clear existing orders');
+          setIsUploading(false);
+          setIsProcessing(false);
+          return;
+        }
+        console.log('Successfully cleared existing orders');
+      } else {
+        console.log('No existing orders found, skipping deletion step');
       }
       
       console.log('Inserting new order data...');
