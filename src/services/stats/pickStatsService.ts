@@ -17,6 +17,9 @@ export const fetchPickStatsData = async (): Promise<PickStatsData> => {
       throw new Error("No cached Pick Stats data available");
     }
     
+    // Log the raw data to debug what's being returned
+    console.log("Raw Pick Stats data:", data);
+    
     // Ensure data is the expected object type
     const statsData = data as Record<string, any>;
     

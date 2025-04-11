@@ -1,9 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, Clock, CheckCircle, ShoppingBag, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchPickStatsData } from "@/services/stats";
+import { fetchPickStatsData, refreshAllStats } from "@/services/stats";
+import { toast } from "sonner";
 
 interface PickStatsProps {
   className?: string;
@@ -23,6 +25,7 @@ const PickStats = ({ className }: PickStatsProps) => {
   const [stats, setStats] = useState<PickStatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadStats = async () => {
     setIsLoading(true);
@@ -35,6 +38,26 @@ const PickStats = ({ className }: PickStatsProps) => {
       setError(err.message || "Failed to load statistics");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Manually refresh all stats in the database
+      const success = await refreshAllStats();
+      if (success) {
+        toast.success("Statistics refreshed successfully");
+        // Load the fresh stats
+        await loadStats();
+      } else {
+        toast.error("Failed to refresh statistics");
+      }
+    } catch (err) {
+      console.error("Error refreshing stats:", err);
+      toast.error("Failed to refresh statistics");
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -66,7 +89,19 @@ const PickStats = ({ className }: PickStatsProps) => {
   return (
     <Card className={`bg-zinc-800 border-zinc-700 ${className}`}>
       <CardContent className="p-6">
-        <h3 className="text-lg font-medium text-white mb-4">Pick Stats</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-white">Pick Stats</h3>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="text-xs"
+          >
+            <RefreshCcw className={`h-3 w-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh Stats'}
+          </Button>
+        </div>
         
         {isLoading ? (
           <div className="space-y-4">
