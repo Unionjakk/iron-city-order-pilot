@@ -27,9 +27,10 @@ export const fetchPickStatsData = async (): Promise<PickStatsData> => {
     // Get ready to pick count (these are items with "Ready" status in stock)
     const { data: readyItems, error: readyError } = await supabase
       .from('iron_city_order_progress')
-      .select('iron_city_order_progress.*, pinnacle_stock!inner(stock_quantity)')
+      .select('iron_city_order_progress.id, pinnacle_stock.stock_quantity')
       .eq('progress', 'To Pick')
-      .gt('pinnacle_stock.stock_quantity', 0);
+      .gt('pinnacle_stock.stock_quantity', 0)
+      .join('pinnacle_stock', { foreignTable: 'pinnacle_stock', column: 'part_no', targetColumn: 'sku' });
       
     if (readyError) throw readyError;
     
@@ -41,9 +42,10 @@ export const fetchPickStatsData = async (): Promise<PickStatsData> => {
     // Fetch out of stock items
     const { data: outOfStockItems, error: outOfStockError } = await supabase
       .from('iron_city_order_progress')
-      .select('iron_city_order_progress.*, pinnacle_stock!inner(stock_quantity)')
+      .select('iron_city_order_progress.id, pinnacle_stock.stock_quantity')
       .eq('progress', 'To Pick')
-      .eq('pinnacle_stock.stock_quantity', 0);
+      .eq('pinnacle_stock.stock_quantity', 0)
+      .join('pinnacle_stock', { foreignTable: 'pinnacle_stock', column: 'part_no', targetColumn: 'sku' });
       
     if (outOfStockError) throw outOfStockError;
     
@@ -215,9 +217,10 @@ export const fetchOrderedStatsData = async (): Promise<OrderedStatsData> => {
     // Fetch out of stock items
     const { data: outOfStockItems, error: outOfStockError } = await supabase
       .from('iron_city_order_progress')
-      .select('iron_city_order_progress.*, pinnacle_stock!inner(stock_quantity)')
+      .select('iron_city_order_progress.id, pinnacle_stock.stock_quantity')
       .eq('progress', 'To Order')
-      .eq('pinnacle_stock.stock_quantity', 0);
+      .eq('pinnacle_stock.stock_quantity', 0)
+      .join('pinnacle_stock', { foreignTable: 'pinnacle_stock', column: 'part_no', targetColumn: 'sku' });
       
     if (outOfStockError) throw outOfStockError;
     
