@@ -1,11 +1,11 @@
 
 import { useState } from 'react';
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { ExcludeReason } from '../LineItemsExclude';
-import OrderNumberCombobox from './OrderNumberCombobox';
 import ReasonSelector from './ReasonSelector';
 import SubmitButton from './SubmitButton';
 
@@ -53,9 +53,10 @@ const ExcludeOrderForm = ({ onAddExclusion }: ExcludeOrderFormProps) => {
           render={({ field }) => (
             <FormItem className="flex flex-col">
               <FormLabel className="text-zinc-300">HD Order Number</FormLabel>
-              <OrderNumberCombobox 
-                value={field.value} 
-                onChange={field.onChange} 
+              <Input 
+                {...field}
+                placeholder="Enter HD order number"
+                className="bg-zinc-800 text-zinc-100 border-zinc-700 placeholder-zinc-500"
               />
               <FormMessage />
             </FormItem>

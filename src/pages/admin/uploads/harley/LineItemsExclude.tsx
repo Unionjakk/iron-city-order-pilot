@@ -2,9 +2,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, X, Plus, Trash2, Info } from 'lucide-react';
+import { Check, X, Plus, Trash2, Info, AlertCircle } from 'lucide-react';
 import ExcludeOrderForm from './components/ExcludeOrderForm';
 import ExcludeOrderList from './components/ExcludeOrderList';
+import AwaitingOrdersList from './components/AwaitingOrdersList';
 import { toast } from 'sonner';
 
 export type ExcludeReason = 'Check In' | 'Not Shopify';
@@ -96,6 +97,9 @@ const LineItemsExclude = () => {
     }
   };
 
+  // Get a list of excluded order numbers for filtering
+  const excludedOrderNumbers = excludedOrders.map(order => order.hd_order_number);
+
   return (
     <div className="space-y-6">
       <div>
@@ -155,6 +159,26 @@ const LineItemsExclude = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Awaiting Orders List */}
+      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center text-orange-500">
+            <AlertCircle className="mr-2 h-5 w-5" />
+            Awaiting Orders
+          </CardTitle>
+          <CardDescription className="text-zinc-400">
+            Orders waiting to be checked in
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AwaitingOrdersList 
+            onCheckInOrder={handleAddExclusion}
+            excludedOrderNumbers={excludedOrderNumbers}
+            isLoading={isLoading}
+          />
+        </CardContent>
+      </Card>
 
       {/* Exclusion List */}
       <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
