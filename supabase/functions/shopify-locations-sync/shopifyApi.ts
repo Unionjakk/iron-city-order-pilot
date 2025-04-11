@@ -12,7 +12,7 @@ export async function fetchOrdersWithLineItems(
   try {
     // Get the base API endpoint
     const baseEndpoint = "https://opus-harley-davidson.myshopify.com/admin/api/2023-07";
-    const url = `${baseEndpoint}/orders/${orderId}.json?fields=id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status,fulfillments`;
+    const url = `${baseEndpoint}/orders/${orderId}.json?fields=id,name,created_at,customer,line_items,shipping_address,note,fulfillment_status,fulfillments,locations`;
     
     debug(`Fetching from Shopify API: ${url}`);
     
@@ -35,7 +35,7 @@ export async function fetchOrdersWithLineItems(
       } else if (response.status === 404) {
         throw new Error(`Order ${orderId} not found in Shopify.`);
       } else if (response.status === 403) {
-        throw new Error("Access forbidden. Your API token might not have the necessary permissions.");
+        throw new Error("Access forbidden. Your API token might not have the necessary permissions (read_locations and read_assigned_fulfillment_orders).");
       } else if (response.status === 429) {
         debug("Rate limit hit, waiting and retrying...");
         // Wait for 2 seconds and retry

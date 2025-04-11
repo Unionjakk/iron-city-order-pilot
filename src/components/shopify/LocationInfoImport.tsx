@@ -130,11 +130,11 @@ const LocationInfoImport = ({ onImportComplete }: LocationInfoImportProps) => {
       <CardContent className="space-y-4">
         <Alert className="bg-blue-900/20 border-blue-500/50">
           <AlertCircle className="h-5 w-5 text-blue-500" />
-          <AlertTitle className="text-blue-400">Line Item Location Data</AlertTitle>
+          <AlertTitle className="text-blue-400">API Permissions Required</AlertTitle>
           <AlertDescription className="text-zinc-300">
-            This operation will query the Shopify API for each line item to retrieve its location information.
-            This helps track which warehouse or store location each product is coming from.
-            This process respects API rate limits and can take some time for large inventories.
+            Make sure your Shopify API token has the <strong>read_locations</strong> and <strong>read_assigned_fulfillment_orders</strong> permissions 
+            enabled in the Shopify Admin API access scopes. This operation will query the Shopify API for each 
+            line item to retrieve its location information.
           </AlertDescription>
         </Alert>
         
