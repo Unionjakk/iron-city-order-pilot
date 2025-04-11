@@ -96,6 +96,11 @@ const OrderLinesUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadStats, setUploadStats] = useState<{
+    processed: number;
+    skipped: number;
+    errors: number;
+  }>({ processed: 0, skipped: 0, errors: 0 });
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -118,9 +123,12 @@ const OrderLinesUpload = () => {
     
     setIsUploading(true);
     setIsProcessing(true);
+    setUploadStats({ processed: 0, skipped: 0, errors: 0 });
     
     try {
       let totalLinesProcessed = 0;
+      let totalLinesSkipped = 0;
+      let totalErrors = 0;
       
       for (const file of files) {
         console.log(`Processing file: ${file.name}`);
@@ -150,15 +158,31 @@ const OrderLinesUpload = () => {
           if (fetchError) {
             console.error(`Error fetching order ${hdOrderNumber}:`, fetchError);
             toast.error(`Failed to verify order ${hdOrderNumber}`);
+            totalErrors++;
             continue;
           }
           
           if (!existingOrders || existingOrders.length === 0) {
             console.warn(`Order ${hdOrderNumber} not found in database. Skipping its line items.`);
+            totalErrors++;
             continue;
           }
           
           const orderId = existingOrders[0].id;
+          
+          const { data: existingLineItems, error: lineItemsError } = await supabase
+            .from('hd_order_line_items')
+            .select('line_number')
+            .eq('hd_order_id', orderId);
+          
+          if (lineItemsError) {
+            console.error(`Error fetching existing line items for order ${hdOrderNumber}:`, lineItemsError);
+            toast.error(`Failed to check for duplicate line items for order ${hdOrderNumber}`);
+            totalErrors++;
+            continue;
+          }
+          
+          const existingLineNumbers = new Set(existingLineItems?.map(item => item.line_number) || []);
           
           const { error: deleteError } = await supabase
             .from('hd_order_line_items')
@@ -168,8 +192,11 @@ const OrderLinesUpload = () => {
           if (deleteError) {
             console.error(`Error deleting existing line items for order ${hdOrderNumber}:`, deleteError);
             toast.error(`Failed to clear existing line items for order ${hdOrderNumber}`);
+            totalErrors++;
             continue;
           }
+          
+          const skippedLineNumbers: string[] = [];
           
           for (const item of lineItems) {
             const lineNumberStr = String(item.line_number);
@@ -178,6 +205,13 @@ const OrderLinesUpload = () => {
                 item.order_date.toISOString().split('T')[0] : 
                 String(item.order_date)) : 
               null;
+            
+            if (existingLineNumbers.has(lineNumberStr)) {
+              console.log(`Skipping duplicate line item: order ${hdOrderNumber}, line ${lineNumberStr}`);
+              skippedLineNumbers.push(lineNumberStr);
+              totalLinesSkipped++;
+              continue;
+            }
             
             const { error: insertError } = await supabase
               .from('hd_order_line_items')
@@ -193,16 +227,21 @@ const OrderLinesUpload = () => {
                 total_price: item.total_price || 0,
                 status: item.status || '',
                 dealer_po_number: item.dealer_po_number || '',
-                order_date: orderDate,
-                is_backorder: false
+                order_date: orderDate
               });
             
             if (insertError) {
               console.error(`Error inserting line item for order ${hdOrderNumber}:`, insertError);
+              totalErrors++;
               continue;
             }
             
             totalLinesProcessed++;
+            existingLineNumbers.add(lineNumberStr);
+          }
+          
+          if (skippedLineNumbers.length > 0) {
+            console.log(`Skipped ${skippedLineNumbers.length} duplicate line items for order ${hdOrderNumber}: ${skippedLineNumbers.join(', ')}`);
           }
           
           const { error: updateError } = await supabase
@@ -212,9 +251,10 @@ const OrderLinesUpload = () => {
           
           if (updateError) {
             console.error(`Error updating has_line_items for order ${hdOrderNumber}:`, updateError);
+            totalErrors++;
           }
           
-          console.log(`Successfully processed ${lineItems.length} line items for order ${hdOrderNumber}`);
+          console.log(`Successfully processed ${lineItems.length - skippedLineNumbers.length} line items for order ${hdOrderNumber}`);
         }
         
         const { error: historyError } = await supabase
@@ -229,11 +269,18 @@ const OrderLinesUpload = () => {
         
         if (historyError) {
           console.error('Error recording upload history:', historyError);
+          totalErrors++;
         }
       }
       
+      setUploadStats({
+        processed: totalLinesProcessed,
+        skipped: totalLinesSkipped,
+        errors: totalErrors
+      });
+      
       console.log('Upload completed successfully!');
-      toast.success(`Successfully uploaded ${totalLinesProcessed} line items from ${files.length} files`);
+      toast.success(`Successfully uploaded ${totalLinesProcessed} line items, skipped ${totalLinesSkipped} duplicates`);
       setUploadSuccess(true);
       setIsProcessing(false);
       
@@ -309,6 +356,15 @@ const OrderLinesUpload = () => {
               <div className="flex flex-col items-center justify-center w-full h-64 bg-green-900/20 border-2 border-green-500 rounded-lg">
                 <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
                 <p className="text-green-400 text-lg font-semibold">Upload Successful!</p>
+                <div className="flex flex-col items-center mt-3">
+                  <p className="text-zinc-300">Processed: <span className="text-green-400 font-medium">{uploadStats.processed}</span> items</p>
+                  {uploadStats.skipped > 0 && (
+                    <p className="text-zinc-300">Skipped: <span className="text-yellow-400 font-medium">{uploadStats.skipped}</span> duplicates</p>
+                  )}
+                  {uploadStats.errors > 0 && (
+                    <p className="text-zinc-300">Errors: <span className="text-red-400 font-medium">{uploadStats.errors}</span></p>
+                  )}
+                </div>
                 <p className="text-zinc-300 mt-2">Redirecting to dashboard...</p>
               </div>
             ) : (
