@@ -102,3 +102,41 @@ export async function fetchOrdersWithLineItems(
     throw error;
   }
 }
+
+/**
+ * Fetches a specific line item from Shopify by order ID and line item ID
+ */
+export async function fetchSingleLineItem(
+  apiToken: string,
+  orderId: string,
+  lineItemId: string,
+  debug: (message: string) => void
+): Promise<ShopifyLineItem | null> {
+  try {
+    debug(`Fetching single line item: Order ID ${orderId}, Line Item ID ${lineItemId}`);
+    
+    // Get the full order
+    const order = await fetchOrdersWithLineItems(apiToken, orderId, debug);
+    
+    if (!order.line_items || !Array.isArray(order.line_items)) {
+      debug(`No line items found in order ${orderId}`);
+      return null;
+    }
+    
+    // Find the specific line item
+    const lineItem = order.line_items.find(item => String(item.id) === String(lineItemId));
+    
+    if (!lineItem) {
+      debug(`Line item ${lineItemId} not found in order ${orderId}`);
+      return null;
+    }
+    
+    debug(`Successfully found line item ${lineItemId} in order ${orderId}`);
+    debug(`Line item details: ${JSON.stringify(lineItem)}`);
+    
+    return lineItem;
+  } catch (error: any) {
+    debug(`Exception in fetchSingleLineItem: ${error.message}`);
+    throw error;
+  }
+}

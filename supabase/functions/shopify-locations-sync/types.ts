@@ -9,6 +9,9 @@ export const corsHeaders = {
 // API request body for Shopify sync
 export interface RequestBody {
   apiToken?: string;
+  mode?: "bulk" | "single";
+  orderId?: string;
+  lineItemId?: string;
 }
 
 // API response body for Shopify sync
@@ -17,6 +20,7 @@ export interface SyncResponse {
   error: string | null;
   updated: number;
   debugMessages: string[];
+  apiResponse?: any;
 }
 
 // Simplified Shopify API order interface

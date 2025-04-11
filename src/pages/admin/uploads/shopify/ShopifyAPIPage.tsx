@@ -14,6 +14,7 @@ import OrdersViewCard from './components/OrdersViewCard';
 import ApiDocumentationCard from './components/ApiDocumentationCard';
 import CompleteRefresh from '@/components/shopify/CompleteRefresh';
 import LocationInfoImport from '@/components/shopify/LocationInfoImport';
+import SingleLineItemLocationUpdate from '@/components/shopify/SingleLineItemLocationUpdate';
 
 // IMPORTANT: This component interacts with a PRODUCTION Shopify API
 // Any changes must maintain compatibility with the live system
@@ -176,6 +177,13 @@ const ShopifyAPIPage = () => {
       {hasToken && (
         <LocationInfoImport
           onImportComplete={fetchRecentOrders}
+        />
+      )}
+      
+      {/* Single Line Item Location Update */}
+      {hasToken && (
+        <SingleLineItemLocationUpdate
+          onUpdateComplete={fetchRecentOrders}
         />
       )}
       

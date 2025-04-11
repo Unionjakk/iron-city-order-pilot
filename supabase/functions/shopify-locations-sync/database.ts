@@ -136,3 +136,91 @@ export async function updateLineItemLocations(
     throw error;
   }
 }
+
+/**
+ * Get information for a single line item
+ */
+export async function getSingleLineItemInfo(
+  shopifyOrderId: string,
+  lineItemId: string,
+  debug: (message: string) => void
+): Promise<any | null> {
+  try {
+    debug(`Looking up line item information in database for Order ID: ${shopifyOrderId}, Line Item ID: ${lineItemId}`);
+    
+    // First get the order ID from the database
+    const { data: orderData, error: orderError } = await supabase
+      .from("shopify_orders")
+      .select("id")
+      .eq("shopify_order_id", shopifyOrderId)
+      .maybeSingle();
+    
+    if (orderError) {
+      debug(`Error finding order in database: ${orderError.message}`);
+      throw new Error(`Failed to find order: ${orderError.message}`);
+    }
+    
+    if (!orderData) {
+      debug(`Order with Shopify ID ${shopifyOrderId} not found in database`);
+      return null;
+    }
+    
+    const orderId = orderData.id;
+    debug(`Found order in database with ID: ${orderId}`);
+    
+    // Now get the line item
+    const { data: lineItemData, error: lineItemError } = await supabase
+      .from("shopify_order_items")
+      .select("id, shopify_line_item_id, title, sku, location_id, location_name")
+      .eq("order_id", orderId)
+      .eq("shopify_line_item_id", lineItemId)
+      .maybeSingle();
+    
+    if (lineItemError) {
+      debug(`Error finding line item in database: ${lineItemError.message}`);
+      throw new Error(`Failed to find line item: ${lineItemError.message}`);
+    }
+    
+    if (!lineItemData) {
+      debug(`Line item with ID ${lineItemId} not found in database for order ${orderId}`);
+      return null;
+    }
+    
+    debug(`Found line item in database: ${JSON.stringify(lineItemData)}`);
+    return lineItemData;
+  } catch (error: any) {
+    debug(`Exception in getSingleLineItemInfo: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Update location information for a single line item
+ */
+export async function updateSingleLineItemLocation(
+  update: LineItemLocationUpdate,
+  debug: (message: string) => void
+): Promise<boolean> {
+  try {
+    debug(`Updating single line item location information for item ID: ${update.id}`);
+    
+    const { data, error } = await supabase
+      .from("shopify_order_items")
+      .update({
+        location_id: update.location_id,
+        location_name: update.location_name
+      })
+      .eq("id", update.id);
+    
+    if (error) {
+      debug(`Error updating line item location: ${error.message}`);
+      throw new Error(`Failed to update line item location: ${error.message}`);
+    }
+    
+    debug(`Successfully updated location information for line item ${update.id}`);
+    return true;
+  } catch (error: any) {
+    debug(`Exception in updateSingleLineItemLocation: ${error.message}`);
+    throw error;
+  }
+}
