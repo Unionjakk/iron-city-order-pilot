@@ -1,137 +1,19 @@
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, X, Plus, Trash2, Info, AlertCircle } from 'lucide-react';
+import { Check, X, Plus, AlertCircle, Info } from 'lucide-react';
 import ExcludeOrderForm from './components/ExcludeOrderForm';
 import ExcludeOrderList from './components/ExcludeOrderList';
 import AwaitingOrdersList from './components/AwaitingOrdersList';
-import { toast } from 'sonner';
-
-export type ExcludeReason = 'Check In' | 'Not Shopify';
-export type ExcludedOrder = {
-  id: string;
-  hd_order_number: string;
-  dealer_po_number?: string;
-  order_type?: string;
-  reason: ExcludeReason;
-  created_at: string;
-};
+import { useExcludedOrders } from './hooks/useExcludedOrders';
 
 const LineItemsExclude = () => {
-  const [excludedOrders, setExcludedOrders] = useState<ExcludedOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchExcludedOrders = async () => {
-    setIsLoading(true);
-    try {
-      // First fetch the exclusions
-      const { data: exclusions, error: exclusionsError } = await supabase
-        .from('hd_lineitems_exclude')
-        .select(`
-          id,
-          hd_order_number,
-          reason,
-          created_at
-        `)
-        .order('created_at', { ascending: false });
-
-      if (exclusionsError) {
-        throw exclusionsError;
-      }
-
-      // Now get the order details for each excluded order
-      const transformedData: ExcludedOrder[] = [];
-      
-      for (const exclusion of exclusions) {
-        // Get order details
-        const { data: orderDetails, error: orderError } = await supabase
-          .from('hd_orders')
-          .select('dealer_po_number, order_type')
-          .eq('hd_order_number', exclusion.hd_order_number)
-          .maybeSingle();
-        
-        if (orderError) {
-          console.error('Error fetching order details:', orderError);
-        }
-        
-        transformedData.push({
-          id: exclusion.id,
-          hd_order_number: exclusion.hd_order_number,
-          dealer_po_number: orderDetails?.dealer_po_number || '-',
-          order_type: orderDetails?.order_type || '-',
-          reason: exclusion.reason as ExcludeReason,
-          created_at: exclusion.created_at
-        });
-      }
-
-      setExcludedOrders(transformedData);
-    } catch (error) {
-      console.error('Error fetching excluded orders:', error);
-      toast.error('Failed to load excluded orders');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchExcludedOrders();
-  }, []);
-
-  const handleAddExclusion = async (orderNumber: string, reason: ExcludeReason) => {
-    try {
-      // Check if order number already exists
-      const { data: existingOrders, error: checkError } = await supabase
-        .from('hd_lineitems_exclude')
-        .select('id')
-        .eq('hd_order_number', orderNumber);
-
-      if (checkError) {
-        throw checkError;
-      }
-
-      if (existingOrders && existingOrders.length > 0) {
-        toast.error('This order number is already excluded');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('hd_lineitems_exclude')
-        .insert({ hd_order_number: orderNumber, reason });
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success('Order excluded successfully');
-      fetchExcludedOrders();
-    } catch (error) {
-      console.error('Error adding exclusion:', error);
-      toast.error('Failed to exclude order');
-    }
-  };
-
-  const handleRemoveExclusion = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('hd_lineitems_exclude')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success('Exclusion removed successfully');
-      fetchExcludedOrders();
-    } catch (error) {
-      console.error('Error removing exclusion:', error);
-      toast.error('Failed to remove exclusion');
-    }
-  };
-
-  // Get a list of excluded order numbers for filtering
-  const excludedOrderNumbers = excludedOrders.map(order => order.hd_order_number);
+  const { 
+    excludedOrders, 
+    isLoading, 
+    addExclusion, 
+    removeExclusion, 
+    excludedOrderNumbers 
+  } = useExcludedOrders();
 
   return (
     <div className="space-y-6">
@@ -153,7 +35,7 @@ const LineItemsExclude = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ExcludeOrderForm onAddExclusion={handleAddExclusion} />
+            <ExcludeOrderForm onAddExclusion={addExclusion} />
           </CardContent>
         </Card>
 
@@ -206,7 +88,7 @@ const LineItemsExclude = () => {
         </CardHeader>
         <CardContent>
           <AwaitingOrdersList 
-            onCheckInOrder={handleAddExclusion}
+            onCheckInOrder={addExclusion}
             excludedOrderNumbers={excludedOrderNumbers}
             isLoading={isLoading}
           />
@@ -228,7 +110,7 @@ const LineItemsExclude = () => {
           <ExcludeOrderList 
             excludedOrders={excludedOrders} 
             isLoading={isLoading} 
-            onRemoveExclusion={handleRemoveExclusion} 
+            onRemoveExclusion={removeExclusion} 
           />
         </CardContent>
       </Card>

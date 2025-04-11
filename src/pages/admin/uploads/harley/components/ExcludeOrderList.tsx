@@ -2,7 +2,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Trash2, Check, X } from 'lucide-react';
-import { ExcludedOrder } from '../LineItemsExclude';
+import { ExcludedOrder } from '../types/excludeTypes';
 import { format } from 'date-fns';
 
 interface ExcludeOrderListProps {
@@ -40,10 +40,10 @@ const ExcludeOrderList = ({ excludedOrders, isLoading, onRemoveExclusion }: Excl
     }
   };
 
-  // Check if an order has details available (not just placeholder values)
-  const hasDetails = (order: ExcludedOrder) => {
-    return order.dealer_po_number !== '-' || order.order_type !== '-';
-  };
+  // Check if any order has details available (not just placeholder values)
+  const hasDetailedOrders = excludedOrders.some(order => 
+    order.dealer_po_number !== '-' || order.order_type !== '-'
+  );
 
   return (
     <div className="overflow-x-auto">
@@ -51,8 +51,8 @@ const ExcludeOrderList = ({ excludedOrders, isLoading, onRemoveExclusion }: Excl
         <TableHeader>
           <TableRow className="border-zinc-700">
             <TableHead className="text-zinc-300">Order Number</TableHead>
-            {/* Only show these columns in the header if at least one order has details */}
-            {excludedOrders.some(hasDetails) && (
+            {/* Only show these columns if at least one order has details */}
+            {hasDetailedOrders && (
               <>
                 <TableHead className="text-zinc-300">Dealer PO Number</TableHead>
                 <TableHead className="text-zinc-300">Order Type</TableHead>
@@ -68,7 +68,7 @@ const ExcludeOrderList = ({ excludedOrders, isLoading, onRemoveExclusion }: Excl
             <TableRow key={order.id} className="border-zinc-800">
               <TableCell className="font-medium text-zinc-200">{order.hd_order_number}</TableCell>
               {/* Only show these cells if we're showing the columns */}
-              {excludedOrders.some(hasDetails) && (
+              {hasDetailedOrders && (
                 <>
                   <TableCell className="text-zinc-300">{order.dealer_po_number}</TableCell>
                   <TableCell className="text-zinc-300">{order.order_type}</TableCell>
