@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -157,30 +156,43 @@ const OpenOrdersUpload = () => {
       
       console.log('Inserting new order data...');
       
-      // Prepare the array of orders to insert
-      const ordersToInsert = parsedData.map(order => ({
-        hd_order_number: order.hd_order_number,
-        dealer_po_number: order.dealer_po_number || '',
-        order_date: order.order_date || null,
-        total_price: order.total_price || 0,
-        ship_to: order.ship_to || '',
-        order_type: order.order_type || '',
-        terms: order.terms || '',
-        notes: order.notes || '',
-        has_line_items: false
-      }));
+      // Prepare the array of orders to insert - making sure to convert Date objects to strings
+      const ordersToInsert = parsedData.map(order => {
+        // Convert order_date to string if it's a Date object
+        const orderDate = order.order_date ? 
+          (order.order_date instanceof Date ? 
+            order.order_date.toISOString().split('T')[0] : 
+            String(order.order_date)) : 
+          null;
+        
+        return {
+          hd_order_number: order.hd_order_number,
+          dealer_po_number: order.dealer_po_number || '',
+          order_date: orderDate,
+          total_price: order.total_price || 0,
+          ship_to: order.ship_to || '',
+          order_type: order.order_type || '',
+          terms: order.terms || '',
+          notes: order.notes || '',
+          has_line_items: false
+        };
+      });
       
       // Insert the orders
-      const { error: insertError } = await supabase
-        .from('hd_orders')
-        .insert(ordersToInsert);
-      
-      if (insertError) {
-        console.error('Error inserting orders:', insertError);
-        toast.error('Failed to insert new orders');
-        setIsUploading(false);
-        setIsProcessing(false);
-        return;
+      for (let i = 0; i < ordersToInsert.length; i += 100) {
+        // Process in batches of 100 to avoid payload size issues
+        const batch = ordersToInsert.slice(i, i + 100);
+        const { error: insertError } = await supabase
+          .from('hd_orders')
+          .insert(batch);
+        
+        if (insertError) {
+          console.error('Error inserting orders batch:', insertError);
+          toast.error('Failed to insert all orders');
+          setIsUploading(false);
+          setIsProcessing(false);
+          return;
+        }
       }
       
       console.log('Recording upload history...');

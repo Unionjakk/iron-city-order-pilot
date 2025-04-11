@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -159,12 +158,15 @@ const BackordersUpload = () => {
       
       // Process each backorder item
       for (const item of parsedData) {
+        // Convert line_number to string to ensure consistent type
+        const lineNumberStr = String(item.line_number);
+        
         // Find the matching line item
         const { data: lineItems, error: findError } = await supabase
           .from('hd_order_line_items')
           .select('id')
           .eq('hd_order_number', item.hd_order_number)
-          .eq('line_number', item.line_number)
+          .eq('line_number', lineNumberStr)
           .eq('part_number', item.part_number);
         
         if (findError) {
@@ -174,18 +176,31 @@ const BackordersUpload = () => {
         }
         
         if (!lineItems || lineItems.length === 0) {
-          console.warn(`No matching line item found for order ${item.hd_order_number}, line ${item.line_number}, part ${item.part_number}`);
+          console.warn(`No matching line item found for order ${item.hd_order_number}, line ${lineNumberStr}, part ${item.part_number}`);
           errorCount++;
           continue;
         }
+        
+        // Prepare date fields as strings
+        const backorderClearBy = item.backorder_clear_by ? 
+          (item.backorder_clear_by instanceof Date ? 
+            item.backorder_clear_by.toISOString().split('T')[0] : 
+            String(item.backorder_clear_by)) : 
+          null;
+          
+        const projectedShippingDate = item.projected_shipping_date ? 
+          (item.projected_shipping_date instanceof Date ? 
+            item.projected_shipping_date.toISOString().split('T')[0] : 
+            String(item.projected_shipping_date)) : 
+          null;
         
         // Update the line item with backorder information
         const { error: updateError } = await supabase
           .from('hd_order_line_items')
           .update({
             is_backorder: true,
-            backorder_clear_by: item.backorder_clear_by || null,
-            projected_shipping_date: item.projected_shipping_date || null,
+            backorder_clear_by: backorderClearBy,
+            projected_shipping_date: projectedShippingDate,
             projected_shipping_quantity: item.projected_shipping_quantity || 0
           })
           .eq('id', lineItems[0].id);

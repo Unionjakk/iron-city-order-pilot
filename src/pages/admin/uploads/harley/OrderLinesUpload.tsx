@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -185,32 +184,43 @@ const OrderLinesUpload = () => {
             continue;
           }
           
-          // Prepare the line items to insert
-          const lineItemsToInsert = lineItems.map(item => ({
-            hd_order_id: orderId,
-            hd_order_number: hdOrderNumber,
-            line_number: item.line_number?.toString() || '',
-            part_number: item.part_number || '',
-            description: item.description || '',
-            order_quantity: item.order_quantity || 0,
-            open_quantity: item.open_quantity || 0,
-            unit_price: item.unit_price || 0,
-            total_price: item.total_price || 0,
-            status: item.status || '',
-            dealer_po_number: item.dealer_po_number || '',
-            order_date: item.order_date || null,
-            is_backorder: false
-          }));
-          
-          // Insert the line items
-          const { error: insertError } = await supabase
-            .from('hd_order_line_items')
-            .insert(lineItemsToInsert);
-          
-          if (insertError) {
-            console.error(`Error inserting line items for order ${hdOrderNumber}:`, insertError);
-            toast.error(`Failed to insert line items for order ${hdOrderNumber}`);
-            continue;
+          // Process each line item individually
+          for (const item of lineItems) {
+            // Convert line_number to string
+            const lineNumberStr = String(item.line_number);
+            
+            // Convert order_date to string if it's a Date object
+            const orderDate = item.order_date ? 
+              (item.order_date instanceof Date ? 
+                item.order_date.toISOString().split('T')[0] : 
+                String(item.order_date)) : 
+              null;
+            
+            // Insert the line item
+            const { error: insertError } = await supabase
+              .from('hd_order_line_items')
+              .insert({
+                hd_order_id: orderId,
+                hd_order_number: hdOrderNumber,
+                line_number: lineNumberStr,
+                part_number: item.part_number || '',
+                description: item.description || '',
+                order_quantity: item.order_quantity || 0,
+                open_quantity: item.open_quantity || 0,
+                unit_price: item.unit_price || 0,
+                total_price: item.total_price || 0,
+                status: item.status || '',
+                dealer_po_number: item.dealer_po_number || '',
+                order_date: orderDate,
+                is_backorder: false
+              });
+            
+            if (insertError) {
+              console.error(`Error inserting line item for order ${hdOrderNumber}:`, insertError);
+              continue;
+            }
+            
+            totalLinesProcessed++;
           }
           
           // Update the order to indicate it has line items
@@ -223,7 +233,6 @@ const OrderLinesUpload = () => {
             console.error(`Error updating has_line_items for order ${hdOrderNumber}:`, updateError);
           }
           
-          totalLinesProcessed += lineItems.length;
           console.log(`Successfully processed ${lineItems.length} line items for order ${hdOrderNumber}`);
         }
         
