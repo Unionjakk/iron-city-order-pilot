@@ -98,9 +98,9 @@ const OrderLinesUpload = () => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadStats, setUploadStats] = useState<{
     processed: number;
-    skipped: number;
+    replaced: number;
     errors: number;
-  }>({ processed: 0, skipped: 0, errors: 0 });
+  }>({ processed: 0, replaced: 0, errors: 0 });
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -123,11 +123,11 @@ const OrderLinesUpload = () => {
     
     setIsUploading(true);
     setIsProcessing(true);
-    setUploadStats({ processed: 0, skipped: 0, errors: 0 });
+    setUploadStats({ processed: 0, replaced: 0, errors: 0 });
     
     try {
       let totalLinesProcessed = 0;
-      let totalLinesSkipped = 0;
+      let totalLinesReplaced = 0;
       let totalErrors = 0;
       
       for (const file of files) {
@@ -172,17 +172,19 @@ const OrderLinesUpload = () => {
           
           const { data: existingLineItems, error: lineItemsError } = await supabase
             .from('hd_order_line_items')
-            .select('line_number')
+            .select('id, line_number')
             .eq('hd_order_id', orderId);
           
           if (lineItemsError) {
             console.error(`Error fetching existing line items for order ${hdOrderNumber}:`, lineItemsError);
-            toast.error(`Failed to check for duplicate line items for order ${hdOrderNumber}`);
+            toast.error(`Failed to check existing line items for order ${hdOrderNumber}`);
             totalErrors++;
             continue;
           }
           
-          const existingLineNumbers = new Set(existingLineItems?.map(item => item.line_number) || []);
+          const existingLineNumbers = new Map();
+          existingLineItems?.forEach(item => existingLineNumbers.set(item.line_number, item.id));
+          const replacedLineNumbers: string[] = [];
           
           const { error: deleteError } = await supabase
             .from('hd_order_line_items')
@@ -196,8 +198,6 @@ const OrderLinesUpload = () => {
             continue;
           }
           
-          const skippedLineNumbers: string[] = [];
-          
           for (const item of lineItems) {
             const lineNumberStr = String(item.line_number);
             const orderDate = item.order_date ? 
@@ -207,10 +207,8 @@ const OrderLinesUpload = () => {
               null;
             
             if (existingLineNumbers.has(lineNumberStr)) {
-              console.log(`Skipping duplicate line item: order ${hdOrderNumber}, line ${lineNumberStr}`);
-              skippedLineNumbers.push(lineNumberStr);
-              totalLinesSkipped++;
-              continue;
+              replacedLineNumbers.push(lineNumberStr);
+              totalLinesReplaced++;
             }
             
             const { error: insertError } = await supabase
@@ -237,11 +235,10 @@ const OrderLinesUpload = () => {
             }
             
             totalLinesProcessed++;
-            existingLineNumbers.add(lineNumberStr);
           }
           
-          if (skippedLineNumbers.length > 0) {
-            console.log(`Skipped ${skippedLineNumbers.length} duplicate line items for order ${hdOrderNumber}: ${skippedLineNumbers.join(', ')}`);
+          if (replacedLineNumbers.length > 0) {
+            console.log(`Replaced ${replacedLineNumbers.length} existing line items for order ${hdOrderNumber}: ${replacedLineNumbers.join(', ')}`);
           }
           
           const { error: updateError } = await supabase
@@ -254,7 +251,7 @@ const OrderLinesUpload = () => {
             totalErrors++;
           }
           
-          console.log(`Successfully processed ${lineItems.length - skippedLineNumbers.length} line items for order ${hdOrderNumber}`);
+          console.log(`Successfully processed ${lineItems.length} line items for order ${hdOrderNumber}`);
         }
         
         const { error: historyError } = await supabase
@@ -264,7 +261,7 @@ const OrderLinesUpload = () => {
             filename: file.name,
             items_count: parsedData.length,
             status: 'success',
-            replaced_previous: false
+            replaced_previous: replacedLineNumbers?.length > 0
           });
         
         if (historyError) {
@@ -275,12 +272,12 @@ const OrderLinesUpload = () => {
       
       setUploadStats({
         processed: totalLinesProcessed,
-        skipped: totalLinesSkipped,
+        replaced: totalLinesReplaced,
         errors: totalErrors
       });
       
       console.log('Upload completed successfully!');
-      toast.success(`Successfully uploaded ${totalLinesProcessed} line items, skipped ${totalLinesSkipped} duplicates`);
+      toast.success(`Successfully uploaded ${totalLinesProcessed} line items (${totalLinesReplaced} replaced)`);
       setUploadSuccess(true);
       setIsProcessing(false);
       
@@ -358,8 +355,8 @@ const OrderLinesUpload = () => {
                 <p className="text-green-400 text-lg font-semibold">Upload Successful!</p>
                 <div className="flex flex-col items-center mt-3">
                   <p className="text-zinc-300">Processed: <span className="text-green-400 font-medium">{uploadStats.processed}</span> items</p>
-                  {uploadStats.skipped > 0 && (
-                    <p className="text-zinc-300">Skipped: <span className="text-yellow-400 font-medium">{uploadStats.skipped}</span> duplicates</p>
+                  {uploadStats.replaced > 0 && (
+                    <p className="text-zinc-300">Replaced: <span className="text-amber-400 font-medium">{uploadStats.replaced}</span> items</p>
                   )}
                   {uploadStats.errors > 0 && (
                     <p className="text-zinc-300">Errors: <span className="text-red-400 font-medium">{uploadStats.errors}</span></p>
