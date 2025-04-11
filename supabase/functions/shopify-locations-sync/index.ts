@@ -1,3 +1,4 @@
+
 // Supabase Edge Function
 // This function handles updating location info for existing line items in Shopify orders
 
@@ -105,7 +106,7 @@ serve(async (req) => {
       debug(`Starting batch update for all line items in Order ID: ${body.orderId}`);
       
       try {
-        // NEW: First, try to get the "assigned_location" for this order via the assigned_fulfillment_orders endpoint
+        // CRITICAL: First, try to get the "assigned_location" for this order via the assigned_fulfillment_orders endpoint
         debug("Checking for assigned locations via fulfillment orders endpoint");
         const fulfillmentOrdersData = await retryOnRateLimit(
           () => makeShopifyApiRequest(apiToken!, `/orders/${body.orderId}/fulfillment_orders.json`, debug),
@@ -215,7 +216,7 @@ serve(async (req) => {
         
         debug(`Found database record: ${JSON.stringify(dbLineItemInfo)}`);
         
-        // Try to get location from fulfillment orders
+        // Try to get location from fulfillment orders - THIS IS THE KEY ADDITION
         debug("Checking for assigned location via fulfillment orders endpoint");
         let location = { id: null, name: null };
         
@@ -304,7 +305,6 @@ serve(async (req) => {
     
     // Original bulk update logic
     debug("Starting location data import for all line items");
-    // ... keep existing code for bulk update logic
     
     // Get all line items for location update
     const lineItemsToUpdate = await getLineItemsWithoutLocations(debug);
