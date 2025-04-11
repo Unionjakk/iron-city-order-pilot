@@ -1,10 +1,10 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileSpreadsheet, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Code } from '@/components/ui/code';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
@@ -50,15 +50,20 @@ const parseExcelFile = async (file: File): Promise<OpenOrderData[]> => {
         // Map the Excel data to our expected format, accounting for different possible column names
         const mappedData: OpenOrderData[] = jsonData.map(row => {
           // Find the HD order number (could have different column names)
-          const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || '';
+          const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || row['HD ORDER'] || '';
+          
+          // Look for PO number in multiple possible columns
+          const poNumber = row['PO NUMBER'] || row['PURCHASE ORDER'] || row['DEALER PO'] || row['DEALER PO NUMBER'] || '';
           
           if (!hdOrderNumber) {
             console.warn('Missing HD Order Number in row:', row);
           }
           
+          console.log(`Row data - HD Order: ${hdOrderNumber}, PO: ${poNumber}`);
+          
           return {
             hd_order_number: hdOrderNumber,
-            dealer_po_number: row['PO NUMBER'] || row['PURCHASE ORDER'] || row['DEALER PO'] || '',
+            dealer_po_number: poNumber,
             order_date: row['ORDER DATE'] || null,
             total_price: parseFloat(row['TOTAL PRICE'] || row['PRICE'] || row['TOTAL'] || '0'),
             ship_to: row['SHIP TO'] || row['DEALER'] || '',
@@ -86,11 +91,11 @@ const parseExcelFile = async (file: File): Promise<OpenOrderData[]> => {
 };
 
 const OpenOrdersUpload = () => {
-  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadedCount, setUploadedCount] = useState(0);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
@@ -178,6 +183,9 @@ const OpenOrdersUpload = () => {
         };
       });
       
+      // Log a sample order to check the dealer_po_number
+      console.log('Sample order to insert:', ordersToInsert[0]);
+      
       // Insert the orders
       for (let i = 0; i < ordersToInsert.length; i += 100) {
         // Process in batches of 100 to avoid payload size issues
@@ -214,11 +222,11 @@ const OpenOrdersUpload = () => {
       console.log('Upload completed successfully!');
       toast.success(`Successfully uploaded ${parsedData.length} orders`);
       setUploadSuccess(true);
+      setUploadedCount(parsedData.length);
       setIsProcessing(false);
+      setIsUploading(false);
       
-      setTimeout(() => {
-        navigate('/admin/uploads/harley/dashboard');
-      }, 3000);
+      // Removed the automatic redirect to the dashboard
       
     } catch (error) {
       console.error('Error processing upload:', error);
@@ -285,7 +293,22 @@ const OpenOrdersUpload = () => {
               <div className="flex flex-col items-center justify-center w-full h-64 bg-green-900/20 border-2 border-green-500 rounded-lg">
                 <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
                 <p className="text-green-400 text-lg font-semibold">Upload Successful!</p>
-                <p className="text-zinc-300 mt-2">Redirecting to dashboard...</p>
+                <p className="text-zinc-300 mt-2">Successfully uploaded {uploadedCount} orders</p>
+                <div className="mt-6 flex gap-4">
+                  <Button
+                    onClick={() => setUploadSuccess(false)}
+                    variant="outline"
+                    className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                  >
+                    Upload Another File
+                  </Button>
+                  <Button
+                    onClick={() => window.location.href = '/admin/uploads/harley/order-lines'}
+                    className="bg-orange-500 hover:bg-orange-600"
+                  >
+                    Go to Order Lines Upload
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="flex items-center justify-center w-full">

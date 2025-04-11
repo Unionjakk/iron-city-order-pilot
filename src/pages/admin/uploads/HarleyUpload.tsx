@@ -1,35 +1,53 @@
 
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const HarleyUpload = () => {
-  const navigate = useNavigate();
-  
-  // Redirect to the new Harley dashboard
-  useEffect(() => {
-    navigate('/admin/uploads/harley/dashboard');
-  }, [navigate]);
-  
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-orange-500">Harley Davidson Upload</h1>
-        <p className="text-orange-400/80">Redirecting to import dashboard...</p>
+        <p className="text-orange-400/80">Import and manage Harley Davidson data</p>
       </div>
       
       <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-orange-500">Redirecting to Harley Davidson Dashboard</CardTitle>
-          <CardDescription className="text-zinc-400">If you are not redirected automatically, please click the link below</CardDescription>
+          <CardTitle className="text-orange-500">Harley Davidson Upload Options</CardTitle>
+          <CardDescription className="text-zinc-400">Choose an upload type or go to the dashboard</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="mb-4 text-zinc-300">The Harley Davidson Import Module allows you to upload and manage data from H-D NET.</p>
-          <Link to="/admin/uploads/harley/dashboard" className="inline-flex items-center text-orange-500 hover:text-orange-400">
-            Go to Harley Davidson Dashboard <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <Link 
+              to="/admin/uploads/harley/dashboard" 
+              className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition-colors"
+            >
+              <span className="text-orange-400 font-medium">Go to Dashboard</span>
+              <ArrowRight className="h-4 w-4 text-orange-400" />
+            </Link>
+            <Link 
+              to="/admin/uploads/harley/open-orders" 
+              className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition-colors"
+            >
+              <span className="text-orange-400 font-medium">Upload Open Orders</span>
+              <ArrowRight className="h-4 w-4 text-orange-400" />
+            </Link>
+            <Link 
+              to="/admin/uploads/harley/order-lines" 
+              className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition-colors"
+            >
+              <span className="text-orange-400 font-medium">Upload Order Line Items</span>
+              <ArrowRight className="h-4 w-4 text-orange-400" />
+            </Link>
+            <Link 
+              to="/admin/uploads/harley/backorders" 
+              className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition-colors"
+            >
+              <span className="text-orange-400 font-medium">Upload Backorders</span>
+              <ArrowRight className="h-4 w-4 text-orange-400" />
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
