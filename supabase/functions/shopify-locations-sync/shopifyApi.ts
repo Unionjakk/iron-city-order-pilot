@@ -80,48 +80,169 @@ export async function fetchOrdersWithLineItems(
     if (order.line_items && Array.isArray(order.line_items)) {
       debug(`Found ${order.line_items.length} line items in the order`);
       
-      order.line_items = order.line_items.map((item: any) => {
-        // Ensure ID is always a string for consistent comparison
-        item.id = String(item.id);
+      // Extract location information from fulfillments if available
+      const locationMap = new Map();
+      
+      // First, check if there are fulfillments and extract location info
+      if (order.fulfillments && Array.isArray(order.fulfillments) && order.fulfillments.length > 0) {
+        debug(`Order has ${order.fulfillments.length} fulfillments, extracting location data`);
         
-        // Extract location information from the line item
-        if (item.origin_location) {
-          debug(`Item ${item.id} has origin_location: ${JSON.stringify(item.origin_location)}`);
-          item.location_id = String(item.origin_location.id);
-          item.location_name = item.origin_location.name;
-        } else {
-          debug(`Item ${item.id} has no origin_location data`);
-          item.location_id = null;
-          item.location_name = null;
-        }
-
-        // For fulfillment items check if they have location info
-        if (order.fulfillments && Array.isArray(order.fulfillments)) {
-          for (const fulfillment of order.fulfillments) {
-            if (fulfillment.line_items && Array.isArray(fulfillment.line_items)) {
-              // Convert both IDs to strings for comparison
-              const fulfillmentLineItem = fulfillment.line_items.find((l: any) => 
-                String(l.id) === String(item.id)
-              );
-              
-              if (fulfillmentLineItem && fulfillment.location_id) {
-                debug(`Item ${item.id} found in fulfillment with location_id: ${fulfillment.location_id}`);
-                item.location_id = String(fulfillment.location_id);
-                
-                // Try to get location name if available
-                if (fulfillment.location) {
-                  item.location_name = fulfillment.location.name;
-                }
-              }
+        // Get the primary location from the first fulfillment if available
+        const primaryFulfillment = order.fulfillments[0];
+        const primaryLocationId = primaryFulfillment.location_id ? String(primaryFulfillment.location_id) : null;
+        let primaryLocationName = null;
+        
+        // Try to get location name from various sources
+        if (primaryFulfillment.location && primaryFulfillment.location.name) {
+          primaryLocationName = primaryFulfillment.location.name;
+          debug(`Found primary location name from fulfillment.location: ${primaryLocationName}`);
+        } else if (primaryLocationId) {
+          // If we have locations array, try to find the location name
+          if (order.locations && Array.isArray(order.locations)) {
+            const locationInfo = order.locations.find(loc => String(loc.id) === primaryLocationId);
+            if (locationInfo && locationInfo.name) {
+              primaryLocationName = locationInfo.name;
+              debug(`Found primary location name from locations array: ${primaryLocationName}`);
             }
           }
         }
         
+        // Map line items to their location using the fulfillment line items
+        for (const fulfillment of order.fulfillments) {
+          if (fulfillment.line_items && Array.isArray(fulfillment.line_items)) {
+            const locationId = fulfillment.location_id ? String(fulfillment.location_id) : null;
+            let locationName = null;
+            
+            // Try to get location name
+            if (fulfillment.location && fulfillment.location.name) {
+              locationName = fulfillment.location.name;
+            } else if (locationId && order.locations && Array.isArray(order.locations)) {
+              const locationInfo = order.locations.find(loc => String(loc.id) === locationId);
+              if (locationInfo && locationInfo.name) {
+                locationName = locationInfo.name;
+              }
+            }
+            
+            // Map each line item to its location
+            for (const lineItem of fulfillment.line_items) {
+              locationMap.set(String(lineItem.id), { 
+                location_id: locationId,
+                location_name: locationName
+              });
+              debug(`Mapped line item ${lineItem.id} to location "${locationName}" (ID: ${locationId})`);
+            }
+          }
+        }
+        
+        // Set default location for all items if we have a primary location
+        if (primaryLocationId && primaryLocationName) {
+          debug(`Setting default location for all items: "${primaryLocationName}" (ID: ${primaryLocationId})`);
+          order.default_location_id = primaryLocationId;
+          order.default_location_name = primaryLocationName;
+        }
+      } else {
+        debug('No fulfillment data found, will try other location sources');
+      }
+      
+      // Process each line item
+      order.line_items = order.line_items.map((item: any) => {
+        // Ensure ID is always a string for consistent comparison
+        item.id = String(item.id);
+        
+        // Check if we have location data from fulfillments
+        const fulfillmentLocation = locationMap.get(item.id);
+        if (fulfillmentLocation) {
+          debug(`Using fulfillment location for item ${item.id}: "${fulfillmentLocation.location_name}"`);
+          item.location_id = fulfillmentLocation.location_id;
+          item.location_name = fulfillmentLocation.location_name;
+        } 
+        // Extract location information from the line item if available
+        else if (item.origin_location) {
+          debug(`Item ${item.id} has origin_location: ${JSON.stringify(item.origin_location)}`);
+          item.location_id = String(item.origin_location.id);
+          item.location_name = item.origin_location.name;
+        } 
+        // If no location info found but we have a default, use that
+        else if (order.default_location_id && order.default_location_name) {
+          debug(`Using default location for item ${item.id}: "${order.default_location_name}"`);
+          item.location_id = order.default_location_id;
+          item.location_name = order.default_location_name;
+        }
+        // No location information available
+        else {
+          debug(`Item ${item.id} has no location data available`);
+          item.location_id = null;
+          item.location_name = null;
+        }
+
         return item as ShopifyLineItem;
       });
     }
     
     debug(`Processed order ${orderId} with ${order.line_items?.length || 0} line items`);
+    
+    // If we still don't have locations for any items, check if we need to make an additional API call
+    // to get fulfillment information directly
+    if (order.line_items && order.line_items.some(item => !item.location_name)) {
+      debug(`Some line items are missing location information, checking for fulfillments directly`);
+      
+      try {
+        const fulfillmentUrl = `${baseEndpoint}/orders/${orderId}/fulfillments.json`;
+        debug(`Fetching fulfillments from: ${fulfillmentUrl}`);
+        
+        const fulfillmentsResponse = await fetch(fulfillmentUrl, {
+          method: "GET",
+          headers: {
+            "X-Shopify-Access-Token": apiToken,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+        });
+        
+        if (fulfillmentsResponse.ok) {
+          const fulfillmentData = await fulfillmentsResponse.json();
+          
+          if (fulfillmentData.fulfillments && Array.isArray(fulfillmentData.fulfillments) && fulfillmentData.fulfillments.length > 0) {
+            debug(`Found ${fulfillmentData.fulfillments.length} fulfillments in separate call`);
+            
+            // Create a map of line item IDs to their fulfillment location
+            const fulfillmentLocationMap = new Map();
+            
+            for (const fulfillment of fulfillmentData.fulfillments) {
+              if (!fulfillment.location_id) continue;
+              
+              const locationId = String(fulfillment.location_id);
+              let locationName = fulfillment.location?.name || "Unknown Location";
+              
+              if (fulfillment.line_items && Array.isArray(fulfillment.line_items)) {
+                for (const lineItem of fulfillment.line_items) {
+                  fulfillmentLocationMap.set(String(lineItem.id), { locationId, locationName });
+                  debug(`Found location "${locationName}" for line item ${lineItem.id} in fulfillments API`);
+                }
+              }
+            }
+            
+            // Update line items with locations from fulfillments
+            order.line_items = order.line_items.map(item => {
+              const fulfillmentLocation = fulfillmentLocationMap.get(item.id);
+              
+              if (!item.location_name && fulfillmentLocation) {
+                debug(`Updating item ${item.id} with fulfillment location: "${fulfillmentLocation.locationName}"`);
+                item.location_id = fulfillmentLocation.locationId;
+                item.location_name = fulfillmentLocation.locationName;
+              }
+              
+              return item;
+            });
+          }
+        } else {
+          debug(`Failed to fetch fulfillments: ${fulfillmentsResponse.status}`);
+        }
+      } catch (error) {
+        debug(`Error fetching fulfillments: ${error.message}`);
+        // We'll continue with what data we have
+      }
+    }
     
     return order;
   } catch (error: any) {
@@ -145,7 +266,7 @@ export async function fetchSingleLineItem(
     
     // Direct API call to get the order with specific line items
     const baseEndpoint = "https://opus-harley-davidson.myshopify.com/admin/api/2023-07";
-    const url = `${baseEndpoint}/orders/${orderId}.json?fields=id,line_items`;
+    const url = `${baseEndpoint}/orders/${orderId}.json?fields=id,line_items,fulfillments,locations`;
     
     debug(`Calling Shopify API: ${url}`);
     
@@ -213,13 +334,57 @@ export async function fetchSingleLineItem(
     // Ensure ID is always a string
     lineItem.id = String(lineItem.id);
     
-    // Add location info if available
-    if (lineItem.origin_location) {
+    // Extract location information from fulfillments
+    const order = data.order;
+    let locationFound = false;
+    
+    // Check for fulfillment location information
+    if (order.fulfillments && Array.isArray(order.fulfillments) && order.fulfillments.length > 0) {
+      debug(`Order has ${order.fulfillments.length} fulfillments, checking for location data`);
+      
+      for (const fulfillment of order.fulfillments) {
+        if (fulfillment.line_items && Array.isArray(fulfillment.line_items)) {
+          // Find the line item in this fulfillment
+          const fulfillmentLineItem = fulfillment.line_items.find((l: any) => 
+            String(l.id) === String(lineItemId)
+          );
+          
+          if (fulfillmentLineItem && fulfillment.location_id) {
+            debug(`Line item ${lineItemId} found in fulfillment with location_id: ${fulfillment.location_id}`);
+            lineItem.location_id = String(fulfillment.location_id);
+            
+            // Try to get location name
+            if (fulfillment.location && fulfillment.location.name) {
+              lineItem.location_name = fulfillment.location.name;
+              debug(`Found location name from fulfillment: ${lineItem.location_name}`);
+            } else if (order.locations && Array.isArray(order.locations)) {
+              // Look for the location name in the locations array
+              const locationInfo = order.locations.find((loc: any) => 
+                String(loc.id) === String(fulfillment.location_id)
+              );
+              
+              if (locationInfo && locationInfo.name) {
+                lineItem.location_name = locationInfo.name;
+                debug(`Found location name from locations array: ${lineItem.location_name}`);
+              }
+            }
+            
+            locationFound = true;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Add origin location info if available and no fulfillment location was found
+    if (!locationFound && lineItem.origin_location) {
       lineItem.location_id = String(lineItem.origin_location.id);
       lineItem.location_name = lineItem.origin_location.name;
-    } else {
+      debug(`Using origin_location for item ${lineItemId}: ${lineItem.location_name}`);
+    } else if (!locationFound) {
       lineItem.location_id = null;
       lineItem.location_name = null;
+      debug(`No location information found for line item ${lineItemId}`);
     }
     
     debug(`Line item details: ${JSON.stringify(lineItem)}`);
