@@ -25,13 +25,13 @@ const LineItemsExclude = () => {
       const { data, error } = await supabase
         .from('hd_lineitems_exclude')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as { data: ExcludedOrder[] | null, error: any };
 
       if (error) {
         throw error;
       }
 
-      setExcludedOrders(data as ExcludedOrder[]);
+      setExcludedOrders(data || []);
     } catch (error) {
       console.error('Error fetching excluded orders:', error);
       toast.error('Failed to load excluded orders');
@@ -47,10 +47,14 @@ const LineItemsExclude = () => {
   const handleAddExclusion = async (orderNumber: string, reason: ExcludeReason) => {
     try {
       // Check if order number already exists
-      const { data: existingOrders } = await supabase
+      const { data: existingOrders, error: checkError } = await supabase
         .from('hd_lineitems_exclude')
         .select('id')
-        .eq('hd_order_number', orderNumber);
+        .eq('hd_order_number', orderNumber) as { data: any[] | null, error: any };
+
+      if (checkError) {
+        throw checkError;
+      }
 
       if (existingOrders && existingOrders.length > 0) {
         toast.error('This order number is already excluded');
@@ -59,7 +63,7 @@ const LineItemsExclude = () => {
 
       const { error } = await supabase
         .from('hd_lineitems_exclude')
-        .insert({ hd_order_number: orderNumber, reason });
+        .insert({ hd_order_number: orderNumber, reason }) as { error: any };
 
       if (error) {
         throw error;
@@ -78,7 +82,7 @@ const LineItemsExclude = () => {
       const { error } = await supabase
         .from('hd_lineitems_exclude')
         .delete()
-        .eq('id', id);
+        .eq('id', id) as { error: any };
 
       if (error) {
         throw error;
