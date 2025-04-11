@@ -3,11 +3,20 @@ import React, { useState } from "react";
 import { PicklistOrderItem, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, PackageCheck, TruckIcon } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PickedOrderItemProps {
   item: PicklistOrderItem;
@@ -17,73 +26,8 @@ interface PickedOrderItemProps {
 
 const PickedOrderItem = ({ item, order, refreshData }: PickedOrderItemProps) => {
   const { toast } = useToast();
-  const [note, setNote] = useState<string>(item.notes || "");
-  const [action, setAction] = useState<string>("");
   const [processing, setProcessing] = useState<boolean>(false);
-
-  const handleNoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNote(e.target.value);
-  };
-
-  const handleActionChange = (value: string) => {
-    setAction(value);
-  };
-
-  const handleSubmit = async () => {
-    if (!action) {
-      toast({
-        title: "Action required",
-        description: "Please select an action before submitting",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setProcessing(true);
-    
-    try {
-      // First delete existing progress entry 
-      await supabase
-        .from('iron_city_order_progress')
-        .delete()
-        .eq('shopify_order_id', order.shopify_order_id)
-        .eq('sku', item.sku);
-      
-      // Insert new progress entry
-      const { error } = await supabase
-        .from('iron_city_order_progress')
-        .insert({
-          shopify_order_id: order.shopify_order_id,
-          shopify_order_number: order.shopify_order_number,
-          sku: item.sku,
-          progress: action,
-          notes: note
-        });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: `Item marked as ${action}`,
-      });
-      
-      // Clear form fields
-      setNote("");
-      setAction("");
-      
-      // Refresh data
-      refreshData();
-    } catch (error: any) {
-      console.error("Error updating progress:", error);
-      toast({
-        title: "Update failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setProcessing(false);
-    }
-  };
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState<boolean>(false);
 
   // Utility functions for styling
   const getStockColor = (inStock: boolean, quantity: number | null, orderQuantity: number): string => {
@@ -99,6 +43,50 @@ const PickedOrderItem = ({ item, order, refreshData }: PickedOrderItemProps) => 
   const getCostColor = (inStock: boolean, cost: number | null): string => {
     if (!inStock || cost === null) return "text-green-800";
     return "text-green-500";
+  };
+
+  const handleClear = async () => {
+    setProcessing(true);
+    
+    try {
+      // Delete existing progress entry 
+      await supabase
+        .from('iron_city_order_progress')
+        .delete()
+        .eq('shopify_order_id', order.shopify_order_id)
+        .eq('sku', item.sku);
+      
+      // Insert new progress entry with "To Pick" status
+      const { error } = await supabase
+        .from('iron_city_order_progress')
+        .insert({
+          shopify_order_id: order.shopify_order_id,
+          shopify_order_number: order.shopify_order_number,
+          sku: item.sku,
+          progress: "To Pick",
+          notes: item.notes || ""
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Item cleared",
+        description: "Item has been set back to To Pick status",
+      });
+      
+      // Refresh data
+      refreshData();
+    } catch (error: any) {
+      console.error("Error clearing item:", error);
+      toast({
+        title: "Clear failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+      setIsClearDialogOpen(false);
+    }
   };
 
   return (
@@ -129,39 +117,55 @@ const PickedOrderItem = ({ item, order, refreshData }: PickedOrderItemProps) => 
           </span>
         </TableCell>
         <TableCell>
-          <Select 
-            value={action} 
-            onValueChange={handleActionChange}
-          >
-            <SelectTrigger className="w-full border-zinc-700 bg-zinc-800/50 text-zinc-300">
-              <SelectValue placeholder="Next action..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="To Order">To Order</SelectItem>
-              <SelectItem value="To Dispatch">To Dispatch</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="w-full border-zinc-700 bg-zinc-800/50 text-zinc-300 py-2 px-3 rounded-md text-sm">
+            Picked
+          </div>
         </TableCell>
         <TableCell>
           <Button 
-            onClick={handleSubmit}
-            disabled={!action || processing}
+            onClick={() => setIsClearDialogOpen(true)}
+            disabled={processing}
             size="sm"
-            className="button-primary w-full"
+            variant="destructive"
+            className="w-full"
           >
-            {processing ? "Saving..." : "Process"}
+            {processing ? "Processing..." : "Clear"}
           </Button>
+          
+          <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+            <AlertDialogContent className="bg-zinc-900 border-zinc-700">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-orange-400">Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription className="text-zinc-300">
+                  This will set the product back to "To Pick"
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel 
+                  className="bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+                >
+                  No
+                </AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleClear}
+                  className="bg-orange-500 text-white hover:bg-orange-600"
+                >
+                  Yes
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TableCell>
       </TableRow>
       
-      {/* Notes field under each item */}
+      {/* Notes field under each item - now read-only */}
       <TableRow className="border-none">
         <TableCell colSpan={9} className="pt-0 pb-2">
           <Input
-            placeholder="Add notes here..." 
-            className="h-8 border-zinc-700 bg-zinc-800/50 text-zinc-300 w-full"
-            value={note}
-            onChange={handleNoteChange}
+            placeholder="No notes" 
+            className="h-8 border-zinc-700 bg-zinc-800/50 text-zinc-300 w-full cursor-not-allowed opacity-70"
+            value={item.notes || ""}
+            readOnly
           />
         </TableCell>
       </TableRow>
