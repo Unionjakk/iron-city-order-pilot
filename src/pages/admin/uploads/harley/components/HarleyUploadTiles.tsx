@@ -1,6 +1,6 @@
 
 import { Card } from '@/components/ui/card';
-import { UploadCloud, FileSpreadsheet, List, Ban } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, List, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const HarleyUploadTiles = () => {
@@ -10,6 +10,13 @@ const HarleyUploadTiles = () => {
       description: 'Upload Open Orders data from H-D NET',
       icon: <FileSpreadsheet className="h-8 w-8 text-orange-500" />,
       link: '/admin/uploads/harley/open-orders',
+      color: 'from-orange-600/20 to-amber-600/20',
+    },
+    {
+      title: 'Open Order Check In',
+      description: 'Check in open orders and exclude open orders',
+      icon: <Check className="h-8 w-8 text-orange-500" />,
+      link: '/admin/uploads/harley/open-order-check-in',
       color: 'from-orange-600/20 to-amber-600/20',
     },
     {
@@ -24,13 +31,6 @@ const HarleyUploadTiles = () => {
       description: 'Upload Backorder data from H-D NET',
       icon: <UploadCloud className="h-8 w-8 text-orange-500" />,
       link: '/admin/uploads/harley/backorders',
-      color: 'from-orange-600/20 to-amber-600/20',
-    },
-    {
-      title: 'Line Items Exclusions',
-      description: 'Manage orders to exclude from line item processing',
-      icon: <Ban className="h-8 w-8 text-orange-500" />,
-      link: '/admin/uploads/harley/exclusions',
       color: 'from-orange-600/20 to-amber-600/20',
     }
   ];

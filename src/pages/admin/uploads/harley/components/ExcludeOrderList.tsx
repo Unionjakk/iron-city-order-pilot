@@ -16,7 +16,7 @@ const ExcludeOrderList = ({ excludedOrders, isLoading, onRemoveExclusion }: Excl
     return (
       <div className="py-8 text-center text-zinc-400">
         <div className="h-6 w-6 border-2 border-orange-500 border-r-transparent rounded-full animate-spin mx-auto mb-2"></div>
-        <p>Loading excluded orders...</p>
+        <p>Loading checked in orders...</p>
       </div>
     );
   }
@@ -24,7 +24,7 @@ const ExcludeOrderList = ({ excludedOrders, isLoading, onRemoveExclusion }: Excl
   if (excludedOrders.length === 0) {
     return (
       <div className="py-8 text-center text-zinc-400">
-        <p>No orders are currently excluded.</p>
+        <p>No orders are currently checked in.</p>
       </div>
     );
   }

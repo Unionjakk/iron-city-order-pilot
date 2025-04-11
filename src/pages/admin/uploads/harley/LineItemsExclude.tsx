@@ -99,8 +99,8 @@ const LineItemsExclude = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-orange-500">Line Items Exclusions</h1>
-        <p className="text-orange-400/80">Manage order numbers to exclude from line item processing</p>
+        <h1 className="text-2xl font-bold text-orange-500">Open Order Check In</h1>
+        <p className="text-orange-400/80">Check in open orders and exclude open orders</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -109,10 +109,10 @@ const LineItemsExclude = () => {
           <CardHeader>
             <CardTitle className="flex items-center text-orange-500">
               <Plus className="mr-2 h-5 w-5" />
-              Add Exclusion
+              Add Order Check In
             </CardTitle>
             <CardDescription className="text-zinc-400">
-              Exclude an order number from line item processing
+              Check in an order number to exclude from processing
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -125,16 +125,16 @@ const LineItemsExclude = () => {
           <CardHeader>
             <CardTitle className="flex items-center text-orange-500">
               <Info className="mr-2 h-5 w-5" />
-              About Exclusions
+              About Order Check In
             </CardTitle>
             <CardDescription className="text-zinc-400">
-              Why exclude order numbers?
+              Why check in orders?
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 text-sm text-zinc-300">
               <p>
-                Exclusions prevent specific HD orders from being processed during line items imports.
+                Checking in orders prevents specific HD orders from being processed during imports.
                 This is useful for:
               </p>
               <ul className="list-disc list-inside space-y-2">
@@ -148,7 +148,7 @@ const LineItemsExclude = () => {
                 </li>
               </ul>
               <p>
-                Excluded orders will be skipped during line items processing, 
+                Checked in orders will be skipped during order processing, 
                 and will not appear in picklists or backorder reports.
               </p>
             </div>
@@ -160,11 +160,11 @@ const LineItemsExclude = () => {
       <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="flex items-center text-orange-500">
-            <X className="mr-2 h-5 w-5" />
-            Excluded Orders
+            <Check className="mr-2 h-5 w-5" />
+            Checked In Orders
           </CardTitle>
           <CardDescription className="text-zinc-400">
-            Currently excluded order numbers
+            Currently checked in order numbers
           </CardDescription>
         </CardHeader>
         <CardContent>

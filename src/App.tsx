@@ -76,7 +76,7 @@ const App = () => (
                 <Route path="/admin/uploads/harley/open-orders" element={<OpenOrdersUpload />} />
                 <Route path="/admin/uploads/harley/order-lines" element={<OrderLinesUpload />} />
                 <Route path="/admin/uploads/harley/backorders" element={<BackordersUpload />} />
-                <Route path="/admin/uploads/harley/exclusions" element={<LineItemsExclude />} />
+                <Route path="/admin/uploads/harley/open-order-check-in" element={<LineItemsExclude />} />
                 
                 <Route path="/admin/uploads/shopify" element={<ShopifyAPI />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
