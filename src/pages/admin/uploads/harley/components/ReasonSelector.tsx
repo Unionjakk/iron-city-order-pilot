@@ -1,8 +1,9 @@
+
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { FormControl, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Check, X } from 'lucide-react';
-import { ExcludeReason } from '../types/excludeTypes';
+import { ExcludeReason } from '../LineItemsExclude';
 
 interface ReasonSelectorProps {
   value: ExcludeReason;

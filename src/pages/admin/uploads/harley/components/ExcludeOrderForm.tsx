@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { ExcludeReason } from '../types/excludeTypes';
+import { ExcludeReason } from '../LineItemsExclude';
 import ReasonSelector from './ReasonSelector';
 import SubmitButton from './SubmitButton';
 
