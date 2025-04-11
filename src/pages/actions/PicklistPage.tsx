@@ -6,12 +6,12 @@ import PicklistTable from "./components/PicklistTable";
 import PicklistFilter from "./components/PicklistFilter";
 import PicklistLoading from "./components/PicklistLoading";
 import { usePicklistData } from "./hooks/usePicklistData";
-import { Package, Bug } from "lucide-react";
+import { Package, Bug, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const PicklistPage = () => {
   const { orders, isLoading, error, refreshData, debugInfo } = usePicklistData();
-  const [showDebug, setShowDebug] = useState(false);
+  const [showDebug, setShowDebug] = useState(true); // Default to true to help with troubleshooting
   const { toast } = useToast();
 
   useEffect(() => {
@@ -33,26 +33,106 @@ const PicklistPage = () => {
           <h1 className="text-2xl font-bold text-orange-500">To Pick</h1>
           <p className="text-orange-400/80">Manage your picking list</p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={toggleDebug}
-          className="flex items-center gap-1"
-        >
-          <Bug className="h-4 w-4" />
-          {showDebug ? 'Hide Debug' : 'Show Debug'}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={refreshData}
+            className="flex items-center gap-1"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            Refresh Data
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleDebug}
+            className="flex items-center gap-1"
+          >
+            <Bug className="h-4 w-4" />
+            {showDebug ? 'Hide Debug' : 'Show Debug'}
+          </Button>
+        </div>
       </div>
       
-      {showDebug && !isLoading && (
+      {showDebug && debugInfo && (
         <Card className="bg-slate-900 border-slate-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-slate-300">Debug Information</CardTitle>
           </CardHeader>
           <CardContent className="text-xs font-mono overflow-x-auto">
-            <pre className="whitespace-pre-wrap">
-              {JSON.stringify(debugInfo, null, 2)}
-            </pre>
+            <div className="space-y-2">
+              <div>
+                <h3 className="text-slate-400 mb-1">Orders Data:</h3>
+                <p className="text-slate-300">Found {debugInfo.orderCount || 0} orders</p>
+                {debugInfo.orderStatus && (
+                  <div className="mt-1">
+                    <p className="text-slate-400">Sample order statuses:</p>
+                    <pre className="whitespace-pre-wrap text-slate-300">
+                      {JSON.stringify(debugInfo.orderStatus, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {debugInfo.availableStatuses && (
+                  <div className="mt-1">
+                    <p className="text-slate-400">Available order statuses:</p>
+                    <pre className="whitespace-pre-wrap text-slate-300">
+                      {JSON.stringify(debugInfo.availableStatuses, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <h3 className="text-slate-400 mb-1">Line Items:</h3>
+                <p className="text-slate-300">
+                  Found {debugInfo.lineItemCount || 0} line items at Leeds location (ID: 53277786267)
+                </p>
+                {debugInfo.locationDistribution && (
+                  <div className="mt-1">
+                    <p className="text-slate-400">Location distribution:</p>
+                    <pre className="whitespace-pre-wrap text-slate-300">
+                      {JSON.stringify(debugInfo.locationDistribution, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {debugInfo.lineItemsFirstFew && (
+                  <div className="mt-1">
+                    <p className="text-slate-400">Sample line items:</p>
+                    <pre className="whitespace-pre-wrap text-slate-300">
+                      {JSON.stringify(debugInfo.lineItemsFirstFew, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <h3 className="text-slate-400 mb-1">Progress Data:</h3>
+                <p className="text-slate-300">Found {debugInfo.progressItemCount || 0} items with progress data</p>
+                {debugInfo.progressItems && (
+                  <div className="mt-1">
+                    <p className="text-slate-400">Sample progress items:</p>
+                    <pre className="whitespace-pre-wrap text-slate-300">
+                      {JSON.stringify(debugInfo.progressItems, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <h3 className="text-slate-400 mb-1">Final Results:</h3>
+                <p className="text-slate-300">
+                  Processed {debugInfo.finalOrderCount || 0} orders with {debugInfo.finalItemCount || 0} items
+                </p>
+              </div>
+              
+              {debugInfo.error && (
+                <div>
+                  <h3 className="text-red-400 mb-1">Error:</h3>
+                  <p className="text-red-300">{debugInfo.error}</p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

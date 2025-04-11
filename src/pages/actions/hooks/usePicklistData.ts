@@ -49,13 +49,14 @@ export const usePicklistData = () => {
       lineItemCount: 0,
       progressItemCount: 0,
       finalOrderCount: 0,
-      finalItemCount: 0
+      finalItemCount: 0,
+      orderStatus: []
     };
     
     try {
       console.log("Fetching picklist data for Leeds location ID:", LEEDS_LOCATION_ID);
       
-      // Step 1: Get all unfulfilled orders with items at Leeds location
+      // Step 1: Get all unfulfilled orders
       const { data: ordersData, error: ordersError } = await supabase
         .from('shopify_orders')
         .select(`
@@ -63,20 +64,37 @@ export const usePicklistData = () => {
           shopify_order_id,
           shopify_order_number,
           customer_name,
-          created_at
+          created_at,
+          status
         `)
-        .eq('status', 'imported');
+        .eq('status', 'unfulfilled');
       
       if (ordersError) throw new Error(`Orders fetch error: ${ordersError.message}`);
+      
+      // Save first few order statuses for debugging
+      debug.orderStatus = ordersData?.slice(0, 5).map(o => ({
+        id: o.shopify_order_id,
+        status: o.status
+      }));
+      
       if (!ordersData || ordersData.length === 0) {
-        console.log("No orders found with status 'imported'");
+        console.log("No orders found with status 'unfulfilled'");
+        
+        // Double-check what order statuses exist
+        const { data: statusCheck } = await supabase
+          .from('shopify_orders')
+          .select('status')
+          .limit(20);
+          
+        debug.availableStatuses = statusCheck?.map(s => s.status);
+        
         setDebugInfo({ ...debug, ordersFetchResult: "No orders found" });
         setOrders([]);
         setIsLoading(false);
         return;
       }
       
-      console.log(`Found ${ordersData.length} orders with status 'imported'`);
+      console.log(`Found ${ordersData.length} orders with status 'unfulfilled'`);
       debug.orderCount = ordersData.length;
       
       // Step 2: Get all line items for these orders that are at Leeds location
@@ -102,14 +120,27 @@ export const usePicklistData = () => {
       
       if (lineItemsData.length === 0) {
         console.log("No line items found for Leeds location");
+        
+        // Add detail about the locations found
+        debug.locationDistribution = {};
+        allLineItemsData?.forEach(item => {
+          if (item.location_id) {
+            debug.locationDistribution[item.location_id] = (debug.locationDistribution[item.location_id] || 0) + 1;
+          } else {
+            debug.locationDistribution['null'] = (debug.locationDistribution['null'] || 0) + 1;
+          }
+        });
+        
+        debug.lineItemsFirstFew = allLineItemsData?.slice(0, 5).map(item => ({
+          id: item.id,
+          location_id: item.location_id,
+          sku: item.sku
+        }));
+        
         setDebugInfo({ 
           ...debug, 
           lineItemsFetchResult: "No line items found for Leeds location",
-          allLineItems: allLineItemsData?.length || 0,
-          allLineItemsFirstFew: allLineItemsData?.slice(0, 5).map(item => ({
-            id: item.id,
-            location_id: item.location_id
-          }))
+          allLineItems: allLineItemsData?.length || 0
         });
         setOrders([]);
         setIsLoading(false);
@@ -150,6 +181,7 @@ export const usePicklistData = () => {
       
       console.log(`Found ${progressData?.length || 0} items with progress data`);
       debug.progressItemCount = progressData?.length || 0;
+      debug.progressItems = progressData?.slice(0, 5);
       
       // Process the data to combine all information
       const processedOrders = ordersData
@@ -163,7 +195,9 @@ export const usePicklistData = () => {
               const progress = progressMap.get(progressKey);
               
               // Only include line items that don't have progress status
-              if (progress?.progress) return null;
+              if (progress?.progress) {
+                return null;
+              }
               
               return {
                 id: item.id,
