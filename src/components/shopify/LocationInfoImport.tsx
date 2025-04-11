@@ -65,6 +65,8 @@ const LocationInfoImport = ({ onImportComplete }: LocationInfoImportProps) => {
       addDebugMessage("API token retrieved from database");
       
       // Call the edge function to update location information
+      addDebugMessage("Calling Shopify locations sync Edge Function...");
+      
       const response = await supabase.functions.invoke('shopify-locations-sync', {
         body: { apiToken: token }
       });

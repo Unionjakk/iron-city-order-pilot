@@ -5,7 +5,7 @@
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { RequestBody, SyncResponse, corsHeaders } from "./types.ts";
 import { updateLineItemLocations, getLineItemsWithoutLocations } from "./database.ts";
-import { fetchOrdersWithLineItems, fetchNextPage } from "./shopifyApi.ts";
+import { fetchOrdersWithLineItems } from "./shopifyApi.ts";
 
 serve(async (req) => {
   console.log("=== Shopify Locations Sync Function Started ===");
@@ -14,7 +14,10 @@ serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     console.log("Handling CORS preflight request");
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 204
+    });
   }
 
   // Initialize response data
@@ -52,11 +55,12 @@ serve(async (req) => {
     
     debug("Starting location data import for existing line items");
 
-    // Get line items that don't have location information
-    const lineItemsWithoutLocation = await getLineItemsWithoutLocations(debug);
+    // Get line items that don't have location information or ALL line items
+    // Since we're running this after a complete refresh, we'll get all line items
+    const lineItemsToUpdate = await getLineItemsWithoutLocations(debug);
     
-    if (lineItemsWithoutLocation.length === 0) {
-      debug("No line items without location data found");
+    if (lineItemsToUpdate.length === 0) {
+      debug("No line items found to update");
       responseData.success = true;
       return new Response(JSON.stringify(responseData), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -64,10 +68,10 @@ serve(async (req) => {
       });
     }
     
-    debug(`Found ${lineItemsWithoutLocation.length} line items without location data`);
+    debug(`Found ${lineItemsToUpdate.length} line items to update with location data`);
     
     // Group line items by order ID to minimize API calls
-    const lineItemsByOrderId = lineItemsWithoutLocation.reduce((acc: Record<string, any[]>, item) => {
+    const lineItemsByOrderId = lineItemsToUpdate.reduce((acc: Record<string, any[]>, item) => {
       if (!acc[item.shopify_order_id]) {
         acc[item.shopify_order_id] = [];
       }
@@ -79,7 +83,7 @@ serve(async (req) => {
     
     // Process orders in batches to respect rate limits
     const orderIds = Object.keys(lineItemsByOrderId);
-    const batchSize = 5; // Process 5 orders at a time
+    const batchSize = 3; // Process 3 orders at a time (reduced for more stability)
     
     let processedOrders = 0;
     let processedLineItems = 0;
@@ -100,7 +104,7 @@ serve(async (req) => {
             continue;
           }
           
-          debug(`Retrieved order ${orderId} with ${order.line_items.length} line items`);
+          debug(`Retrieved order ${orderId} with ${order.line_items.length} line items from Shopify`);
           
           // Map the line items to our database items
           const lineItemUpdates = [];
@@ -110,8 +114,9 @@ serve(async (req) => {
             processedLineItems++;
             
             // Find matching line item in the Shopify response
+            // Convert to string to ensure proper comparison
             const shopifyLineItem = order.line_items.find(item => 
-              item.id === dbLineItem.shopify_line_item_id
+              String(item.id) === String(dbLineItem.shopify_line_item_id)
             );
             
             if (shopifyLineItem) {
@@ -129,13 +134,14 @@ serve(async (req) => {
           
           // Update location information for line items
           if (lineItemUpdates.length > 0) {
+            debug(`Sending update for ${lineItemUpdates.length} line items to database`);
             const updated = await updateLineItemLocations(lineItemUpdates, debug);
             updatedLineItems += updated;
-            debug(`Updated ${updated} line items for order ${orderId}`);
+            debug(`Successfully updated ${updated} line items for order ${orderId}`);
           }
           
           processedOrders++;
-        } catch (error) {
+        } catch (error: any) {
           debug(`Error processing order ${orderId}: ${error.message}`);
           // Continue with other orders even if one fails
         }
@@ -143,7 +149,7 @@ serve(async (req) => {
       
       // Add delay between batches to respect rate limits
       if (i + batchSize < orderIds.length) {
-        const delayMs = 1500; // 1.5 second delay between batches (helps stay under 40 requests/minute)
+        const delayMs = 2000; // 2 second delay between batches (increased for more stability)
         debug(`Waiting ${delayMs}ms before processing next batch to respect rate limits`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
@@ -159,7 +165,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: any) {
     debug(`Error in Shopify locations sync: ${error.message}`);
     responseData.error = error.message;
     

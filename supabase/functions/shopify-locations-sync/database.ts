@@ -8,11 +8,11 @@ const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
- * Get line items without location information
+ * Get line items without location information or all line items
  */
 export async function getLineItemsWithoutLocations(debug: (message: string) => void): Promise<any[]> {
   try {
-    debug("Querying database for line items without location information");
+    debug("Querying database for line items needing location information");
     
     const { data: lineItems, error } = await supabase
       .from("shopify_order_items")
@@ -23,7 +23,6 @@ export async function getLineItemsWithoutLocations(debug: (message: string) => v
         order_id,
         shopify_orders!inner(shopify_order_id)
       `)
-      .is("location_id", null)
       .limit(500); // Limit to 500 items per batch for performance
     
     if (error) {
@@ -40,9 +39,9 @@ export async function getLineItemsWithoutLocations(debug: (message: string) => v
       shopify_order_id: item.shopify_orders.shopify_order_id
     }));
     
-    debug(`Found ${transformedItems.length} line items without location information`);
+    debug(`Found ${transformedItems.length} line items to update with location information`);
     return transformedItems;
-  } catch (error) {
+  } catch (error: any) {
     debug(`Exception in getLineItemsWithoutLocations: ${error.message}`);
     throw error;
   }
@@ -63,12 +62,13 @@ export async function updateLineItemLocations(
   try {
     debug(`Updating location information for ${updates.length} line items`);
     
-    // Split updates into smaller batches if needed
-    const batchSize = 50; // Process 50 updates at a time
+    // Split updates into smaller batches for better reliability
+    const batchSize = 25; // Process 25 updates at a time (reduced for more stability)
     let updatedCount = 0;
     
     for (let i = 0; i < updates.length; i += batchSize) {
       const batch = updates.slice(i, i + batchSize);
+      debug(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(updates.length/batchSize)}, with ${batch.length} items`);
       
       // Create array of update operations
       const updatePromises = batch.map(update => {
@@ -97,11 +97,16 @@ export async function updateLineItemLocations(
       });
       
       debug(`Updated ${batchSuccessCount}/${batch.length} line items in batch ${Math.floor(i/batchSize) + 1}`);
+      
+      // Add a small delay between batches to prevent database connection issues
+      if (i + batchSize < updates.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
     
-    debug(`Successfully updated ${updatedCount}/${updates.length} line items`);
+    debug(`Successfully updated ${updatedCount}/${updates.length} line items in total`);
     return updatedCount;
-  } catch (error) {
+  } catch (error: any) {
     debug(`Exception in updateLineItemLocations: ${error.message}`);
     throw error;
   }

@@ -3,6 +3,7 @@
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS"
 };
 
 // API request body for Shopify sync
@@ -47,6 +48,7 @@ export interface DbLineItem {
   shopify_line_item_id: string;
   title: string;
   order_id: string;
+  shopify_order_id: string;
 }
 
 // Batch update type for line items
