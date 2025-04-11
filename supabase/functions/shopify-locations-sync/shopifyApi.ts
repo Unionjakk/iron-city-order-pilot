@@ -26,12 +26,19 @@ export async function fetchOrdersWithLineItems(
       },
     });
 
-    // Log response information
+    // Log response status and headers
     debug(`Response status: ${response.status} ${response.statusText}`);
+    debug(`Response headers: ${JSON.stringify(Object.fromEntries([...response.headers]))}`);
     
     if (!response.ok) {
-      const errorText = await response.text();
-      debug(`Shopify API error (${response.status}): ${errorText}`);
+      let errorText = "";
+      try {
+        // Try to get the response as text
+        errorText = await response.text();
+        debug(`Shopify API error response body: ${errorText}`);
+      } catch (e) {
+        debug(`Could not read error response text: ${e.message}`);
+      }
       
       if (response.status === 401) {
         throw new Error("Authentication failed. Your Shopify API token might be invalid or expired.");
@@ -49,8 +56,16 @@ export async function fetchOrdersWithLineItems(
       }
     }
 
-    const data = await response.json();
-    debug(`Received JSON response from Shopify: ${JSON.stringify(data).substring(0, 200)}...`);
+    // Try to parse the JSON response
+    let data;
+    try {
+      data = await response.json();
+      debug(`Received JSON response from Shopify: ${JSON.stringify(data).substring(0, 200)}...`);
+    } catch (e) {
+      debug(`Error parsing JSON response: ${e.message}`);
+      debug(`Raw response: ${await response.text()}`);
+      throw new Error(`Failed to parse Shopify API response: ${e.message}`);
+    }
     
     if (!data.order) {
       debug("Unexpected Shopify API response format: " + JSON.stringify(data));
@@ -136,10 +151,17 @@ export async function fetchSingleLineItem(
     });
     
     debug(`Shopify API response status: ${response.status} ${response.statusText}`);
+    debug(`Response headers: ${JSON.stringify(Object.fromEntries([...response.headers]))}`);
     
     if (!response.ok) {
-      const errorText = await response.text();
-      debug(`ERROR: Shopify API returned ${response.status}: ${errorText}`);
+      let errorText = "";
+      try {
+        // Try to get the response as text
+        errorText = await response.text();
+        debug(`Shopify API error response body: ${errorText}`);
+      } catch (e) {
+        debug(`Could not read error response text: ${e.message}`);
+      }
       
       // Special case handling for common errors
       if (response.status === 401) {
@@ -153,8 +175,16 @@ export async function fetchSingleLineItem(
       throw new Error(`Failed to fetch from Shopify API: ${response.status} - ${errorText || "Unknown error"}`);
     }
     
-    const data = await response.json();
-    debug(`Received order data from Shopify, checking for line item ${lineItemId}`);
+    // Try to parse the JSON response
+    let data;
+    try {
+      data = await response.json();
+      debug(`Received order data from Shopify, checking for line item ${lineItemId}`);
+    } catch (e) {
+      debug(`Error parsing JSON response: ${e.message}`);
+      debug(`Raw response: ${await response.text()}`);
+      throw new Error(`Failed to parse Shopify API response: ${e.message}`);
+    }
     
     if (!data.order || !data.order.line_items) {
       debug(`No valid order or line items found for order ${orderId}`);

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, MapPin, RefreshCw, HelpCircle } from 'lucide-react';
+import { AlertCircle, MapPin, RefreshCw, HelpCircle, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,61 +79,77 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
         }
       });
       
-      // Call the edge function directly
-      const fetchResponse = await fetch(edgeFunctionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body)
-      });
-      
-      addDebugMessage(`Direct fetch response status: ${fetchResponse.status}`);
-      
-      const responseText = await fetchResponse.text();
-      addDebugMessage(`Response text (first 100 chars): ${responseText.substring(0, 100)}...`);
-      
-      let responseJson;
+      // Call the edge function with improved error handling
       try {
-        responseJson = JSON.parse(responseText);
-        addDebugMessage("Successfully parsed JSON response");
-      } catch (err) {
-        addDebugMessage(`Error parsing JSON: ${err}`);
-        responseJson = { error: "Invalid JSON response", rawText: responseText.substring(0, 100) + "..." };
-      }
-      
-      setResponseData({
-        status: fetchResponse.status,
-        statusText: fetchResponse.statusText,
-        data: responseJson
-      });
-      
-      if (!fetchResponse.ok) {
-        throw new Error(`Edge function error: ${fetchResponse.status} ${fetchResponse.statusText}`);
-      }
-      
-      if (!responseJson.success) {
-        throw new Error(responseJson.error || "Unknown error from edge function");
-      }
-      
-      // Add debug messages from the edge function if available
-      if (responseJson.debugMessages && Array.isArray(responseJson.debugMessages)) {
-        responseJson.debugMessages.forEach((message: string) => {
-          addDebugMessage(message);
+        const fetchResponse = await fetch(edgeFunctionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body)
         });
+        
+        addDebugMessage(`Edge function response status: ${fetchResponse.status} ${fetchResponse.statusText}`);
+        
+        // Get response as text first to ensure we can handle malformed JSON
+        const responseText = await fetchResponse.text();
+        addDebugMessage(`Response text length: ${responseText.length}`);
+        addDebugMessage(`Response text preview: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
+        
+        let responseJson;
+        try {
+          // Only try to parse if we have content
+          if (responseText.trim()) {
+            responseJson = JSON.parse(responseText);
+            addDebugMessage("Successfully parsed JSON response");
+          } else {
+            addDebugMessage("Warning: Empty response received");
+            responseJson = { error: "Empty response from server" };
+          }
+        } catch (err) {
+          addDebugMessage(`Error parsing JSON: ${err}`);
+          responseJson = { 
+            error: "Invalid JSON response", 
+            rawText: responseText.substring(0, 150) + (responseText.length > 150 ? "..." : "") 
+          };
+        }
+        
+        setResponseData({
+          status: fetchResponse.status,
+          statusText: fetchResponse.statusText,
+          data: responseJson
+        });
+        
+        if (!fetchResponse.ok) {
+          throw new Error(`Edge function error: ${fetchResponse.status} ${fetchResponse.statusText} - ${responseJson?.error || 'Unknown error'}`);
+        }
+        
+        if (!responseJson || !responseJson.success) {
+          throw new Error(responseJson?.error || "Unknown error from edge function");
+        }
+        
+        // Add debug messages from the edge function if available
+        if (responseJson.debugMessages && Array.isArray(responseJson.debugMessages)) {
+          responseJson.debugMessages.forEach((message: string) => {
+            addDebugMessage(`Edge function: ${message}`);
+          });
+        }
+        
+        addDebugMessage(`Successfully updated line item location info`);
+        
+        // Notify user
+        toast({
+          title: "Location Info Updated",
+          description: "Successfully updated location for the line item",
+          variant: "default",
+        });
+        
+        // Refresh data
+        await onUpdateComplete();
+      } catch (fetchErr) {
+        addDebugMessage(`Fetch error: ${fetchErr.message}`);
+        throw new Error(`Error communicating with edge function: ${fetchErr.message}`);
       }
-      
-      addDebugMessage(`Successfully updated line item location info`);
-      
-      // Notify user
-      toast({
-        title: "Location Info Updated",
-        description: "Successfully updated location for the line item",
-        variant: "default",
-      });
-      
-      // Refresh data
-      await onUpdateComplete();
       
     } catch (error: any) {
       console.error('Error updating location info:', error);
@@ -163,10 +179,18 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
       <CardContent className="space-y-4">
         <Alert className="bg-amber-900/20 border-amber-500/50">
           <AlertCircle className="h-5 w-5 text-amber-500" />
-          <AlertTitle className="text-amber-400">Why Both IDs?</AlertTitle>
+          <AlertTitle className="text-amber-400">How It Works</AlertTitle>
           <AlertDescription className="text-zinc-300">
-            In Shopify's data structure, line items exist within orders. To identify a specific line item, 
-            we need both the Order ID (to find the order) and the Line Item ID (to find the specific item within that order).
+            <p className="mb-2">This tool connects to the Shopify API to update location information for a single line item:</p>
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>Enter both the Shopify Order ID and Line Item ID</li>
+              <li>The system calls our edge function which connects to the Shopify API</li>
+              <li>Line item location information is fetched and updated in our database</li>
+            </ol>
+            <p className="mt-2 flex items-center text-sm">
+              <ExternalLink className="h-4 w-4 mr-1" /> Shopify API endpoint used: 
+              <Code className="ml-2 text-xs">https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders/{'{order_id}'}.json</Code>
+            </p>
           </AlertDescription>
         </Alert>
         
@@ -181,7 +205,7 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
                       <HelpCircle className="ml-1 h-4 w-4 text-zinc-500" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p className="max-w-xs">The Shopify Order ID (usually a long number)</p>
+                      <p className="max-w-xs">The Shopify Order ID (usually a long number like 5212345678901)</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -203,7 +227,7 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
                       <HelpCircle className="ml-1 h-4 w-4 text-zinc-500" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p className="max-w-xs">The specific Line Item ID within the order</p>
+                      <p className="max-w-xs">The specific Line Item ID within the order (also a long number)</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
