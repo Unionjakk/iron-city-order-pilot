@@ -1,4 +1,3 @@
-
 // Supabase Edge Function
 // This function handles updating location info for existing line items in Shopify orders
 
@@ -52,50 +51,62 @@ serve(async (req) => {
       debug("No API token provided");
       throw new Error("No API token provided");
     }
+
+    debug("API token validated successfully");
     
     // Check if we're handling a single line item update
     if (body.mode === "single" && body.orderId && body.lineItemId) {
       debug(`Starting single line item update for Order ID: ${body.orderId}, Line Item ID: ${body.lineItemId}`);
       
-      // Get database info for this line item
-      const dbLineItemInfo = await getSingleLineItemInfo(body.orderId, body.lineItemId, debug);
-      
-      if (!dbLineItemInfo) {
-        debug(`No database record found for line item ID ${body.lineItemId}`);
-        throw new Error(`Line item ${body.lineItemId} not found in the database`);
+      try {
+        // Get database info for this line item
+        const dbLineItemInfo = await getSingleLineItemInfo(body.orderId, body.lineItemId, debug);
+        
+        if (!dbLineItemInfo) {
+          debug(`No database record found for line item ID ${body.lineItemId}`);
+          throw new Error(`Line item ${body.lineItemId} not found in the database`);
+        }
+        
+        debug(`Found database record: ${JSON.stringify(dbLineItemInfo)}`);
+        
+        // Fetch the updated info from Shopify API
+        const shopifyLineItem = await fetchSingleLineItem(apiToken, body.orderId, body.lineItemId, debug);
+        
+        if (!shopifyLineItem) {
+          debug(`Line item ${body.lineItemId} not found in Shopify API response`);
+          throw new Error(`Line item ${body.lineItemId} not found in Shopify API`);
+        }
+        
+        debug(`Shopify API response for line item: ${JSON.stringify(shopifyLineItem)}`);
+        
+        // Perform the update
+        const updateInfo = {
+          id: dbLineItemInfo.id,
+          location_id: shopifyLineItem.location_id || null,
+          location_name: shopifyLineItem.location_name || null
+        };
+        
+        debug(`Updating line item with: ${JSON.stringify(updateInfo)}`);
+        
+        const updated = await updateSingleLineItemLocation(updateInfo, debug);
+        
+        responseData.success = true;
+        responseData.updated = updated ? 1 : 0;
+        responseData.apiResponse = shopifyLineItem;
+        
+        return new Response(JSON.stringify(responseData), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      } catch (error: any) {
+        debug(`Error in single line item update: ${error.message}`);
+        responseData.error = `Error updating single line item: ${error.message}`;
+        
+        return new Response(JSON.stringify(responseData), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
       }
-      
-      debug(`Found database record: ${JSON.stringify(dbLineItemInfo)}`);
-      
-      // Fetch the updated info from Shopify API
-      const shopifyLineItem = await fetchSingleLineItem(apiToken, body.orderId, body.lineItemId, debug);
-      
-      if (!shopifyLineItem) {
-        debug(`Line item ${body.lineItemId} not found in Shopify API response`);
-        throw new Error(`Line item ${body.lineItemId} not found in Shopify API`);
-      }
-      
-      debug(`Shopify API response for line item: ${JSON.stringify(shopifyLineItem)}`);
-      
-      // Perform the update
-      const updateInfo = {
-        id: dbLineItemInfo.id,
-        location_id: shopifyLineItem.location_id || null,
-        location_name: shopifyLineItem.location_name || null
-      };
-      
-      debug(`Updating line item with: ${JSON.stringify(updateInfo)}`);
-      
-      const updated = await updateSingleLineItemLocation(updateInfo, debug);
-      
-      responseData.success = true;
-      responseData.updated = updated ? 1 : 0;
-      responseData.apiResponse = shopifyLineItem;
-      
-      return new Response(JSON.stringify(responseData), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
     }
     
     // Original bulk update logic

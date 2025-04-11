@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, MapPin, RefreshCw } from 'lucide-react';
@@ -63,7 +64,7 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
         lineItemId: lineItemId
       };
       
-      // Set request details for display - Fixed the URL construction to avoid using protected property
+      // Set request details for display - using a hardcoded URL to avoid protected property access
       const requestUrl = "https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/shopify-locations-sync";
       setRequestDetails({
         url: requestUrl,

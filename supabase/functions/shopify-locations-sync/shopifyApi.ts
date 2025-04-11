@@ -49,7 +49,7 @@ export async function fetchOrdersWithLineItems(
     const data = await response.json();
     
     if (!data.order) {
-      debug("Unexpected Shopify API response format:", JSON.stringify(data));
+      debug("Unexpected Shopify API response format: " + JSON.stringify(data));
       throw new Error("Received unexpected data format from Shopify API");
     }
     
