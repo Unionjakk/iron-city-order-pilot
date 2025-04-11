@@ -16,6 +16,7 @@ export async function fetchOrdersWithLineItems(
     
     debug(`Fetching from Shopify API: ${url}`);
     debug(`Using API token: ${apiToken.substring(0, 4)}...${apiToken.substring(apiToken.length - 4)}`);
+    debug(`Token type: ${typeof apiToken}, length: ${apiToken.length}`);
     
     const response = await fetch(url, {
       method: "GET",
@@ -50,6 +51,7 @@ export async function fetchOrdersWithLineItems(
     }
 
     const data = await response.json();
+    debug(`Received JSON response from Shopify: ${JSON.stringify(data).substring(0, 200)}...`);
     
     if (!data.order) {
       debug("Unexpected Shopify API response format: " + JSON.stringify(data));
@@ -118,6 +120,7 @@ export async function fetchSingleLineItem(
   try {
     debug(`Fetching single line item: Order ID ${orderId}, Line Item ID ${lineItemId}`);
     debug(`API Token format check: ${typeof apiToken === 'string' ? 'Valid format' : 'Invalid format'}, Length: ${apiToken?.length || 0}`);
+    debug(`First 4 chars of token: ${apiToken.substring(0, 4)}, last 4: ${apiToken.substring(apiToken.length - 4)}`);
     
     // Direct API call instead of using fetchOrdersWithLineItems to bypass potential issues
     const baseEndpoint = "https://opus-harley-davidson.myshopify.com/admin/api/2023-07";
@@ -125,13 +128,17 @@ export async function fetchSingleLineItem(
     
     debug(`Direct API call to: ${url}`);
     
+    // Log all headers for debugging
+    const headers = {
+      "X-Shopify-Access-Token": apiToken,
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    };
+    debug(`Request headers: ${JSON.stringify(headers).replace(apiToken, "REDACTED")}`);
+    
     const response = await fetch(url, {
       method: "GET",
-      headers: {
-        "X-Shopify-Access-Token": apiToken,
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
+      headers: headers,
     });
     
     debug(`Shopify API response status: ${response.status} ${response.statusText}`);
@@ -143,6 +150,7 @@ export async function fetchSingleLineItem(
     }
     
     const data = await response.json();
+    debug(`Received data from Shopify: ${JSON.stringify(data).substring(0, 200)}...`);
     
     if (!data.order || !data.order.line_items) {
       debug(`No valid order or line items found for order ${orderId}`);

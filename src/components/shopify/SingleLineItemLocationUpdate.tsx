@@ -55,6 +55,7 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
       }
       
       addDebugMessage("API token retrieved from database");
+      addDebugMessage(`Token format: ${typeof token}, length: ${token.length}`);
       
       // Prepare request details
       const body = { 
@@ -65,58 +66,121 @@ const SingleLineItemLocationUpdate: React.FC<SingleLineItemLocationUpdateProps> 
       };
       
       // Using the hardcoded URL to avoid protected property access
-      const requestUrl = "https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/shopify-locations-sync";
+      const requestUrl = `${window.location.origin}/functions/v1/shopify-locations-sync`;
+      addDebugMessage(`Generated request URL: ${requestUrl}`);
+      
+      // Fall back to hardcoded URL if needed
+      const fallbackUrl = "https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/shopify-locations-sync";
+      addDebugMessage(`Using fallback URL if needed: ${fallbackUrl}`);
+      
+      const finalUrl = requestUrl.includes('functions/v1') ? requestUrl : fallbackUrl;
+      
       setRequestDetails({
-        url: requestUrl,
+        url: finalUrl,
         body: body
       });
       
-      addDebugMessage(`Calling Edge Function: ${requestUrl}`);
-      addDebugMessage(`Request payload: ${JSON.stringify(body, null, 2)}`);
+      addDebugMessage(`Calling Edge Function: ${finalUrl}`);
+      addDebugMessage(`Request payload: ${JSON.stringify(body, null, 2).replace(token, "[REDACTED]")}`);
       
-      // Call the edge function to update location information
-      const response = await supabase.functions.invoke('shopify-locations-sync', {
-        body: body
-      });
-      
-      // Store full response for display
-      setResponseData(response);
-      
-      if (response.error) {
-        console.error('Error invoking shopify-locations-sync function:', response.error);
-        addDebugMessage(`Error from Edge Function: ${response.error.message || 'Unknown error'}`);
-        throw new Error(`Failed to connect to Shopify API: ${response.error.message || 'Unknown error'}`);
-      }
-      
-      const data = response.data;
-      addDebugMessage(`Response received: ${JSON.stringify(data, null, 2)}`);
-      
-      if (!data || !data.success) {
-        const errorMsg = data?.error || 'Unknown error occurred during location info sync';
-        console.error('Location info sync failed:', errorMsg);
-        addDebugMessage(`Location sync failed: ${errorMsg}`);
-        throw new Error(`Location info sync failed: ${errorMsg}`);
-      }
-      
-      // Add debug messages from the edge function
-      if (data.debugMessages && Array.isArray(data.debugMessages)) {
-        data.debugMessages.forEach((message: string) => {
-          addDebugMessage(message);
+      // Call the edge function directly with a fetch request for more control
+      try {
+        addDebugMessage("Attempting direct fetch to edge function...");
+        
+        const fetchResponse = await fetch(finalUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.getSession() ? 'session_token' : 'no_session'}`
+          },
+          body: JSON.stringify(body)
+        });
+        
+        addDebugMessage(`Direct fetch response status: ${fetchResponse.status}`);
+        
+        const responseText = await fetchResponse.text();
+        addDebugMessage(`Response text (first 100 chars): ${responseText.substring(0, 100)}...`);
+        
+        let responseJson;
+        try {
+          responseJson = JSON.parse(responseText);
+          addDebugMessage("Successfully parsed JSON response");
+        } catch (err) {
+          addDebugMessage(`Error parsing JSON: ${err}`);
+          responseJson = { error: "Invalid JSON response", rawText: responseText.substring(0, 100) + "..." };
+        }
+        
+        setResponseData({
+          status: fetchResponse.status,
+          statusText: fetchResponse.statusText,
+          data: responseJson
+        });
+        
+        if (!fetchResponse.ok) {
+          throw new Error(`Edge function error: ${fetchResponse.status} ${fetchResponse.statusText}`);
+        }
+        
+        if (!responseJson.success) {
+          throw new Error(responseJson.error || "Unknown error from edge function");
+        }
+        
+        addDebugMessage(`Successfully updated line item location info`);
+        
+        // Notify user
+        toast({
+          title: "Location Info Updated",
+          description: "Successfully updated location for the line item",
+          variant: "default",
+        });
+        
+      } catch (directFetchError: any) {
+        addDebugMessage(`Direct fetch failed: ${directFetchError.message}`);
+        addDebugMessage("Falling back to supabase.functions.invoke...");
+        
+        // Fall back to supabase.functions.invoke
+        const response = await supabase.functions.invoke('shopify-locations-sync', {
+          body: body
+        });
+        
+        // Store full response for display
+        setResponseData(response);
+        
+        if (response.error) {
+          console.error('Error invoking shopify-locations-sync function:', response.error);
+          addDebugMessage(`Error from Edge Function: ${response.error.message || 'Unknown error'}`);
+          throw new Error(`Failed to connect to Shopify API: ${response.error.message || 'Unknown error'}`);
+        }
+        
+        const data = response.data;
+        addDebugMessage(`Response received: ${JSON.stringify(data, null, 2)}`);
+        
+        if (!data || !data.success) {
+          const errorMsg = data?.error || 'Unknown error occurred during location info sync';
+          console.error('Location info sync failed:', errorMsg);
+          addDebugMessage(`Location sync failed: ${errorMsg}`);
+          throw new Error(`Location info sync failed: ${errorMsg}`);
+        }
+        
+        // Add debug messages from the edge function
+        if (data.debugMessages && Array.isArray(data.debugMessages)) {
+          data.debugMessages.forEach((message: string) => {
+            addDebugMessage(message);
+          });
+        }
+        
+        const resultMessage = data.updated > 0 
+          ? `Successfully updated location for line item ${lineItemId}`
+          : 'Operation completed but no updates were made';
+        
+        addDebugMessage(resultMessage);
+        
+        // Notify user
+        toast({
+          title: "Location Info Updated",
+          description: resultMessage,
+          variant: "default",
         });
       }
-      
-      const resultMessage = data.updated > 0 
-        ? `Successfully updated location for line item ${lineItemId}`
-        : 'Operation completed but no updates were made';
-      
-      addDebugMessage(resultMessage);
-      
-      // Notify user
-      toast({
-        title: "Location Info Updated",
-        description: resultMessage,
-        variant: "default",
-      });
       
       // Refresh data
       await onUpdateComplete();
