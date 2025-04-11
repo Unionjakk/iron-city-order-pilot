@@ -53,10 +53,9 @@ serve(async (req) => {
       throw new Error("No API token provided");
     }
     
-    debug("Starting location data import for existing line items");
+    debug("Starting location data import for all line items");
 
-    // Get line items that don't have location information or ALL line items
-    // Since we're running this after a complete refresh, we'll get all line items
+    // Get all line items for location update
     const lineItemsToUpdate = await getLineItemsWithoutLocations(debug);
     
     if (lineItemsToUpdate.length === 0) {
@@ -83,15 +82,25 @@ serve(async (req) => {
     
     // Process orders in batches to respect rate limits
     const orderIds = Object.keys(lineItemsByOrderId);
-    const batchSize = 3; // Process 3 orders at a time (reduced for more stability)
+    
+    // Calculate total batches for progress reporting
+    const batchSize = 5; // Process 5 orders at a time (increased from 3 for better performance) 
+    const totalBatches = Math.ceil(orderIds.length / batchSize);
+    debug(`Will process ${totalBatches} batches of orders, ${batchSize} orders per batch`);
     
     let processedOrders = 0;
     let processedLineItems = 0;
     let updatedLineItems = 0;
     
+    // Process each batch of orders
     for (let i = 0; i < orderIds.length; i += batchSize) {
       const batchOrderIds = orderIds.slice(i, i + batchSize);
-      debug(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(orderIds.length/batchSize)}, with ${batchOrderIds.length} orders`);
+      const currentBatch = Math.floor(i/batchSize) + 1;
+      debug(`Processing batch ${currentBatch} of ${totalBatches}, with ${batchOrderIds.length} orders`);
+      debug(`Overall progress: ${Math.round((i / orderIds.length) * 100)}%`);
+      
+      // Create array to hold all line item updates for this batch
+      const batchLineItemUpdates = [];
       
       // Process each order in the batch
       for (const orderId of batchOrderIds) {
@@ -107,7 +116,6 @@ serve(async (req) => {
           debug(`Retrieved order ${orderId} with ${order.line_items.length} line items from Shopify`);
           
           // Map the line items to our database items
-          const lineItemUpdates = [];
           const dbLineItems = lineItemsByOrderId[orderId];
           
           for (const dbLineItem of dbLineItems) {
@@ -122,7 +130,7 @@ serve(async (req) => {
             if (shopifyLineItem) {
               debug(`Found matching line item ${shopifyLineItem.id} for order ${orderId}`);
               
-              lineItemUpdates.push({
+              batchLineItemUpdates.push({
                 id: dbLineItem.id,
                 location_id: shopifyLineItem.location_id || null,
                 location_name: shopifyLineItem.location_name || null
@@ -132,14 +140,6 @@ serve(async (req) => {
             }
           }
           
-          // Update location information for line items
-          if (lineItemUpdates.length > 0) {
-            debug(`Sending update for ${lineItemUpdates.length} line items to database`);
-            const updated = await updateLineItemLocations(lineItemUpdates, debug);
-            updatedLineItems += updated;
-            debug(`Successfully updated ${updated} line items for order ${orderId}`);
-          }
-          
           processedOrders++;
         } catch (error: any) {
           debug(`Error processing order ${orderId}: ${error.message}`);
@@ -147,9 +147,17 @@ serve(async (req) => {
         }
       }
       
+      // Update location information for all line items in the batch
+      if (batchLineItemUpdates.length > 0) {
+        debug(`Sending update for ${batchLineItemUpdates.length} line items to database`);
+        const updated = await updateLineItemLocations(batchLineItemUpdates, debug);
+        updatedLineItems += updated;
+        debug(`Successfully updated ${updated} line items for batch ${currentBatch}`);
+      }
+      
       // Add delay between batches to respect rate limits
       if (i + batchSize < orderIds.length) {
-        const delayMs = 2000; // 2 second delay between batches (increased for more stability)
+        const delayMs = 1500; // 1.5 second delay between batches (reduced from 2s for better performance)
         debug(`Waiting ${delayMs}ms before processing next batch to respect rate limits`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }

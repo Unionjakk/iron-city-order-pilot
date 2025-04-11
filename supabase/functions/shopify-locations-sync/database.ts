@@ -8,39 +8,65 @@ const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
- * Get line items without location information or all line items
+ * Get all line items that need location information updated
  */
 export async function getLineItemsWithoutLocations(debug: (message: string) => void): Promise<any[]> {
   try {
-    debug("Querying database for line items needing location information");
+    debug("Querying database for all line items needing location information");
     
-    const { data: lineItems, error } = await supabase
-      .from("shopify_order_items")
-      .select(`
-        id, 
-        shopify_line_item_id, 
-        title,
-        order_id,
-        shopify_orders!inner(shopify_order_id)
-      `)
-      .limit(500); // Limit to 500 items per batch for performance
+    // Create paginated query to handle large datasets
+    let allLineItems: any[] = [];
+    let page = 0;
+    const pageSize = 1000; // Process 1000 items per page
+    let hasMore = true;
     
-    if (error) {
-      debug(`Error retrieving line items: ${error.message}`);
-      throw new Error(`Failed to retrieve line items: ${error.message}`);
+    while (hasMore) {
+      debug(`Fetching page ${page + 1} of line items, ${pageSize} items per page`);
+      
+      const { data: lineItems, error } = await supabase
+        .from("shopify_order_items")
+        .select(`
+          id, 
+          shopify_line_item_id, 
+          title,
+          order_id,
+          shopify_orders!inner(shopify_order_id)
+        `)
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (error) {
+        debug(`Error retrieving line items page ${page + 1}: ${error.message}`);
+        throw new Error(`Failed to retrieve line items: ${error.message}`);
+      }
+      
+      if (lineItems && lineItems.length > 0) {
+        // Transform the results to include Shopify order ID directly
+        const transformedItems = lineItems.map(item => ({
+          id: item.id,
+          shopify_line_item_id: item.shopify_line_item_id,
+          title: item.title,
+          order_id: item.order_id,
+          shopify_order_id: item.shopify_orders.shopify_order_id
+        }));
+        
+        allLineItems = [...allLineItems, ...transformedItems];
+        debug(`Added ${transformedItems.length} line items from page ${page + 1}`);
+        
+        // If we got less than the page size, we've reached the end
+        if (lineItems.length < pageSize) {
+          hasMore = false;
+          debug(`Reached the end of line items at page ${page + 1}`);
+        }
+      } else {
+        hasMore = false;
+        debug(`No more line items found at page ${page + 1}`);
+      }
+      
+      page++;
     }
     
-    // Transform the results to include Shopify order ID directly
-    const transformedItems = lineItems.map(item => ({
-      id: item.id,
-      shopify_line_item_id: item.shopify_line_item_id,
-      title: item.title,
-      order_id: item.order_id,
-      shopify_order_id: item.shopify_orders.shopify_order_id
-    }));
-    
-    debug(`Found ${transformedItems.length} line items to update with location information`);
-    return transformedItems;
+    debug(`Found a total of ${allLineItems.length} line items to update with location information`);
+    return allLineItems;
   } catch (error: any) {
     debug(`Exception in getLineItemsWithoutLocations: ${error.message}`);
     throw error;
@@ -63,7 +89,7 @@ export async function updateLineItemLocations(
     debug(`Updating location information for ${updates.length} line items`);
     
     // Split updates into smaller batches for better reliability
-    const batchSize = 25; // Process 25 updates at a time (reduced for more stability)
+    const batchSize = 50; // Process 50 updates at a time (increased from 25 for better performance)
     let updatedCount = 0;
     
     for (let i = 0; i < updates.length; i += batchSize) {
@@ -100,7 +126,7 @@ export async function updateLineItemLocations(
       
       // Add a small delay between batches to prevent database connection issues
       if (i + batchSize < updates.length) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300)); // Reduced delay to 300ms for faster processing
       }
     }
     
