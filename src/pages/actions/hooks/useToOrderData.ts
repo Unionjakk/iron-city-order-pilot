@@ -131,16 +131,50 @@ export const useToOrderData = (): PicklistDataResult => {
       // Create a lookup map for stock data
       const stockMap = createStockMap(stockData || []);
       
+      // Build a mapping of order_id -> shopify_order_id
+      const orderIdToShopifyOrderId = {};
+      ordersData.forEach(order => {
+        orderIdToShopifyOrderId[order.id] = order.shopify_order_id;
+      });
+      
       // Process the line items data to include stock info and progress status
       const processedLineItems = lineItemsData.map(item => {
         const stock = stockMap.get(item.sku);
-        const progressKey = `${item.order_id}_${item.sku}`;
-        const progress = progressMap.get(progressKey);
         
-        // Debug - log key information about the item and its progress status
-        if (progress) {
-          console.log(`Debug - Line item: Order ID ${item.order_id}, SKU ${item.sku}, Progress: "${progress.progress}"`);
+        // Use the shopify_order_id (not order_id) to look up progress
+        const shopifyOrderId = orderIdToShopifyOrderId[item.order_id];
+        if (!shopifyOrderId) {
+          console.log(`Warning: No shopify_order_id found for order_id ${item.order_id}`);
         }
+        
+        // Debug - try to match progress for "No SKU" items
+        let progress = null;
+        let notes = null;
+        
+        // Check for a match with the specific SKU
+        if (item.sku) {
+          const progressKey = `${shopifyOrderId}_${item.sku}`;
+          const progressData = progressMap.get(progressKey);
+          if (progressData) {
+            progress = progressData.progress;
+            notes = progressData.notes;
+          }
+        }
+        
+        // If no match was found and sku is empty/null, check for "No SKU" entries
+        if (!progress && (!item.sku || item.sku.trim() === '')) {
+          const noSkuKey = `${shopifyOrderId}_No SKU`;
+          const noSkuProgressData = progressMap.get(noSkuKey);
+          if (noSkuProgressData) {
+            progress = noSkuProgressData.progress;
+            notes = noSkuProgressData.notes;
+            console.log(`Debug - Matched "No SKU" progress for order ${shopifyOrderId}`);
+          }
+        }
+        
+        // Debug logging for progress matching
+        console.log(`Debug - Line item: Order ID ${item.order_id}, SKU ${item.sku || 'empty'}, ` +
+                    `ShopifyOrderId ${shopifyOrderId}, Progress: "${progress}"`);
         
         return {
           ...item,
@@ -150,8 +184,8 @@ export const useToOrderData = (): PicklistDataResult => {
           bin_location: stock?.bin_location || null,
           cost: stock?.cost || null,
           // Progress data
-          progress: progress?.progress || null,
-          notes: progress?.notes || null
+          progress: progress,
+          notes: notes
         };
       });
       
@@ -180,18 +214,22 @@ export const useToOrderData = (): PicklistDataResult => {
       let toOrderItemCount = 0;
       processedLineItems.forEach(item => {
         // Debug - log what's happening with the progress check
-        console.log(`Debug - Checking item: ${item.sku}, Progress: "${item.progress}", Match: ${item.progress === "To Order"}`);
+        console.log(`Debug - Checking item: ${item.sku || 'empty'}, Progress: "${item.progress}", Match: ${item.progress === "To Order"}`);
         
-        if (item.progress === "To Order") {
+        // Case-insensitive comparison for "To Order"
+        const isToOrder = item.progress && item.progress.toLowerCase() === "to order";
+        if (isToOrder) {
           toOrderItemCount++;
           const order = orderMap.get(item.order_id);
           if (order) {
             order.items.push(item);
+          } else {
+            console.log(`Warning: No order found for order_id ${item.order_id}`);
           }
         }
       });
       
-      console.log(`Debug - Found ${toOrderItemCount} items with exact "To Order" progress`);
+      console.log(`Debug - Found ${toOrderItemCount} items with "To Order" progress`);
       
       // Convert the map to an array of orders
       const resultOrders = Array.from(orderMap.values());

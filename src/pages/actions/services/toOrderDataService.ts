@@ -28,7 +28,7 @@ export const fetchOrdersWithToOrderItems = async () => {
   console.log(`Found ${progressData.length} orders with 'To Order' progress items:`, progressData);
   
   // Extract the order IDs
-  const orderIds = progressData.map(item => item.shopify_order_id);
+  const orderIds = [...new Set(progressData.map(item => item.shopify_order_id))];
   
   // Now fetch just those orders
   const { data, error } = await supabase
