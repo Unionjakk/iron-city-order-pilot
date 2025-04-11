@@ -1,7 +1,7 @@
 
 // Supabase Edge Function
-// This function handles importing ALL orders from Shopify
-// It imports all orders without archiving
+// This function handles importing ONLY ACTIVE unfulfilled and partially fulfilled orders from Shopify
+// It does not import archived orders or fulfilled orders
 
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { 
@@ -102,20 +102,29 @@ serve(async (req) => {
     }
     
     // Standard import operation
-    debug("Starting import of UNFULFILLED and PARTIALLY FULFILLED orders from Shopify");
+    debug("Starting import of ACTIVE UNFULFILLED and PARTIALLY FULFILLED orders from Shopify");
+    debug("NOTE: This function does NOT import archived orders or fulfilled orders");
 
     try {
       // Get API endpoint from database
       const apiEndpoint = await getShopifyApiEndpoint(debug);
       debug(`Using Shopify API endpoint: ${apiEndpoint}`);
 
-      // STEP 1: Fetch ALL orders from Shopify with proper pagination
+      // STEP 1: Fetch orders from Shopify with proper pagination
       debug("Fetching orders from Shopify");
       let shopifyOrders: ShopifyOrder[] = [];
       let nextPageUrl: string | null = null;
       
-      // First page of orders - get all orders
-      const firstPageResult = await fetchAllShopifyOrdersWithPagination(apiToken, apiEndpoint);
+      // First page of orders - get all orders with status filter
+      // Adding status=any parameter to include orders without a status field (which are unfulfilled)
+      const statusParam = "status=any";
+      const apiEndpointWithStatus = apiEndpoint.includes('?') 
+        ? `${apiEndpoint}&${statusParam}` 
+        : `${apiEndpoint}?${statusParam}`;
+        
+      debug(`Using API endpoint with status filter: ${apiEndpointWithStatus}`);
+      
+      const firstPageResult = await fetchAllShopifyOrdersWithPagination(apiToken, apiEndpointWithStatus);
       shopifyOrders = firstPageResult.orders;
       nextPageUrl = firstPageResult.nextPageUrl;
       
@@ -123,7 +132,6 @@ serve(async (req) => {
       
       // Continue fetching if there are more pages
       let pageCount = 1;
-      // No page limit - fetch all orders
       
       while (nextPageUrl) {
         pageCount++;
@@ -146,16 +154,24 @@ serve(async (req) => {
       
       debug(`Total orders retrieved: ${shopifyOrders.length}`);
 
-      // IMPORTANT: Filter orders to only include unfulfilled or partially_fulfilled orders
-      debug("Filtering orders to include only unfulfilled and partially fulfilled orders");
+      // IMPORTANT: Filter orders to only include active unfulfilled or partially_fulfilled orders
+      debug("Filtering orders to include only ACTIVE unfulfilled and partially fulfilled orders");
       const filteredOrders = shopifyOrders.filter(order => {
         // Include orders that are unfulfilled or partially_fulfilled
         // or ones where fulfillment_status is null/undefined (which means unfulfilled)
         const status = order.fulfillment_status || "unfulfilled";
-        return status === "unfulfilled" || status === "partially_fulfilled";
+        
+        // Check if order is cancelled or archived
+        const isCancelled = order.cancelled_at != null;
+        const isArchived = order.closed_at != null;
+        
+        // Only include active (not cancelled or archived) unfulfilled/partially fulfilled orders
+        return (status === "unfulfilled" || status === "partially_fulfilled") && 
+               !isCancelled && 
+               !isArchived;
       });
       
-      debug(`Filtered to ${filteredOrders.length} unfulfilled/partially fulfilled orders out of ${shopifyOrders.length} total orders`);
+      debug(`Filtered to ${filteredOrders.length} active unfulfilled/partially fulfilled orders out of ${shopifyOrders.length} total orders`);
 
       // Count total line items for logging
       let totalLineItems = 0;
@@ -197,7 +213,7 @@ serve(async (req) => {
     
     responseData.success = true;
     debug("Shopify sync completed successfully");
-    debug(`Summary: Imported ${responseData.imported} unfulfilled/partially fulfilled orders`);
+    debug(`Summary: Imported ${responseData.imported} active unfulfilled/partially fulfilled orders`);
 
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

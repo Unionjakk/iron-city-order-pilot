@@ -30,8 +30,8 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
     try {
       addDebugMessage("Starting import-only operation (recovery mode)");
       
-      // Import unfulfilled/partially fulfilled orders from Shopify
-      addDebugMessage("Importing unfulfilled and partially fulfilled orders from Shopify...");
+      // Import active unfulfilled/partially fulfilled orders from Shopify
+      addDebugMessage("Importing active unfulfilled and partially fulfilled orders from Shopify...");
       const importResult = await importAllOrders(addDebugMessage);
       
       // Update last sync time
@@ -40,7 +40,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       
       toast({
         title: "Recovery Import Complete",
-        description: `Successfully imported ${importResult.imported || 0} unfulfilled orders from Shopify`,
+        description: `Successfully imported ${importResult.imported || 0} active unfulfilled orders from Shopify`,
         variant: "default",
       });
       
@@ -68,7 +68,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
   const handleCompleteRefresh = async () => {
     if (isDeleting || isImporting) return; // Prevent multiple clicks
 
-    if (!confirm("WARNING: This will delete ALL existing orders and import unfulfilled/partially fulfilled orders from Shopify. This operation cannot be undone. Are you sure you want to continue?")) {
+    if (!confirm("WARNING: This will delete ALL existing orders and import only ACTIVE unfulfilled/partially fulfilled orders from Shopify. This operation cannot be undone. Are you sure you want to continue?")) {
       return;
     }
 
@@ -84,10 +84,10 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       addDebugMessage("Step 1: Deleting all existing orders...");
       await deleteAllOrders(addDebugMessage);
       
-      // Step 2: Import unfulfilled/partially fulfilled orders from Shopify
+      // Step 2: Import active unfulfilled/partially fulfilled orders from Shopify
       setIsDeleting(false);
       setIsImporting(true);
-      addDebugMessage("Step 2: Importing unfulfilled and partially fulfilled orders from Shopify...");
+      addDebugMessage("Step 2: Importing active unfulfilled and partially fulfilled orders from Shopify...");
       const importResult = await importAllOrders(addDebugMessage);
       
       // Step 3: Update last sync time
@@ -96,7 +96,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       
       toast({
         title: "Refresh Complete",
-        description: `Successfully imported ${importResult.imported || 0} unfulfilled orders from Shopify`,
+        description: `Successfully imported ${importResult.imported || 0} active unfulfilled orders from Shopify`,
         variant: "default",
       });
       
