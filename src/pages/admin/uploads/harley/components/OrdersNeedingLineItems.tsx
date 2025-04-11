@@ -38,12 +38,12 @@ const OrdersNeedingLineItems = () => {
         
         if (excludedError) throw excludedError;
         
-        // Get excluded order numbers from hd_order_singleitems_exclude
-        const { data: singleItemsExcluded, error: singleItemsError } = await supabase
-          .from('hd_order_singleitems_exclude')
+        // Get excluded order numbers from hd_line_items_exclude
+        const { data: lineItemsExcluded, error: lineItemsExcludedError } = await supabase
+          .from('hd_line_items_exclude')
           .select('hd_order_number');
         
-        if (singleItemsError) throw singleItemsError;
+        if (lineItemsExcludedError) throw lineItemsExcludedError;
         
         // Get orders that already have line items
         const { data: ordersWithLineItems, error: lineItemsError } = await supabase
@@ -54,7 +54,7 @@ const OrdersNeedingLineItems = () => {
         
         // Create arrays of excluded order numbers
         const excludedOrderNumbers = excludedOrders.map(o => o.hd_order_number);
-        const singleItemsExcludedNumbers = singleItemsExcluded.map(o => o.hd_order_number);
+        const lineItemsExcludedNumbers = lineItemsExcluded.map(o => o.hd_order_number);
         
         // Get unique order numbers with line items using Set
         const ordersWithLineItemsNumbers = [...new Set(ordersWithLineItems.map(o => o.hd_order_number))];
@@ -71,8 +71,8 @@ const OrdersNeedingLineItems = () => {
           query = query.not('hd_order_number', 'in', `(${excludedOrderNumbers.map(n => `"${n}"`).join(',')})`);
         }
         
-        if (singleItemsExcludedNumbers.length > 0) {
-          query = query.not('hd_order_number', 'in', `(${singleItemsExcludedNumbers.map(n => `"${n}"`).join(',')})`);
+        if (lineItemsExcludedNumbers.length > 0) {
+          query = query.not('hd_order_number', 'in', `(${lineItemsExcludedNumbers.map(n => `"${n}"`).join(',')})`);
         }
         
         if (ordersWithLineItemsNumbers.length > 0) {
