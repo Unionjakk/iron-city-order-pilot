@@ -13,6 +13,7 @@ import DatabaseHealthCheckCard from './components/DatabaseHealthCheckCard';
 import OrdersViewCard from './components/OrdersViewCard';
 import ApiDocumentationCard from './components/ApiDocumentationCard';
 import CompleteRefresh from '@/components/shopify/CompleteRefresh';
+import LocationInfoImport from '@/components/shopify/LocationInfoImport';
 
 // IMPORTANT: This component interacts with a PRODUCTION Shopify API
 // Any changes must maintain compatibility with the live system
@@ -168,6 +169,13 @@ const ShopifyAPIPage = () => {
       {hasToken && (
         <CompleteRefresh
           onRefreshComplete={fetchRecentOrders}
+        />
+      )}
+      
+      {/* Location Info Import */}
+      {hasToken && (
+        <LocationInfoImport
+          onImportComplete={fetchRecentOrders}
         />
       )}
       
