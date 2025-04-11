@@ -151,52 +151,53 @@ export async function fetchSingleLineItem(
     });
     
     debug(`Shopify API response status: ${response.status} ${response.statusText}`);
-    debug(`Response headers: ${JSON.stringify(Object.fromEntries([...response.headers]))}`);
+    
+    // Get full response contents for debugging
+    const responseText = await response.text();
+    debug(`Full response text: ${responseText.length > 500 ? responseText.substring(0, 500) + "..." : responseText}`);
     
     if (!response.ok) {
-      let errorText = "";
-      try {
-        // Try to get the response as text
-        errorText = await response.text();
-        debug(`Shopify API error response body: ${errorText}`);
-      } catch (e) {
-        debug(`Could not read error response text: ${e.message}`);
-      }
-      
-      // Special case handling for common errors
       if (response.status === 401) {
         throw new Error("Authentication failed. Your Shopify API token might be invalid or expired.");
       } else if (response.status === 404) {
         throw new Error(`Order ${orderId} not found in Shopify.`);
       } else if (response.status === 403) {
         throw new Error("Access forbidden. Your API token might not have the necessary permissions.");
+      } else if (response.status === 429) {
+        debug("Rate limit hit, waiting and retrying...");
+        // Wait for 2 seconds and retry
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return fetchSingleLineItem(apiToken, orderId, lineItemId, debug);
+      } else {
+        throw new Error(`Shopify API error: ${response.status} - ${responseText || "Unknown error"}`);
       }
-      
-      throw new Error(`Failed to fetch from Shopify API: ${response.status} - ${errorText || "Unknown error"}`);
     }
     
     // Try to parse the JSON response
     let data;
     try {
-      data = await response.json();
+      data = JSON.parse(responseText);
       debug(`Received order data from Shopify, checking for line item ${lineItemId}`);
     } catch (e) {
       debug(`Error parsing JSON response: ${e.message}`);
-      debug(`Raw response: ${await response.text()}`);
       throw new Error(`Failed to parse Shopify API response: ${e.message}`);
     }
     
     if (!data.order || !data.order.line_items) {
       debug(`No valid order or line items found for order ${orderId}`);
-      return null;
+      throw new Error(`No valid order or line items returned for order ${orderId}`);
     }
+    
+    // Log line items for debugging
+    debug(`Order has ${data.order.line_items.length} line items. Available IDs: ${data.order.line_items.map((item: any) => item.id).join(', ')}`);
     
     // Find the specific line item
     const lineItem = data.order.line_items.find((item: any) => String(item.id) === String(lineItemId));
     
     if (!lineItem) {
       debug(`Line item ${lineItemId} not found in order ${orderId}`);
-      return null;
+      // Throw specific error for line item not found
+      throw new Error(`Line item ${lineItemId} not found in Shopify order ${orderId}`);
     }
     
     debug(`Successfully found line item ${lineItemId} in order ${orderId}`);
