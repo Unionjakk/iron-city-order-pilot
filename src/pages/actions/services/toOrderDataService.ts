@@ -11,7 +11,7 @@ export const fetchOrdersWithToOrderItems = async () => {
   // First get the shopify order IDs that have "To Order" progress
   const { data: progressData, error: progressError } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id')
+    .select('shopify_order_id, sku')
     .eq('progress', 'To Order');
     
   if (progressError) {
@@ -84,6 +84,20 @@ export const fetchLineItemsForOrders = async (orderIds: string[]) => {
  */
 export const fetchToOrderItemsProgress = async () => {
   console.log("Fetching 'To Order' progress items...");
+  
+  // Debug query to see all progress values
+  const { data: allProgress, error: allProgressError } = await supabase
+    .from('iron_city_order_progress')
+    .select('progress')
+    .limit(10);
+    
+  if (allProgressError) {
+    console.error("Progress fetch error:", allProgressError);
+  } else {
+    // Log unique progress values to debug case issues
+    const uniqueProgresses = [...new Set(allProgress.map(p => p.progress))];
+    console.log("Debug - Available progress values:", uniqueProgresses);
+  }
   
   const { data, error } = await supabase
     .from('iron_city_order_progress')

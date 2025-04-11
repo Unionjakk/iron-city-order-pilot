@@ -137,6 +137,11 @@ export const useToOrderData = (): PicklistDataResult => {
         const progressKey = `${item.order_id}_${item.sku}`;
         const progress = progressMap.get(progressKey);
         
+        // Debug - log key information about the item and its progress status
+        if (progress) {
+          console.log(`Debug - Line item: Order ID ${item.order_id}, SKU ${item.sku}, Progress: "${progress.progress}"`);
+        }
+        
         return {
           ...item,
           // Stock data
@@ -149,6 +154,13 @@ export const useToOrderData = (): PicklistDataResult => {
           notes: progress?.notes || null
         };
       });
+      
+      // Add logging to see all processed items
+      console.log(`Debug - Processed line items:`, processedLineItems.map(item => ({ 
+        order_id: item.order_id, 
+        sku: item.sku, 
+        progress: item.progress 
+      })));
       
       // Group line items by order
       const orderMap = new Map();
@@ -165,14 +177,21 @@ export const useToOrderData = (): PicklistDataResult => {
       });
       
       // Add line items to their respective orders, but ONLY if they have "To Order" progress
+      let toOrderItemCount = 0;
       processedLineItems.forEach(item => {
+        // Debug - log what's happening with the progress check
+        console.log(`Debug - Checking item: ${item.sku}, Progress: "${item.progress}", Match: ${item.progress === "To Order"}`);
+        
         if (item.progress === "To Order") {
+          toOrderItemCount++;
           const order = orderMap.get(item.order_id);
           if (order) {
             order.items.push(item);
           }
         }
       });
+      
+      console.log(`Debug - Found ${toOrderItemCount} items with exact "To Order" progress`);
       
       // Convert the map to an array of orders
       const resultOrders = Array.from(orderMap.values());
