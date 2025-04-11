@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { format } from "date-fns";
 import { ExternalLink, Mail } from "lucide-react";
 import { PicklistOrder } from "../types/picklistTypes";
