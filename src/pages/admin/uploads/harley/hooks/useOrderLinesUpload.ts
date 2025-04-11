@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { OrderLineItem, parseExcelFile } from '../utils/excelParser';
 import { 
@@ -10,7 +9,6 @@ import {
 } from '../services/orderLineItemsService';
 
 export const useOrderLinesUpload = () => {
-  const navigate = useNavigate();
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -69,10 +67,9 @@ export const useOrderLinesUpload = () => {
       toast.success(`Successfully uploaded ${uploadStats.processed} line items (${uploadStats.replaced} replaced)`);
       setUploadSuccess(true);
       setIsProcessing(false);
+      setIsUploading(false);
       
-      setTimeout(() => {
-        navigate('/admin/uploads/harley/dashboard');
-      }, 3000);
+      // Removed the automatic redirect to dashboard
       
     } catch (error) {
       console.error('Error processing upload:', error);

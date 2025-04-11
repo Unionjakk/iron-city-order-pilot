@@ -23,7 +23,6 @@ const UploadSuccessDisplay = ({ stats }: UploadSuccessDisplayProps) => {
           <p className="text-zinc-300">Errors: <span className="text-red-400 font-medium">{stats.errors}</span></p>
         )}
       </div>
-      <p className="text-zinc-300 mt-2">Redirecting to dashboard...</p>
     </div>
   );
 };
