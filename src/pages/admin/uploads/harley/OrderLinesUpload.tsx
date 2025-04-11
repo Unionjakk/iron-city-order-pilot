@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import OrdersNeedingLineItems from './components/OrdersNeedingLineItems';
 
 interface OrderLineItem {
   hd_order_number: string;
@@ -36,12 +37,10 @@ const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
           return;
         }
         
-        // Parse the Excel file
         const workbook = XLSX.read(data, { type: 'binary' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Convert to JSON with header row
         const jsonData = XLSX.utils.sheet_to_json<any>(worksheet, { raw: false });
         console.log('Raw Excel data:', jsonData);
         
@@ -50,15 +49,9 @@ const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
           return;
         }
         
-        // Map the Excel data to our expected format, accounting for different possible column names
         const mappedData: OrderLineItem[] = jsonData.map(row => {
-          // Find the HD order number (could have different column names)
           const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || '';
-          
-          // Find line number (could have different column names)
           const lineNumber = row['LINE NUMBER'] || row['LINE'] || row['LINE #'] || '';
-          
-          // Get part number (could have different column names)
           const partNumber = row['PART NUMBER'] || row['PART'] || row['PART #'] || row['PART NO'] || '';
           
           if (!hdOrderNumber || !partNumber) {
@@ -129,11 +122,9 @@ const OrderLinesUpload = () => {
     try {
       let totalLinesProcessed = 0;
       
-      // Process each file one by one
       for (const file of files) {
         console.log(`Processing file: ${file.name}`);
         
-        // Parse the Excel file
         const parsedData = await parseExcelFile(file);
         console.log('Parsed data:', parsedData);
         
@@ -142,17 +133,14 @@ const OrderLinesUpload = () => {
           continue;
         }
         
-        // Extract the HD Order Numbers from this file to process them
         const hdOrderNumbers = [...new Set(parsedData.map(item => item.hd_order_number))];
         console.log('Found order numbers in file:', hdOrderNumbers);
         
         for (const hdOrderNumber of hdOrderNumbers) {
           console.log(`Processing line items for order: ${hdOrderNumber}`);
           
-          // Get the line items for this order
           const lineItems = parsedData.filter(item => item.hd_order_number === hdOrderNumber);
           
-          // First check if the order exists
           const { data: existingOrders, error: fetchError } = await supabase
             .from('hd_orders')
             .select('id')
@@ -172,7 +160,6 @@ const OrderLinesUpload = () => {
           
           const orderId = existingOrders[0].id;
           
-          // Delete existing line items for this order
           const { error: deleteError } = await supabase
             .from('hd_order_line_items')
             .delete()
@@ -184,19 +171,14 @@ const OrderLinesUpload = () => {
             continue;
           }
           
-          // Process each line item individually
           for (const item of lineItems) {
-            // Convert line_number to string
             const lineNumberStr = String(item.line_number);
-            
-            // Convert order_date to string if it's a Date object
             const orderDate = item.order_date ? 
               (item.order_date instanceof Date ? 
                 item.order_date.toISOString().split('T')[0] : 
                 String(item.order_date)) : 
               null;
             
-            // Insert the line item
             const { error: insertError } = await supabase
               .from('hd_order_line_items')
               .insert({
@@ -223,7 +205,6 @@ const OrderLinesUpload = () => {
             totalLinesProcessed++;
           }
           
-          // Update the order to indicate it has line items
           const { error: updateError } = await supabase
             .from('hd_orders')
             .update({ has_line_items: true })
@@ -236,7 +217,6 @@ const OrderLinesUpload = () => {
           console.log(`Successfully processed ${lineItems.length} line items for order ${hdOrderNumber}`);
         }
         
-        // Record upload history for this file
         const { error: historyError } = await supabase
           .from('hd_upload_history')
           .insert({
@@ -276,7 +256,6 @@ const OrderLinesUpload = () => {
         <p className="text-orange-400/80">Import detailed part information for orders</p>
       </div>
       
-      {/* Instructions Card */}
       <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="flex items-center text-orange-500">
@@ -316,7 +295,6 @@ const OrderLinesUpload = () => {
         </CardContent>
       </Card>
       
-      {/* Upload Card */}
       <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="flex items-center text-orange-500">
@@ -360,7 +338,6 @@ const OrderLinesUpload = () => {
               </div>
             )}
             
-            {/* File List */}
             {files.length > 0 && !uploadSuccess && (
               <div className="mt-4">
                 <h4 className="text-sm font-medium text-zinc-300 mb-2">Files to upload ({files.length}):</h4>
@@ -419,6 +396,8 @@ const OrderLinesUpload = () => {
           </div>
         </CardFooter>
       </Card>
+      
+      <OrdersNeedingLineItems />
     </div>
   );
 };
