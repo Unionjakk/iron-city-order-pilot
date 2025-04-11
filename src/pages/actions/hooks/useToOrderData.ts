@@ -135,16 +135,19 @@ export const useToOrderData = (): PicklistDataResult => {
       const processedOrders = processOrdersData(ordersData, lineItemsData, stockMap, progressMap);
       
       // Final filter - only keep orders that have at least one item with "To Order" progress
-      const finalOrders = processedOrders.map(order => {
+      const finalOrders = processedOrders.filter(order => {
         // Filter items to only those with "To Order" progress
         const toOrderItems = order.items.filter(item => item.progress === "To Order");
         
-        // Return a new order with only the "To Order" items
+        // Only keep orders with To Order items
+        return toOrderItems.length > 0;
+      }).map(order => {
+        // For each order, only keep the "To Order" items
         return {
           ...order,
-          items: toOrderItems
+          items: order.items.filter(item => item.progress === "To Order")
         };
-      }).filter(order => order.items.length > 0);
+      });
       
       console.log(`Final processing: ${finalOrders.length} orders with ${finalOrders.reduce((count, order) => count + order.items.length, 0)} To Order items`);
       debug.finalOrderCount = finalOrders.length;
