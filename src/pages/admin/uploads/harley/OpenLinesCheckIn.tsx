@@ -1,44 +1,121 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Clock } from 'lucide-react';
+import { Check, X, Plus, AlertCircle, Info } from 'lucide-react';
+import ExcludeLineItemForm from './components/ExcludeLineItemForm';
+import ExcludeLineItemList from './components/ExcludeLineItemList';
+import AwaitingLineItemsList from './components/AwaitingLineItemsList';
+import { useExcludedLineItems } from './hooks/useExcludedLineItems';
 
 const OpenLinesCheckIn = () => {
+  const { 
+    excludedLineItems, 
+    isLoading, 
+    addExclusion, 
+    removeExclusion, 
+    excludedLineItemKeys 
+  } = useExcludedLineItems();
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-orange-500">Open Lines Check In</h1>
-        <p className="text-orange-400/80">Check in and exclude line items</p>
+        <p className="text-orange-400/80">Check in and exclude specific line items</p>
       </div>
-      
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Add New Exclusion */}
+        <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center text-orange-500">
+              <Plus className="mr-2 h-5 w-5" />
+              Add Line Item Check In
+            </CardTitle>
+            <CardDescription className="text-zinc-400">
+              Check in a specific line item to exclude from processing
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ExcludeLineItemForm onAddExclusion={addExclusion} />
+          </CardContent>
+        </Card>
+
+        {/* Instructions Card */}
+        <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center text-orange-500">
+              <Info className="mr-2 h-5 w-5" />
+              About Line Item Check In
+            </CardTitle>
+            <CardDescription className="text-zinc-400">
+              Why check in line items?
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 text-sm text-zinc-300">
+              <p>
+                Checking in line items provides more granular control than order-level check-ins.
+                This is useful for:
+              </p>
+              <ul className="list-disc list-inside space-y-2">
+                <li>
+                  <span className="font-semibold text-orange-400">Partial Orders:</span> Only check in 
+                  specific line items while allowing the rest of the order to be processed
+                </li>
+                <li>
+                  <span className="font-semibold text-orange-400">Backorder Management:</span> Handle 
+                  individual backordered line items separately from the main order
+                </li>
+                <li>
+                  <span className="font-semibold text-orange-400">Quality Control:</span> Mark specific 
+                  line items that need physical verification before processing
+                </li>
+              </ul>
+              <p>
+                Checked in line items will be skipped during line item processing,
+                and will not appear in detailed reports for those specific products.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Awaiting Line Items List */}
       <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="flex items-center text-orange-500">
-            <Clock className="mr-2 h-5 w-5" />
-            Coming Soon
+            <AlertCircle className="mr-2 h-5 w-5" />
+            Awaiting Line Items
           </CardTitle>
           <CardDescription className="text-zinc-400">
-            This feature is currently under development
+            Line items waiting to be checked in
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-start space-x-4 p-4 bg-zinc-800/50 rounded-md">
-            <AlertCircle className="h-8 w-8 text-orange-400 mt-1 flex-shrink-0" />
-            <div className="space-y-2">
-              <h3 className="text-lg font-medium text-zinc-200">Open Lines Check In Feature</h3>
-              <p className="text-zinc-300">
-                This feature will allow you to check in and exclude specific line items from processing, 
-                similar to the Open Order Check In functionality but at the line item level.
-              </p>
-              <p className="text-zinc-400 text-sm">
-                Check back soon for this functionality. When implemented, you'll be able to:
-              </p>
-              <ul className="list-disc pl-6 text-zinc-400 text-sm">
-                <li>Select specific line items to check in</li>
-                <li>Exclude line items from being processed</li>
-                <li>Manage line item exceptions</li>
-              </ul>
-            </div>
-          </div>
+          <AwaitingLineItemsList 
+            onCheckInLineItem={addExclusion}
+            excludedLineItemKeys={excludedLineItemKeys}
+            isLoading={isLoading}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Exclusion List */}
+      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center text-orange-500">
+            <Check className="mr-2 h-5 w-5" />
+            Checked In Line Items
+          </CardTitle>
+          <CardDescription className="text-zinc-400">
+            Currently checked in line items
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ExcludeLineItemList 
+            excludedLineItems={excludedLineItems} 
+            isLoading={isLoading} 
+            onRemoveExclusion={removeExclusion} 
+          />
         </CardContent>
       </Card>
     </div>

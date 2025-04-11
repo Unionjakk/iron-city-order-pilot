@@ -74,6 +74,33 @@ export type Database = {
           },
         ]
       }
+      hd_line_items_exclude: {
+        Row: {
+          created_at: string
+          hd_order_number: string
+          id: string
+          line_number: string | null
+          reason: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hd_order_number: string
+          id?: string
+          line_number?: string | null
+          reason: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hd_order_number?: string
+          id?: string
+          line_number?: string | null
+          reason?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hd_lineitems_exclude: {
         Row: {
           created_at: string
@@ -177,30 +204,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      hd_order_singleitems_exclude: {
-        Row: {
-          created_at: string
-          hd_order_number: string
-          id: string
-          reason: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          hd_order_number: string
-          id?: string
-          reason: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          hd_order_number?: string
-          id?: string
-          reason?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       hd_orders: {
         Row: {
