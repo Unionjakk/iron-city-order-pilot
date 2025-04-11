@@ -9,6 +9,71 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      hd_backorders: {
+        Row: {
+          backorder_clear_by: string | null
+          created_at: string
+          dealer_po_number: string | null
+          description: string | null
+          hd_order_number: string
+          id: string
+          line_item_id: string | null
+          line_number: string | null
+          order_date: string | null
+          part_number: string
+          projected_shipping_date: string | null
+          projected_shipping_quantity: number | null
+          quantity: number | null
+          total_price: number | null
+          updated_at: string
+          upload_batch_id: string
+        }
+        Insert: {
+          backorder_clear_by?: string | null
+          created_at?: string
+          dealer_po_number?: string | null
+          description?: string | null
+          hd_order_number: string
+          id?: string
+          line_item_id?: string | null
+          line_number?: string | null
+          order_date?: string | null
+          part_number: string
+          projected_shipping_date?: string | null
+          projected_shipping_quantity?: number | null
+          quantity?: number | null
+          total_price?: number | null
+          updated_at?: string
+          upload_batch_id: string
+        }
+        Update: {
+          backorder_clear_by?: string | null
+          created_at?: string
+          dealer_po_number?: string | null
+          description?: string | null
+          hd_order_number?: string
+          id?: string
+          line_item_id?: string | null
+          line_number?: string | null
+          order_date?: string | null
+          part_number?: string
+          projected_shipping_date?: string | null
+          projected_shipping_quantity?: number | null
+          quantity?: number | null
+          total_price?: number | null
+          updated_at?: string
+          upload_batch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hd_backorders_line_item_id_fkey"
+            columns: ["line_item_id"]
+            isOneToOne: false
+            referencedRelation: "hd_order_line_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hd_lineitems_exclude: {
         Row: {
           created_at: string

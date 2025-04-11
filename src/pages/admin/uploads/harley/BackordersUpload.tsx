@@ -132,8 +132,26 @@ const BackordersUpload = () => {
         return;
       }
       
-      // First, clear existing backorder flags
-      console.log('Resetting existing backorder flags...');
+      // Create a new upload batch ID
+      const uploadBatchId = crypto.randomUUID();
+      console.log('Upload batch ID:', uploadBatchId);
+      
+      // First, clear existing backorder records
+      console.log('Clearing existing backorder records...');
+      const { error: clearError } = await supabase
+        .from('hd_backorders')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Dummy condition to delete all
+      
+      if (clearError) {
+        console.error('Error clearing existing backorder records:', clearError);
+        toast.error('Failed to clear existing backorder data');
+        setIsUploading(false);
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Reset backorder flags in the line items table
       const { error: resetError } = await supabase
         .from('hd_order_line_items')
         .update({ 
@@ -146,7 +164,7 @@ const BackordersUpload = () => {
       
       if (resetError) {
         console.error('Error resetting backorder flags:', resetError);
-        toast.error('Failed to reset existing backorder data');
+        toast.error('Failed to reset existing backorder flags');
         setIsUploading(false);
         setIsProcessing(false);
         return;
@@ -155,6 +173,7 @@ const BackordersUpload = () => {
       console.log('Processing backorder data...');
       let successCount = 0;
       let errorCount = 0;
+      let notFoundCount = 0;
       
       // Process each backorder item
       for (const item of parsedData) {
@@ -175,12 +194,6 @@ const BackordersUpload = () => {
           continue;
         }
         
-        if (!lineItems || lineItems.length === 0) {
-          console.warn(`No matching line item found for order ${item.hd_order_number}, line ${lineNumberStr}, part ${item.part_number}`);
-          errorCount++;
-          continue;
-        }
-        
         // Prepare date fields as strings
         const backorderClearBy = item.backorder_clear_by ? 
           (item.backorder_clear_by instanceof Date ? 
@@ -193,8 +206,71 @@ const BackordersUpload = () => {
             item.projected_shipping_date.toISOString().split('T')[0] : 
             String(item.projected_shipping_date)) : 
           null;
+          
+        const orderDate = item.order_date ? 
+          (item.order_date instanceof Date ? 
+            item.order_date.toISOString().split('T')[0] : 
+            String(item.order_date)) : 
+          null;
         
-        // Update the line item with backorder information
+        if (!lineItems || lineItems.length === 0) {
+          console.warn(`No matching line item found for order ${item.hd_order_number}, line ${lineNumberStr}, part ${item.part_number}`);
+          notFoundCount++;
+          
+          // Insert into backorders without line_item_id
+          const { error: insertError } = await supabase
+            .from('hd_backorders')
+            .insert({
+              hd_order_number: item.hd_order_number,
+              line_number: lineNumberStr,
+              dealer_po_number: item.dealer_po_number || null,
+              order_date: orderDate,
+              backorder_clear_by: backorderClearBy,
+              description: item.description || null,
+              part_number: item.part_number,
+              quantity: item.quantity || 0,
+              projected_shipping_date: projectedShippingDate,
+              projected_shipping_quantity: item.projected_shipping_quantity || 0,
+              total_price: item.total_price || 0,
+              upload_batch_id: uploadBatchId,
+              line_item_id: null // No matching line item
+            });
+          
+          if (insertError) {
+            console.error('Error inserting backorder record without line item:', insertError);
+            errorCount++;
+          } else {
+            successCount++;
+          }
+          continue;
+        }
+        
+        // Insert the backorder record
+        const { error: insertError } = await supabase
+          .from('hd_backorders')
+          .insert({
+            line_item_id: lineItems[0].id,
+            hd_order_number: item.hd_order_number,
+            line_number: lineNumberStr,
+            dealer_po_number: item.dealer_po_number || null,
+            order_date: orderDate,
+            backorder_clear_by: backorderClearBy,
+            description: item.description || null,
+            part_number: item.part_number,
+            quantity: item.quantity || 0,
+            projected_shipping_date: projectedShippingDate,
+            projected_shipping_quantity: item.projected_shipping_quantity || 0,
+            total_price: item.total_price || 0,
+            upload_batch_id: uploadBatchId
+          });
+        
+        if (insertError) {
+          console.error('Error inserting backorder record:', insertError);
+          errorCount++;
+          continue;
+        }
+        
+        // Also update the is_backorder flag in the line items table for quick reference
         const { error: updateError } = await supabase
           .from('hd_order_line_items')
           .update({
@@ -206,7 +282,7 @@ const BackordersUpload = () => {
           .eq('id', lineItems[0].id);
         
         if (updateError) {
-          console.error('Error updating line item:', updateError);
+          console.error('Error updating line item backorder flag:', updateError);
           errorCount++;
           continue;
         }
@@ -229,12 +305,21 @@ const BackordersUpload = () => {
         console.error('Error recording upload history:', historyError);
       }
       
-      console.log('Upload completed with results:', { successCount, errorCount });
+      console.log('Upload completed with results:', { 
+        successCount, 
+        errorCount,
+        notFoundCount,
+        total: parsedData.length
+      });
       
       if (errorCount === 0) {
-        toast.success(`Successfully processed ${successCount} backorder items`);
+        if (notFoundCount > 0) {
+          toast.warning(`Processed ${successCount} backorder items. ${notFoundCount} items didn't match existing line items but were still recorded.`);
+        } else {
+          toast.success(`Successfully processed ${successCount} backorder items`);
+        }
       } else {
-        toast.warning(`Processed ${successCount} items with ${errorCount} errors`);
+        toast.warning(`Processed ${successCount} items with ${errorCount} errors. ${notFoundCount} items without matching line items.`);
       }
       
       setUploadSuccess(true);
