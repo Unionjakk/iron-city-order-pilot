@@ -12,8 +12,8 @@ export interface ShopifyLineItem {
   quantity?: number;
   price?: string;
   sku?: string;
-  location_id?: string; // Added location_id
-  location_name?: string; // Added location_name
+  location_id?: string;
+  location_name?: string;
 }
 
 export interface ShopifyOrder {
@@ -30,10 +30,17 @@ export interface ShopifyOrder {
 
 interface OrdersTableProps {
   orders: ShopifyOrder[];
-  isLoading: boolean;
+  isLoading?: boolean;
+  showStatus?: boolean;
+  emptyMessage?: string;
 }
 
-const OrdersTable: React.FC<OrdersTableProps> = ({ orders, isLoading }) => {
+const OrdersTable: React.FC<OrdersTableProps> = ({ 
+  orders, 
+  isLoading = false,
+  showStatus = true,
+  emptyMessage = "No orders found"
+}) => {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const toggleExpand = (orderId: string) => {
@@ -49,7 +56,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders, isLoading }) => {
   }
 
   if (!orders || orders.length === 0) {
-    return <div className="text-center py-4">No orders found</div>;
+    return <div className="text-center py-4">{emptyMessage}</div>;
   }
 
   // Function to format imported time
@@ -71,7 +78,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders, isLoading }) => {
             <TableHead>Date</TableHead>
             <TableHead>Customer</TableHead>
             <TableHead>Items</TableHead>
-            <TableHead>Status</TableHead>
+            {showStatus && <TableHead>Status</TableHead>}
             <TableHead>Imported</TableHead>
             <TableHead className="text-right w-24">View</TableHead>
           </TableRow>
@@ -96,18 +103,20 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders, isLoading }) => {
                 </TableCell>
                 <TableCell>{order.customer_name}</TableCell>
                 <TableCell>{order.items_count}</TableCell>
-                <TableCell>
-                  <Badge 
-                    variant="outline" 
-                    className={
-                      order.status === 'fulfilled' ? 'border-green-500 text-green-500' :
-                      order.status === 'partially_fulfilled' ? 'border-orange-500 text-orange-500' :
-                      'border-blue-500 text-blue-500'
-                    }
-                  >
-                    {order.status || 'unfulfilled'}
-                  </Badge>
-                </TableCell>
+                {showStatus && (
+                  <TableCell>
+                    <Badge 
+                      variant="outline" 
+                      className={
+                        order.status === 'fulfilled' ? 'border-green-500 text-green-500' :
+                        order.status === 'partially_fulfilled' ? 'border-orange-500 text-orange-500' :
+                        'border-blue-500 text-blue-500'
+                      }
+                    >
+                      {order.status || 'unfulfilled'}
+                    </Badge>
+                  </TableCell>
+                )}
                 <TableCell>{formatImportedTime(order.imported_at)}</TableCell>
                 <TableCell className="text-right">
                   <a 
@@ -122,7 +131,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders, isLoading }) => {
               </TableRow>
               {expandedOrderId === order.id && order.line_items && order.line_items.length > 0 && (
                 <TableRow className="hover:bg-transparent border-0">
-                  <TableCell colSpan={8} className="px-0 pt-0 pb-4">
+                  <TableCell colSpan={showStatus ? 8 : 7} className="px-0 pt-0 pb-4">
                     <div className="bg-zinc-800/20 p-4 mx-4 rounded-md">
                       <h4 className="text-sm font-medium mb-2 text-zinc-300">Line Items</h4>
                       <Table>

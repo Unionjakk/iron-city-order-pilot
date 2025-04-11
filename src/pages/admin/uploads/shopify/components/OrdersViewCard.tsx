@@ -38,6 +38,7 @@ const OrdersViewCard = ({
               orders={importedOrders} 
               showStatus={true}
               emptyMessage="No orders have been imported from Shopify yet."
+              isLoading={ordersLoading}
             />
           </>
         )}
