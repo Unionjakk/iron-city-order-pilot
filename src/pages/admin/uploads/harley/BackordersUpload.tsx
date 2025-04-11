@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -151,25 +152,6 @@ const BackordersUpload = () => {
         return;
       }
       
-      // Reset backorder flags in the line items table
-      const { error: resetError } = await supabase
-        .from('hd_order_line_items')
-        .update({ 
-          is_backorder: false,
-          backorder_clear_by: null,
-          projected_shipping_date: null,
-          projected_shipping_quantity: null
-        })
-        .eq('is_backorder', true);
-      
-      if (resetError) {
-        console.error('Error resetting backorder flags:', resetError);
-        toast.error('Failed to reset existing backorder flags');
-        setIsUploading(false);
-        setIsProcessing(false);
-        return;
-      }
-      
       console.log('Processing backorder data...');
       let successCount = 0;
       let errorCount = 0;
@@ -213,43 +195,19 @@ const BackordersUpload = () => {
             String(item.order_date)) : 
           null;
         
-        if (!lineItems || lineItems.length === 0) {
+        // Determine if we have a matching line item
+        const lineItemId = lineItems && lineItems.length > 0 ? lineItems[0].id : null;
+        
+        if (!lineItemId) {
           console.warn(`No matching line item found for order ${item.hd_order_number}, line ${lineNumberStr}, part ${item.part_number}`);
           notFoundCount++;
-          
-          // Insert into backorders without line_item_id
-          const { error: insertError } = await supabase
-            .from('hd_backorders')
-            .insert({
-              hd_order_number: item.hd_order_number,
-              line_number: lineNumberStr,
-              dealer_po_number: item.dealer_po_number || null,
-              order_date: orderDate,
-              backorder_clear_by: backorderClearBy,
-              description: item.description || null,
-              part_number: item.part_number,
-              quantity: item.quantity || 0,
-              projected_shipping_date: projectedShippingDate,
-              projected_shipping_quantity: item.projected_shipping_quantity || 0,
-              total_price: item.total_price || 0,
-              upload_batch_id: uploadBatchId,
-              line_item_id: null // No matching line item
-            });
-          
-          if (insertError) {
-            console.error('Error inserting backorder record without line item:', insertError);
-            errorCount++;
-          } else {
-            successCount++;
-          }
-          continue;
         }
         
-        // Insert the backorder record
+        // Insert the backorder record with or without line_item_id
         const { error: insertError } = await supabase
           .from('hd_backorders')
           .insert({
-            line_item_id: lineItems[0].id,
+            line_item_id: lineItemId,
             hd_order_number: item.hd_order_number,
             line_number: lineNumberStr,
             dealer_po_number: item.dealer_po_number || null,
@@ -266,23 +224,6 @@ const BackordersUpload = () => {
         
         if (insertError) {
           console.error('Error inserting backorder record:', insertError);
-          errorCount++;
-          continue;
-        }
-        
-        // Also update the is_backorder flag in the line items table for quick reference
-        const { error: updateError } = await supabase
-          .from('hd_order_line_items')
-          .update({
-            is_backorder: true,
-            backorder_clear_by: backorderClearBy,
-            projected_shipping_date: projectedShippingDate,
-            projected_shipping_quantity: item.projected_shipping_quantity || 0
-          })
-          .eq('id', lineItems[0].id);
-        
-        if (updateError) {
-          console.error('Error updating line item backorder flag:', updateError);
           errorCount++;
           continue;
         }
