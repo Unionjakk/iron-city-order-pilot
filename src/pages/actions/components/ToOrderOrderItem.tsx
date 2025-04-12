@@ -39,7 +39,7 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
   const [showMatchDialog, setShowMatchDialog] = React.useState(false);
   const [showResetDialog, setShowResetDialog] = React.useState(false);
   const { toast } = useToast();
-  const { handleCopySku } = useOrderItemActions(sku, toast);
+  const { handleCopySku } = useOrderItemActions(sku, { toast });
 
   return (
     <>
@@ -88,14 +88,14 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
         </td>
         <td className="p-3 text-center">
           {bin_location ? (
-            <span className="text-zinc-300">{bin_location}</span>
+            <span className="text-orange-400">{bin_location}</span>
           ) : (
             <span className="text-zinc-500">--</span>
           )}
         </td>
         <td className="p-3 text-center">
           {cost ? (
-            <span className="text-zinc-300">£{cost.toFixed(2)}</span>
+            <span className="text-orange-400">£{cost.toFixed(2)}</span>
           ) : (
             <span className="text-zinc-500">--</span>
           )}
