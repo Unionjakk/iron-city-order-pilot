@@ -10,6 +10,7 @@ export const useHarleyDashboardData = () => {
     totalOrders: 0,
     ordersWithoutLineItems: 0,
     backorderItems: 0,
+    totalBackorderItems: 0,
     lastOpenOrdersUpload: null,
     lastLineItemsUpload: null,
     lastBackordersUpload: null
@@ -27,11 +28,55 @@ export const useHarleyDashboardData = () => {
         setIsLoadingStats(true);
         console.log("Fetching Harley Davidson statistics...");
         
-        // Use execute_sql to run a custom query that calls our function
+        // Direct SQL query to calculate stats accurately
+        const sqlQuery = `
+          WITH order_counts AS (
+            SELECT COUNT(*) AS total_orders FROM hd_orders
+          ),
+          orders_with_line_items AS (
+            SELECT COUNT(DISTINCT o.id) AS with_line_items
+            FROM hd_orders o
+            WHERE o.hd_order_number IN (
+              SELECT DISTINCT li.hd_order_number FROM hd_order_line_items li
+            )
+          ),
+          backorder_counts AS (
+            SELECT 
+              COUNT(*) AS backorder_items
+            FROM hd_order_line_items 
+            WHERE is_backorder = true
+          ),
+          total_backorder_counts AS (
+            SELECT 
+              COUNT(*) AS total_backorder_items
+            FROM hd_backorders
+          ),
+          last_uploads AS (
+            SELECT 
+              MAX(CASE WHEN upload_type = 'open_orders' AND status = 'success' THEN upload_date END) AS last_open_orders,
+              MAX(CASE WHEN upload_type = 'order_lines' AND status = 'success' THEN upload_date END) AS last_line_items,
+              MAX(CASE WHEN upload_type = 'backorders' AND status = 'success' THEN upload_date END) AS last_backorders
+            FROM hd_upload_history
+          )
+          SELECT 
+            order_counts.total_orders,
+            (order_counts.total_orders - orders_with_line_items.with_line_items) AS orders_without_line_items,
+            backorder_counts.backorder_items,
+            total_backorder_counts.total_backorder_items,
+            last_uploads.last_open_orders,
+            last_uploads.last_line_items,
+            last_uploads.last_backorders
+          FROM
+            order_counts,
+            orders_with_line_items,
+            backorder_counts,
+            total_backorder_counts,
+            last_uploads;
+        `;
+        
+        // Execute the SQL query
         const { data, error } = await supabase
-          .rpc('execute_sql', { 
-            sql: 'SELECT * FROM get_hd_stats()' 
-          });
+          .rpc('execute_sql', { sql: sqlQuery });
         
         if (error) {
           console.error('Error fetching Harley Davidson stats:', error);
@@ -42,24 +87,22 @@ export const useHarleyDashboardData = () => {
         
         console.log('Received HD stats:', data);
         
-        // Parse the JSON result from the function
+        // Extract the data from the result
         if (data && data.length > 0) {
-          // The function returns an object in the first row
           const statsData = data[0];
           
           if (statsData && typeof statsData === 'object') {
-            // Type assertion to help TypeScript understand the shape
-            // Extract each property safely with fallbacks
             const statsObj = statsData as Record<string, any>;
             
             // Update stats with data from database
             setStats({
-              totalOrders: typeof statsObj.totalOrders === 'number' ? statsObj.totalOrders : 0,
-              ordersWithoutLineItems: typeof statsObj.ordersWithoutLineItems === 'number' ? statsObj.ordersWithoutLineItems : 0,
-              backorderItems: typeof statsObj.backorderItems === 'number' ? statsObj.backorderItems : 0,
-              lastOpenOrdersUpload: typeof statsObj.lastOpenOrdersUpload === 'string' ? statsObj.lastOpenOrdersUpload : null,
-              lastLineItemsUpload: typeof statsObj.lastLineItemsUpload === 'string' ? statsObj.lastLineItemsUpload : null,
-              lastBackordersUpload: typeof statsObj.lastBackordersUpload === 'string' ? statsObj.lastBackordersUpload : null
+              totalOrders: Number(statsObj.total_orders) || 0,
+              ordersWithoutLineItems: Number(statsObj.orders_without_line_items) || 0,
+              backorderItems: Number(statsObj.backorder_items) || 0,
+              totalBackorderItems: Number(statsObj.total_backorder_items) || 0,
+              lastOpenOrdersUpload: statsObj.last_open_orders || null,
+              lastLineItemsUpload: statsObj.last_line_items || null,
+              lastBackordersUpload: statsObj.last_backorders || null
             });
           }
         }

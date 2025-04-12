@@ -4,6 +4,7 @@ export type HDStats = {
   totalOrders: number;
   ordersWithoutLineItems: number;
   backorderItems: number;
+  totalBackorderItems: number;  // Added new field for all items in backorder table
   lastOpenOrdersUpload: string | null;
   lastLineItemsUpload: string | null;
   lastBackordersUpload: string | null;

@@ -7,6 +7,7 @@ type HarleyStatsProps = {
     totalOrders: number;
     ordersWithoutLineItems: number;
     backorderItems: number;
+    totalBackorderItems: number;
     lastOpenOrdersUpload: string | null;
     lastLineItemsUpload: string | null;
     lastBackordersUpload: string | null;
@@ -47,9 +48,15 @@ const HarleyStatsCard = ({ stats, isLoading }: HarleyStatsProps) => {
               </span>
             </div>
             <div>
-              <span className="text-zinc-400 text-sm">Items on Backorder:</span>
+              <span className="text-zinc-400 text-sm">Line Items on Backorder:</span>
               <span className="ml-2 text-zinc-200 font-semibold">
                 {stats.backorderItems > 0 ? stats.backorderItems.toLocaleString() : 'None'}
+              </span>
+            </div>
+            <div>
+              <span className="text-zinc-400 text-sm">All Items on Backorder:</span>
+              <span className="ml-2 text-zinc-200 font-semibold">
+                {stats.totalBackorderItems > 0 ? stats.totalBackorderItems.toLocaleString() : 'None'}
               </span>
             </div>
           </div>
@@ -87,7 +94,12 @@ const HarleyStatsCard = ({ stats, isLoading }: HarleyStatsProps) => {
                 </div>
                 {stats.backorderItems > 0 && (
                   <p className="mt-2 text-amber-400">
-                    {stats.backorderItems} items currently on backorder
+                    {stats.backorderItems} line items currently on backorder
+                  </p>
+                )}
+                {stats.totalBackorderItems > 0 && (
+                  <p className="mt-2 text-amber-400">
+                    {stats.totalBackorderItems} total items in backorder table
                   </p>
                 )}
               </div>
