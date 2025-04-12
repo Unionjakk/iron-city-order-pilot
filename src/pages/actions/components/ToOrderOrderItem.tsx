@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ExternalLink, Clipboard, FileWarning, AlertCircle } from "lucide-react";
+import { ExternalLink, Clipboard, FileWarning, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import MatchToOrderDialog from "./MatchToOrderDialog";
 import { Button } from "@/components/ui/button";
@@ -173,7 +173,7 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
               className="h-8 text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
               onClick={() => setShowResetDialog(true)}
             >
-              <AlertCircle className="h-4 w-4" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </td>
