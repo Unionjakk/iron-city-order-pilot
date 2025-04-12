@@ -38,6 +38,7 @@ interface MatchToOrderDialogProps {
   shopifyOrderId: string;
   shopifyOrderNumber: string | null;
   onOrderMatched: () => void;
+  quantity?: number; // Add prop for Shopify quantity required
 }
 
 const MatchToOrderDialog = ({
@@ -46,7 +47,8 @@ const MatchToOrderDialog = ({
   sku,
   shopifyOrderId,
   shopifyOrderNumber,
-  onOrderMatched
+  onOrderMatched,
+  quantity = 1 // Default to 1 if not provided
 }: MatchToOrderDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [matchedOrders, setMatchedOrders] = useState<HarleyOrderMatch[]>([]);
@@ -138,6 +140,13 @@ const MatchToOrderDialog = ({
           </DialogDescription>
         </DialogHeader>
         
+        <div className="bg-zinc-800/50 px-4 py-2 rounded-md mb-4">
+          <div className="flex justify-between items-center">
+            <span className="text-orange-400 font-medium">Quantity Required:</span>
+            <span className="text-orange-500 font-bold">{quantity}</span>
+          </div>
+        </div>
+        
         <form onSubmit={handleSearch} className="flex gap-2 mt-2">
           <Input
             value={searchTerm}
@@ -165,7 +174,7 @@ const MatchToOrderDialog = ({
                   <TableHead className="text-zinc-300">Order #</TableHead>
                   <TableHead className="text-zinc-300">Part #</TableHead>
                   <TableHead className="text-zinc-300">PO #</TableHead>
-                  <TableHead className="text-zinc-300">Quantity</TableHead>
+                  <TableHead className="text-zinc-300">Quantity Ordered</TableHead>
                   <TableHead className="text-zinc-300">Status</TableHead>
                   <TableHead className="text-zinc-300"></TableHead>
                 </TableRow>
