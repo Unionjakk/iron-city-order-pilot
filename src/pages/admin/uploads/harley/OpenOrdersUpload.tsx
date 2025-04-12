@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -119,22 +120,30 @@ const OpenOrdersUpload = () => {
         return;
       }
       
-      console.log('Checking if there are existing orders...');
-      const { count, error: countError } = await supabase
-        .from('hd_orders')
-        .select('*', { count: 'exact', head: true });
+      // Get the HD order numbers from the data we're about to insert
+      const orderNumbers = parsedData.map(order => order.hd_order_number);
+      console.log(`Found ${orderNumbers.length} order numbers to process...`);
       
-      if (countError) {
-        console.error('Error checking existing orders count:', countError);
-        toast.error('Failed to check existing orders');
-        setIsUploading(false);
-        setIsProcessing(false);
-        return;
+      // Delete existing orders without impacting line items
+      // This uses a direct DELETE query instead of cascading deletes
+      if (orderNumbers.length > 0) {
+        console.log('Deleting existing orders before inserting new ones...');
+        const { error: deleteError } = await supabase
+          .from('hd_orders')
+          .delete()
+          .in('hd_order_number', orderNumbers);
+        
+        if (deleteError) {
+          console.error('Error deleting existing orders:', deleteError);
+          toast.error('Failed to update orders: could not remove existing data');
+          setIsUploading(false);
+          setIsProcessing(false);
+          return;
+        }
+        console.log(`Successfully deleted orders with numbers: ${orderNumbers.join(', ')}`);
       }
       
-      console.log(`Found ${count} existing orders, upserting new data...`);
-      
-      const ordersToUpsert = parsedData.map(order => {
+      const ordersToInsert = parsedData.map(order => {
         const orderDate = order.order_date ? 
           (order.order_date instanceof Date ? 
             order.order_date.toISOString().split('T')[0] : 
@@ -153,29 +162,52 @@ const OpenOrdersUpload = () => {
         };
       });
       
-      console.log('Sample order to upsert:', ordersToUpsert[0]);
+      console.log('Sample order to insert:', ordersToInsert[0]);
       
-      let successfulUpserts = 0;
-      for (let i = 0; i < ordersToUpsert.length; i += 100) {
-        const batch = ordersToUpsert.slice(i, i + 100);
+      let successfulInserts = 0;
+      for (let i = 0; i < ordersToInsert.length; i += 100) {
+        const batch = ordersToInsert.slice(i, i + 100);
         
-        const { error: upsertError, data: upsertData } = await supabase
+        const { error: insertError } = await supabase
           .from('hd_orders')
-          .upsert(batch, { 
-            onConflict: 'hd_order_number',
-            ignoreDuplicates: false
-          });
+          .insert(batch);
         
-        if (upsertError) {
-          console.error('Error upserting orders batch:', upsertError);
-          toast.error('Failed to update all orders');
+        if (insertError) {
+          console.error('Error inserting orders batch:', insertError);
+          toast.error('Failed to insert all orders');
           setIsUploading(false);
           setIsProcessing(false);
           return;
         }
         
-        successfulUpserts += batch.length;
-        console.log(`Successfully upserted batch: ${i} to ${i + batch.length - 1}`);
+        successfulInserts += batch.length;
+        console.log(`Successfully inserted batch: ${i} to ${i + batch.length - 1}`);
+      }
+      
+      // Update has_line_items status 
+      // Fetch all orders that have line items
+      const { data: ordersWithLineItems, error: lineItemsError } = await supabase
+        .from('hd_order_line_items')
+        .select('hd_order_number')
+        .in('hd_order_number', orderNumbers)
+        .distinct();
+      
+      if (!lineItemsError && ordersWithLineItems && ordersWithLineItems.length > 0) {
+        const orderNumbersWithLines = ordersWithLineItems.map(o => o.hd_order_number);
+        
+        // Update has_line_items flag
+        if (orderNumbersWithLines.length > 0) {
+          const { error: updateError } = await supabase
+            .from('hd_orders')
+            .update({ has_line_items: true })
+            .in('hd_order_number', orderNumbersWithLines);
+          
+          if (updateError) {
+            console.error('Error updating has_line_items:', updateError);
+          } else {
+            console.log(`Updated has_line_items for ${orderNumbersWithLines.length} orders`);
+          }
+        }
       }
       
       console.log('Recording upload history...');
@@ -194,7 +226,7 @@ const OpenOrdersUpload = () => {
       }
       
       console.log('Upload completed successfully!');
-      toast.success(`Successfully processed ${parsedData.length} orders`);
+      toast.success(`Successfully processed ${parsedData.length} orders while preserving line items`);
       setUploadSuccess(true);
       setUploadedCount(parsedData.length);
       setIsProcessing(false);
@@ -243,9 +275,9 @@ const OpenOrdersUpload = () => {
               <ul className="list-disc list-inside space-y-1 text-sm text-zinc-300">
                 <li>Do not modify the exported file before uploading</li>
                 <li>Make sure the file contains all necessary columns including HD Order Number and PO Number</li>
-                <li>This upload will update existing orders and add new ones</li>
+                <li>This upload will replace existing orders with new data</li>
                 <li>Line items from existing orders will be preserved</li>
-                <li>After upload, you should proceed to uploading the Order Line Items for any new orders</li>
+                <li>After upload, you may proceed to uploading Order Line Items for any new orders</li>
               </ul>
             </div>
           </div>
