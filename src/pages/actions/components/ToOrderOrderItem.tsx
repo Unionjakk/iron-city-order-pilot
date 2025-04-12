@@ -38,7 +38,7 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
 }) => {
   const [showMatchDialog, setShowMatchDialog] = React.useState(false);
   const [showResetDialog, setShowResetDialog] = React.useState(false);
-  const { toast } = useToast();
+  const toast = useToast();
   const { handleCopySku } = useOrderItemActions(sku, { toast });
 
   return (
