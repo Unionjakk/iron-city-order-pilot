@@ -47,8 +47,19 @@ export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
           const partNumber = row['PART NUMBER'] || row['PART'] || row['PART #'] || row['PART NO'] || '';
           const lineNumberStr = String(lineNumber);
           
+          // More extensive matching for dealer PO number field
+          const dealerPoNumber = row['DEALER PO NUMBER'] || row['PO NUMBER'] || row['PURCHASE ORDER'] || row['DEALER PO'] || row['CUST PO'] || '';
+          
           if (!hdOrderNumber || !partNumber) {
             console.warn('Missing required fields in row:', row);
+          }
+          
+          // Log the dealer PO number to debug
+          if (dealerPoNumber) {
+            console.log(`Found dealer PO number: ${dealerPoNumber} for order: ${hdOrderNumber}, line: ${lineNumberStr}`);
+          } else {
+            console.log(`No dealer PO number found for order: ${hdOrderNumber}, line: ${lineNumberStr}`);
+            console.log('Row keys:', Object.keys(row));
           }
           
           return {
@@ -61,7 +72,7 @@ export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
             unit_price: parseFloat(row['UNIT PRICE'] || row['PRICE'] || '0'),
             total_price: parseFloat(row['TOTAL PRICE'] || row['TOTAL'] || '0'),
             status: row['STATUS'] || '',
-            dealer_po_number: row['PO NUMBER'] || row['PURCHASE ORDER'] || row['DEALER PO'] || '',
+            dealer_po_number: dealerPoNumber, 
             order_date: row['ORDER DATE'] || null
           };
         }).filter(item => item.hd_order_number && item.part_number);

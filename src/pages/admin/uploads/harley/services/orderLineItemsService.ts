@@ -85,6 +85,9 @@ export const processOrderLineItems = async (
           String(item.order_date)) : 
         null;
       
+      // Log dealer PO number to debug
+      console.log(`Inserting line item with dealer PO number: ${item.dealer_po_number || 'NONE'}`);
+      
       if (existingLineNumbers.has(lineNumberStr)) {
         replacedLineNumbers.push(lineNumberStr);
         totalLinesReplaced++;
@@ -103,7 +106,7 @@ export const processOrderLineItems = async (
           unit_price: item.unit_price || 0,
           total_price: item.total_price || 0,
           status: item.status || '',
-          dealer_po_number: item.dealer_po_number || '',
+          dealer_po_number: item.dealer_po_number || '', // Ensure dealer PO number is included, even if empty string
           order_date: orderDate
         });
       
