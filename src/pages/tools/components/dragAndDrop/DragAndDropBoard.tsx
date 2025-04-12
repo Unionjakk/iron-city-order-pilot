@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from "react";
 import { DndContext, DragOverlay, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors, DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -16,7 +15,6 @@ interface DragAndDropBoardProps {
 }
 
 const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refreshData }) => {
-  // Create columns based on progress status
   const columns = useMemo(() => {
     const toPickItems = orderItems.filter(item => item.progress === "To Pick" || item.progress === "to pick");
     const pickedItems = orderItems.filter(item => item.progress === "Picked" || item.progress === "picked");
@@ -53,17 +51,14 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
     ];
   }, [orderItems]);
   
-  // State for drag and drop
   const [activeItem, setActiveItem] = useState<DragAndDropOrderItem | null>(null);
   
-  // Dialog states
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showToDispatchDialog, setShowToDispatchDialog] = useState(false);
   const [showOrderedDialog, setShowOrderedDialog] = useState(false);
   const [draggedItem, setDraggedItem] = useState<DragAndDropOrderItem | null>(null);
   const [targetColumn, setTargetColumn] = useState<string>("");
   
-  // Drag sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -75,10 +70,8 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
     })
   );
   
-  // Progress update hook
   const { updateItemProgress, isUpdating } = useProgressUpdate({ refreshData });
   
-  // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const item = orderItems.find(item => item.id === active.id);
@@ -88,7 +81,6 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
     }
   };
   
-  // Handle drag end
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     
@@ -97,14 +89,12 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
       return;
     }
     
-    // Find the item being dragged
     const item = orderItems.find(item => item.id === active.id);
     if (!item) {
       setActiveItem(null);
       return;
     }
     
-    // Find the column the item is being dropped into
     const columnId = over.id.toString();
     if (!columnId.startsWith("column-")) {
       setActiveItem(null);
@@ -113,7 +103,6 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
     
     const targetColumnId = columnId.replace("column-", "");
     
-    // Don't do anything if item is dragged to the same column
     if (
       (item.progress === "To Pick" && targetColumnId === "to-pick") ||
       (item.progress === "to pick" && targetColumnId === "to-pick") ||
@@ -130,7 +119,6 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
       return;
     }
     
-    // Handle the specific confirmation dialogs
     if (targetColumnId === "to-dispatch") {
       setDraggedItem(item);
       setTargetColumn(targetColumnId);
@@ -148,7 +136,6 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
     setActiveItem(null);
   };
   
-  // Progress mapping from column ID to progress string
   const progressMapping: Record<string, string> = {
     "to-pick": "To Pick",
     "picked": "Picked",
@@ -157,7 +144,6 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
     "to-dispatch": "To Dispatch"
   };
   
-  // Handle confirm progress update
   const handleConfirmProgressUpdate = (notes?: string) => {
     if (draggedItem && targetColumn) {
       const newProgress = progressMapping[targetColumn];
@@ -175,7 +161,6 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
     setTargetColumn("");
   };
   
-  // Handle To Dispatch confirmation
   const handleToDispatchConfirm = () => {
     if (draggedItem) {
       updateItemProgress({
@@ -190,7 +175,6 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
     setTargetColumn("");
   };
   
-  // Handle Ordered confirmation with dealer PO
   const handleOrderedConfirm = (dealerPo: string) => {
     if (draggedItem) {
       updateItemProgress({
@@ -224,13 +208,11 @@ const DragAndDropBoard: React.FC<DragAndDropBoardProps> = ({ orderItems, refresh
           ))}
         </div>
         
-        {/* Drag overlay to show what's being dragged */}
         <DragOverlay>
           {activeItem && <ItemCard item={activeItem} isDragging />}
         </DragOverlay>
       </DndContext>
       
-      {/* Confirmation Dialogs */}
       <ConfirmProgressDialog
         open={showConfirmDialog}
         onClose={() => setShowConfirmDialog(false)}
