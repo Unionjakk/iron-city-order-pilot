@@ -85,13 +85,32 @@ export const useExcludedLineItems = () => {
         return;
       }
 
+      // If no part number was provided, try to look it up
+      let finalPartNumber = partNumber;
+      if (!finalPartNumber) {
+        const { data: lineItemDetails } = await supabase
+          .from('hd_order_line_items')
+          .select('part_number')
+          .eq('hd_order_number', orderNumber)
+          .eq('line_number', lineNumber)
+          .maybeSingle();
+        
+        if (lineItemDetails?.part_number) {
+          finalPartNumber = lineItemDetails.part_number;
+        }
+      }
+
+      // Generate the orderlinecombo
+      const orderlinecombo = finalPartNumber ? `${orderNumber}${finalPartNumber}` : null;
+
       const { error } = await supabase
         .from('hd_line_items_exclude')
         .insert({ 
           hd_order_number: orderNumber, 
           line_number: lineNumber,
-          part_number: partNumber,
-          reason 
+          part_number: finalPartNumber,
+          reason,
+          hd_orderlinecombo: orderlinecombo
         });
 
       if (error) {
@@ -139,3 +158,4 @@ export const useExcludedLineItems = () => {
     refreshExcludedLineItems: fetchExcludedLineItems
   };
 };
+
