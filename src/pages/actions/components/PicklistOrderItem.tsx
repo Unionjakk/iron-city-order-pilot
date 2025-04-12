@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from "react";
-import { PicklistOrderItemType, PicklistOrder } from "../types/picklistTypes";
+import { PicklistOrderItem as PicklistOrderItemType, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
