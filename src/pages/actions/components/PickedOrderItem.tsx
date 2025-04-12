@@ -4,7 +4,7 @@ import { PicklistOrderItem, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, Package, PlusCircle, MinusCircle } from "lucide-react";
+import { CheckCircle, Package, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -29,8 +29,6 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
   const { toast } = useToast();
   const [processing, setProcessing] = useState<boolean>(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState<boolean>(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
-  const [quantityToAdd, setQuantityToAdd] = useState<number>(1);
 
   // Utility functions for styling
   const getStockColor = (inStock: boolean, quantity: number | null, orderQuantity: number): string => {
@@ -130,59 +128,6 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
     }
   };
 
-  const handleAddQuantity = async () => {
-    if (quantityToAdd <= 0) {
-      toast({
-        title: "Invalid quantity",
-        description: "Please enter a quantity greater than 0",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setProcessing(true);
-    
-    try {
-      // Calculate new picked quantity (ensuring we don't exceed required)
-      const newPickedQuantity = Math.min(
-        (item.quantity_picked || 0) + quantityToAdd, 
-        item.quantity_required || item.quantity || 1
-      );
-      
-      // Update the quantity_picked value
-      const { error } = await supabase
-        .from('iron_city_order_progress')
-        .update({
-          quantity_picked: newPickedQuantity,
-          notes: (item.notes ? item.notes + " | " : "") + 
-                 `Added ${quantityToAdd} to picked quantity on: ${new Date().toISOString().slice(0, 10)}`
-        })
-        .eq('shopify_order_id', order.shopify_order_id)
-        .eq('sku', item.sku);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Quantity updated",
-        description: `Added ${quantityToAdd} item(s) to picked quantity`,
-      });
-      
-      // Refresh data
-      refreshData();
-    } catch (error: any) {
-      console.error("Error updating quantity:", error);
-      toast({
-        title: "Update failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setProcessing(false);
-      setIsAddDialogOpen(false);
-      setQuantityToAdd(1);
-    }
-  };
-
   // Check if item is fully picked
   const isFullyPicked = (item.quantity_picked || 0) >= (item.quantity_required || item.quantity || 1);
 
@@ -204,7 +149,9 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
               ({item.quantity_picked || 0} picked)
             </span>
             {!isFullyPicked && (
-              <span className="text-xs text-orange-400">Need {remainingToPick} more</span>
+              <span className="text-xs text-orange-400">
+                {remainingToPick} remaining
+              </span>
             )}
           </div>
         </TableCell>
@@ -228,15 +175,12 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
         </TableCell>
         <TableCell>
           <div className="flex gap-2">
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)}
-              disabled={processing || isFullyPicked}
-              size="sm"
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              <PlusCircle className="mr-1 h-4 w-4" />
-              Add More
-            </Button>
+            {!isFullyPicked && (
+              <div className="w-full flex items-center justify-center">
+                <AlertTriangle className="h-4 w-4 text-amber-500 mr-2" />
+                <span className="text-amber-500 text-sm">Incomplete</span>
+              </div>
+            )}
 
             {isCompleteOrder && isFullyPicked && (
               <Button 
@@ -250,44 +194,6 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
               </Button>
             )}
           </div>
-          
-          {/* Dialog for adding quantity */}
-          <AlertDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <AlertDialogContent className="bg-zinc-900 border-zinc-700">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-orange-400">Add Picked Quantity</AlertDialogTitle>
-                <AlertDialogDescription className="text-zinc-300">
-                  How many additional items have you picked?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <div className="py-4">
-                <Input
-                  type="number"
-                  min="1"
-                  max={remainingToPick}
-                  value={quantityToAdd}
-                  onChange={(e) => setQuantityToAdd(parseInt(e.target.value) || 1)}
-                  className="border-zinc-700 bg-zinc-800 text-zinc-300"
-                />
-                <p className="text-sm text-amber-400 mt-2">
-                  Currently picked: {item.quantity_picked || 0} of {item.quantity_required || item.quantity || 1}
-                </p>
-              </div>
-              <AlertDialogFooter>
-                <AlertDialogCancel 
-                  className="bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
-                >
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={handleAddQuantity}
-                  className="bg-orange-500 text-white hover:bg-orange-600"
-                >
-                  Add
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </TableCell>
         <TableCell>
           <Button 

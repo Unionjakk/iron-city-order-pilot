@@ -1,7 +1,7 @@
 
 import React from "react";
 import { format } from "date-fns";
-import { ExternalLink, Mail, CheckCircle, TruckIcon } from "lucide-react";
+import { ExternalLink, Mail, CheckCircle, TruckIcon, XCircle } from "lucide-react";
 import { PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
 import PickedOrderItem from "./PickedOrderItem";
@@ -112,10 +112,18 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
                 {order.shopify_order_number || order.shopify_order_id.substring(0, 8)}
                 <ExternalLink className="ml-1 h-3 w-3" />
               </a>
-              <span className="ml-2 flex items-center text-emerald-500">
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Picked {!isCompleteOrder && <span className="text-amber-400 ml-1">({pickingProgress}%)</span>}
-              </span>
+              
+              {isCompleteOrder ? (
+                <span className="ml-2 flex items-center text-emerald-500">
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Complete
+                </span>
+              ) : (
+                <span className="ml-2 flex items-center text-amber-400">
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Incomplete ({pickingProgress}%)
+                </span>
+              )}
               
               {isCompleteOrder && (
                 <Button 
@@ -125,7 +133,7 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
                   className="ml-4 bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   <TruckIcon className="mr-1 h-4 w-4" />
-                  Move Order to Dispatch
+                  Complete - Ready for Dispatch
                 </Button>
               )}
             </div>

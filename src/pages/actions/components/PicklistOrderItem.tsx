@@ -19,15 +19,12 @@ interface PicklistOrderItemProps {
 const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps) => {
   const { toast } = useToast();
   const [pickedQuantity, setPickedQuantity] = useState<number | null>(null);
-  const [quantity, setQuantity] = useState<number>(1);
   const [pickQuantity, setPickQuantity] = useState<number>(1);
+  const [processing, setProcessing] = useState<boolean>(false);
+  const [action, setAction] = useState<string>("");
+  const [note, setNote] = useState<string>("");
   
   const { 
-    note, 
-    action, 
-    processing,
-    handleNoteChange,
-    handleActionChange,
     getStockColor,
     getLocationColor,
     getCostColor
@@ -45,20 +42,36 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
     }
   }, [item.sku]);
 
-  // Handle quantity change
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    setQuantity(isNaN(value) || value < 1 ? 1 : value);
+  // Handle action change
+  const handleActionChange = (value: string) => {
+    setAction(value);
+  };
+
+  // Handle note change
+  const handleNoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNote(e.target.value);
   };
 
   // Handle pick quantity change
   const handlePickQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
-    setPickQuantity(isNaN(value) || value < 1 ? 1 : Math.min(value, item.quantity));
+    const maxQuantity = item.quantity || 1;
+    setPickQuantity(isNaN(value) || value < 1 ? 1 : Math.min(value, maxQuantity));
   };
 
-  // Wrap the original submit function to include quantity and pick quantity
+  // Submit the action
   const handleSubmit = async () => {
+    if (!action) {
+      toast({
+        title: "Action required",
+        description: "Please select an action before submitting",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setProcessing(true);
+    
     try {
       // First delete any existing progress entries for this order/SKU combination
       await supabase
@@ -66,6 +79,12 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
         .delete()
         .eq('shopify_order_id', order.shopify_order_id)
         .eq('sku', item.sku);
+      
+      // Set required quantity to the item quantity automatically
+      const requiredQuantity = item.quantity || 1;
+      
+      // For "Picked" action, use the pickQuantity, otherwise set picked to 0
+      const quantityPicked = action === "Picked" ? pickQuantity : 0;
       
       // Insert new progress entry with quantity tracking
       const { error } = await supabase
@@ -76,9 +95,9 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
           sku: item.sku,
           progress: action,
           notes: note,
-          quantity: quantity,
-          quantity_required: quantity,
-          quantity_picked: action === "Picked" ? pickQuantity : 0
+          quantity: requiredQuantity,
+          quantity_required: requiredQuantity,
+          quantity_picked: quantityPicked
         });
       
       if (error) throw error;
@@ -86,9 +105,13 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
       toast({
         title: "Success",
         description: action === "Picked" 
-          ? `Item marked as ${action} with ${pickQuantity} of ${quantity} picked`
-          : `Item marked as ${action} with quantity ${quantity}`,
+          ? `Item marked as ${action} with ${pickQuantity} of ${requiredQuantity} picked`
+          : `Item marked as ${action}`,
       });
+      
+      // Reset form
+      setNote("");
+      setAction("");
       
       // Refresh data
       refreshData();
@@ -99,6 +122,8 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -142,29 +167,23 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
                   <SelectItem value="To Order">To Order</SelectItem>
                 </SelectContent>
               </Select>
-              <Input 
-                type="number"
-                min="1"
-                className="w-16 h-10 border-zinc-700 bg-zinc-800/50 text-zinc-300"
-                value={quantity}
-                onChange={handleQuantityChange}
-                title="Total quantity required"
-              />
             </div>
             
             {action === "Picked" && (
               <div className="flex items-center gap-2">
-                <span className="text-zinc-400 text-sm">Picked:</span>
+                <span className="text-zinc-400 text-sm">Pick quantity:</span>
                 <Input 
                   type="number"
                   min="1"
-                  max={quantity}
+                  max={item.quantity || 1}
                   className="w-16 h-8 border-zinc-700 bg-zinc-800/50 text-zinc-300"
                   value={pickQuantity}
                   onChange={handlePickQuantityChange}
-                  title="Quantity picked so far"
+                  title="How many you are picking now"
                 />
-                <span className="text-zinc-400 text-sm">of {quantity}</span>
+                <span className="text-zinc-400 text-sm">
+                  (max: {item.quantity})
+                </span>
               </div>
             )}
           </div>
@@ -188,7 +207,7 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
             placeholder="Add notes here..." 
             className="h-8 border-zinc-700 bg-zinc-800/50 text-zinc-300 w-full"
             value={note}
-            onChange={(e) => handleNoteChange(e.target.value)}
+            onChange={handleNoteChange}
           />
         </TableCell>
       </TableRow>
