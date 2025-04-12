@@ -1,6 +1,6 @@
 
 import React from "react";
-import { formatDate } from "../../../utils/dateUtils";
+import { formatDate } from "../../utils/dateUtils";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
