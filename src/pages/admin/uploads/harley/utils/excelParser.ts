@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { 
   findColumnValue, 
@@ -106,15 +105,13 @@ export const columnMappings = {
 
   // Projected Shipping Quantity variations
   'PROJECTED SHIPPING QUANTITY': 'projected_shipping_quantity',
-  'PROJECTED SHIPPING QTY': 'projected_shipping_quantity',
   'PROJ SHIPPING QTY': 'projected_shipping_quantity',
   '*PROJECTED SHIPPING QTY': 'projected_shipping_quantity',
   'PROJECTED SHIPPING': 'projected_shipping_quantity',
   'PROJ SHIP QTY': 'projected_shipping_quantity',
   'SHIP QTY': 'projected_shipping_quantity',
   'PROJECTED QTY': 'projected_shipping_quantity',
-  'SHIPPING QTY': 'projected_shipping_quantity',
-  'PROJECTED SHIPPING QTY': 'projected_shipping_quantity'
+  'SHIPPING QTY': 'projected_shipping_quantity'
 };
 
 /**
