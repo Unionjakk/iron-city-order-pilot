@@ -7,7 +7,7 @@ import AdminSection from "@/components/dashboard/sections/AdminSection";
 
 const Index = () => {
   return (
-    <div className="space-y-8 p-4">
+    <div className="space-y-8">
       <DashboardHeader />
       <OrderProgressSection />
       <ToolsSection />

@@ -53,14 +53,14 @@ function App() {
       <Router>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             
             {/* Add a redirect for direct /visualiser access */}
             <Route path="/visualiser" element={<Navigate to="/actions/visualiser" replace />} />
             
+            {/* Add ProtectedRoute wrapper for all pages needing authentication */}
             <Route element={<ProtectedRoute />}>
-              {/* Add NavBar for all protected routes */}
+              {/* Layout with NavBar for all authenticated routes */}
               <Route element={
                 <>
                   <NavBar />
@@ -69,6 +69,8 @@ function App() {
                   </main>
                 </>
               }>
+                {/* Include the Index route inside the protected route with NavBar */}
+                <Route path="/" element={<Index />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 
                 {/* Actions Routes */}
@@ -99,10 +101,10 @@ function App() {
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
-          <Footer />
           <Toaster />
         </AuthProvider>
       </Router>
+      <Footer />
     </div>
   );
 }
