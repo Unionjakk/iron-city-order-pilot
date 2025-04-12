@@ -34,7 +34,9 @@ export const useToOrderData = (): PicklistDataResult => {
       finalOrderCount: 0,
       finalItemCount: 0,
       orderStatus: [],
-      fetchStartTime: new Date().toISOString()
+      fetchStartTime: new Date().toISOString(),
+      endTime: '',
+      timeTaken: 0
     };
     
     try {
@@ -65,11 +67,9 @@ export const useToOrderData = (): PicklistDataResult => {
       const ordersData = await fetchOrdersWithToOrderItems();
       
       // Save first few order statuses for debugging
-      debug.orderStatus = ordersData?.slice(0, 5).map(o => ({
-        id: o.shopify_order_id,
-        status: o.status,
-        number: o.shopify_order_number
-      }));
+      debug.orderStatus = ordersData?.slice(0, 5).map(o => 
+        `${o.shopify_order_id} (${o.status}, ${o.shopify_order_number || 'No number'})`
+      );
       
       if (!ordersData || ordersData.length === 0) {
         console.log("No orders found with 'To Order' items");

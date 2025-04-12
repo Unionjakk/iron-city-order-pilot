@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { PicklistOrder, PicklistDebugInfo, PicklistDataResult } from "../types/picklistTypes";
 import { LEEDS_LOCATION_ID } from "../constants/picklistConstants";
@@ -37,7 +36,9 @@ export const usePicklistData = (): PicklistDataResult => {
       finalOrderCount: 0,
       finalItemCount: 0,
       orderStatus: [],
-      fetchStartTime: new Date().toISOString()
+      fetchStartTime: new Date().toISOString(),
+      endTime: '',
+      timeTaken: 0
     };
     
     try {
@@ -47,11 +48,9 @@ export const usePicklistData = (): PicklistDataResult => {
       const ordersData = await fetchUnfulfilledOrders();
       
       // Save first few order statuses for debugging
-      debug.orderStatus = ordersData?.slice(0, 5).map(o => ({
-        id: o.shopify_order_id,
-        status: o.status,
-        number: o.shopify_order_number
-      }));
+      debug.orderStatus = ordersData?.slice(0, 5).map(o => 
+        `${o.shopify_order_id} (${o.status}, ${o.shopify_order_number || 'No number'})`
+      );
       
       if (!ordersData || ordersData.length === 0) {
         console.log("No orders found with status 'unfulfilled'");
