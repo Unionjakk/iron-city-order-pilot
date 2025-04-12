@@ -1,19 +1,11 @@
-import React, { useState } from "react";
-import { ExternalLink, Clipboard, FileWarning, X } from "lucide-react";
+
+import React from "react";
+import { Clipboard, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import MatchToOrderDialog from "./MatchToOrderDialog";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import ResetProgressDialog from "./order-item/ResetProgressDialog";
+import { useOrderItemActions } from "../hooks/useOrderItemActions";
 
 interface OrderItemProps {
   id: string;
@@ -44,54 +36,10 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
   notes,
   onItemUpdated
 }) => {
-  const [showMatchDialog, setShowMatchDialog] = useState(false);
-  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showMatchDialog, setShowMatchDialog] = React.useState(false);
+  const [showResetDialog, setShowResetDialog] = React.useState(false);
   const { toast } = useToast();
-  
-  const resetItemProgress = async () => {
-    try {
-      const { error } = await supabase
-        .from('iron_city_order_progress')
-        .delete()
-        .eq('shopify_order_id', shopify_order_id)
-        .eq('sku', sku);
-        
-      if (error) throw error;
-      
-      toast({
-        title: "Progress Reset",
-        description: "Item has been reset to 'To Pick' status",
-      });
-      
-      onItemUpdated();
-    } catch (error: any) {
-      console.error("Error resetting item progress:", error);
-      toast({
-        title: "Reset Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-  const [isResetting, setIsResetting] = useState(false);
-
-  const handleCopySku = () => {
-    navigator.clipboard.writeText(sku);
-    toast({
-      title: "SKU Copied",
-      description: `${sku} copied to clipboard`,
-    });
-  };
-
-  const handleResetItem = async () => {
-    setIsResetting(true);
-    try {
-      await resetItemProgress();
-    } finally {
-      setIsResetting(false);
-      setShowResetDialog(false);
-    }
-  };
+  const { handleCopySku } = useOrderItemActions(sku, toast);
 
   return (
     <>
@@ -189,26 +137,13 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
         quantity={quantity}
       />
 
-      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <AlertDialogContent className="bg-zinc-900 border-zinc-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-400">Reset Item Progress</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-300">
-              This will reset this item's progress status to "To Pick". Are you sure you want to continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-500 text-white hover:bg-red-600"
-              onClick={handleResetItem}
-              disabled={isResetting}
-            >
-              {isResetting ? 'Resetting...' : 'Reset Progress'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ResetProgressDialog
+        isOpen={showResetDialog}
+        onClose={() => setShowResetDialog(false)}
+        shopifyOrderId={shopify_order_id}
+        sku={sku}
+        onReset={onItemUpdated}
+      />
     </>
   );
 };
