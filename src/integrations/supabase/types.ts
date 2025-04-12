@@ -216,15 +216,7 @@ export type Database = {
           unit_price?: number | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "hd_order_line_items_hd_order_id_fkey"
-            columns: ["hd_order_id"]
-            isOneToOne: false
-            referencedRelation: "hd_orders"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       hd_orders: {
         Row: {

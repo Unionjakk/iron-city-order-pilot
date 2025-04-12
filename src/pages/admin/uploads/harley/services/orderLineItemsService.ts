@@ -30,6 +30,7 @@ export const processOrderLineItems = async (
     
     const lineItems = parsedData.filter(item => item.hd_order_number === hdOrderNumber);
     
+    // Find the corresponding order to get its ID (without relying on foreign keys)
     const { data: existingOrders, error: fetchError } = await supabase
       .from('hd_orders')
       .select('id')
@@ -50,10 +51,11 @@ export const processOrderLineItems = async (
     
     const orderId = existingOrders[0].id;
     
+    // Check if there are existing line items for this order
     const { data: existingLineItems, error: lineItemsError } = await supabase
       .from('hd_order_line_items')
       .select('id, line_number')
-      .eq('hd_order_id', orderId);
+      .eq('hd_order_number', hdOrderNumber);
     
     if (lineItemsError) {
       console.error(`Error fetching existing line items for order ${hdOrderNumber}:`, lineItemsError);
@@ -66,10 +68,11 @@ export const processOrderLineItems = async (
     
     const replacedLineNumbers: string[] = [];
     
+    // First delete existing line items for this order
     const { error: deleteError } = await supabase
       .from('hd_order_line_items')
       .delete()
-      .eq('hd_order_id', orderId);
+      .eq('hd_order_number', hdOrderNumber);
     
     if (deleteError) {
       console.error(`Error deleting existing line items for order ${hdOrderNumber}:`, deleteError);
@@ -77,6 +80,7 @@ export const processOrderLineItems = async (
       continue;
     }
     
+    // Insert all the line items
     for (const item of lineItems) {
       const lineNumberStr = String(item.line_number);
       const orderDate = item.order_date ? 
@@ -105,10 +109,11 @@ export const processOrderLineItems = async (
       // Ensure dealer_po_number is explicitly set even if it's an empty string
       const dealerPoNumber = item.dealer_po_number || '';
       
+      // IMPORTANT: Always include both hd_order_id and hd_order_number to maintain proper relationship
       const { error: insertError } = await supabase
         .from('hd_order_line_items')
         .insert({
-          hd_order_id: orderId,
+          hd_order_id: orderId,  // This is the key change - we always set the order ID explicitly
           hd_order_number: hdOrderNumber,
           line_number: lineNumberStr,
           part_number: item.part_number || '',
@@ -137,6 +142,7 @@ export const processOrderLineItems = async (
       console.log(`Replaced ${replacedLineNumbers.length} existing line items for order ${hdOrderNumber}: ${replacedLineNumbers.join(', ')}`);
     }
     
+    // Update the has_line_items flag for the order
     const { error: updateError } = await supabase
       .from('hd_orders')
       .update({ has_line_items: true })
