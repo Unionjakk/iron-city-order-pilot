@@ -112,28 +112,28 @@ export const fetchPickedItemsProgress = async () => {
         .limit(1);
       
       // If the column exists, we can safely include it in our query
-      const { data, error } = await supabase
+      const { data, error: queryError } = await supabase
         .from('iron_city_order_progress')
         .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number, quantity_picked, quantity_required, is_partial')
         .eq('progress', 'Picked');
         
-      if (error) {
-        console.error("Progress fetch error:", error);
+      if (queryError) {
+        console.error("Progress fetch error:", queryError);
         return [];
       }
       
       console.log(`Fetched ${data?.length || 0} 'Picked' progress items with is_partial field:`, data);
       return data || [];
-    } catch (error) {
+    } catch (columnError) {
       // The column doesn't exist, so use a select without that column
       console.log("The is_partial column does not exist yet, using query without it");
-      const { data, error } = await supabase
+      const { data, error: fallbackError } = await supabase
         .from('iron_city_order_progress')
         .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number, quantity_picked, quantity_required')
         .eq('progress', 'Picked');
         
-      if (error) {
-        console.error("Progress fetch error:", error);
+      if (fallbackError) {
+        console.error("Progress fetch error:", fallbackError);
         return [];
       }
       
