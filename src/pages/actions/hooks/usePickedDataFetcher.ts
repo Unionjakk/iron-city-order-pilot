@@ -122,6 +122,8 @@ export const usePickedDataFetcher = () => {
       const processedOrders = processPickedOrdersData(ordersData, lineItemsData, stockMap, progressMap);
       
       console.log(`Processed ${processedOrders.length} orders with ${processedOrders.reduce((count, order) => count + order.items.length, 0)} picked items`);
+      console.log("Sample processed order:", processedOrders.length > 0 ? processedOrders[0] : "No orders");
+      
       debug.finalOrderCount = processedOrders.length;
       debug.finalItemCount = processedOrders.reduce((count, order) => count + order.items.length, 0);
       

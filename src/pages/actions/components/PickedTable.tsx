@@ -30,7 +30,10 @@ const PickedTable = ({ orders, refreshData }: PickedTableProps) => {
         <TableBody>
           {orders.map((order) => (
             <React.Fragment key={`order-group-${order.id}`}>
-              <PickedOrderComponent order={order} refreshData={refreshData} />
+              <PickedOrderComponent 
+                order={order} 
+                refreshData={refreshData} 
+              />
               <TableRow className="h-4">
                 <TableCell colSpan={9} className="p-0">
                   <Separator className="bg-zinc-800/50" />

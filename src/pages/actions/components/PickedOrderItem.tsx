@@ -126,6 +126,9 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
     }
   };
 
+  // Debug output for troubleshooting
+  console.log(`Item ${item.sku}: progress = "${item.progress}", isCompleteOrder = ${isCompleteOrder}`);
+
   return (
     <>
       <TableRow className="hover:bg-zinc-800/30 border-t border-zinc-800/30">

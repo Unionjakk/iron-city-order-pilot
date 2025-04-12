@@ -24,8 +24,8 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
     return `https://admin.shopify.com/store/opus-harley-davidson/orders/${orderId}`;
   };
 
-  // Check if all items in the order are picked
-  const isCompleteOrder = order.items.every(item => item.progress === "Picked");
+  // Check if all items in the order are picked - ensure all are actually 'Picked'
+  const isCompleteOrder = order.items.length > 0 && order.items.every(item => item.progress === "Picked");
 
   return (
     <>
