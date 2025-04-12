@@ -20,10 +20,6 @@ const StatusBadge = ({ status, count, showCount = true }: StatusBadgeProps) => {
       variant = "outline";
       className = "border-yellow-500 text-yellow-600 bg-yellow-50 dark:bg-yellow-950/30";
       break;
-    case "picking":
-      variant = "outline";
-      className = "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30";
-      break;
     case "picked":
       variant = "outline";
       className = "border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30";
@@ -39,10 +35,6 @@ const StatusBadge = ({ status, count, showCount = true }: StatusBadgeProps) => {
     case "to dispatch":
       variant = "outline";
       className = "border-teal-500 text-teal-600 bg-teal-50 dark:bg-teal-950/30";
-      break;
-    case "fulfilled":
-      variant = "outline";
-      className = "border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30";
       break;
     default:
       variant = "outline";

@@ -68,8 +68,6 @@ function getStatusColor(status: string): string {
   switch (statusLower) {
     case "to pick":
       return "#fbbf24"; // yellow-400
-    case "picking":
-      return "#f59e0b"; // amber-500
     case "picked":
       return "#10b981"; // green-500
     case "to order":
@@ -78,8 +76,6 @@ function getStatusColor(status: string): string {
       return "#3b82f6"; // blue-500
     case "to dispatch":
       return "#14b8a6"; // teal-500
-    case "fulfilled":
-      return "#059669"; // emerald-600
     default:
       return "#9ca3af"; // gray-400
   }

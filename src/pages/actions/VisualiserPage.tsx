@@ -55,12 +55,10 @@ const VisualiserPage = () => {
       
       switch(statusFilter) {
         case "toPick": return progress === "to pick";
-        case "picking": return progress === "picking";
         case "picked": return progress === "picked";
         case "toOrder": return progress === "to order";
         case "ordered": return progress === "ordered";
         case "toDispatch": return progress === "to dispatch";
-        case "fulfilled": return progress === "fulfilled";
         default: return true;
       }
     });
@@ -143,12 +141,10 @@ const VisualiserPage = () => {
                     <SelectContent>
                       <SelectItem value="all">All Statuses</SelectItem>
                       <SelectItem value="toPick">To Pick</SelectItem>
-                      <SelectItem value="picking">Picking</SelectItem>
                       <SelectItem value="picked">Picked</SelectItem>
                       <SelectItem value="toOrder">To Order</SelectItem>
                       <SelectItem value="ordered">Ordered</SelectItem>
                       <SelectItem value="toDispatch">To Dispatch</SelectItem>
-                      <SelectItem value="fulfilled">Fulfilled</SelectItem>
                     </SelectContent>
                   </Select>
                   
