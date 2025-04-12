@@ -99,24 +99,30 @@ export type Database = {
         Row: {
           created_at: string
           hd_order_number: string
+          hd_orderlinecombo: string | null
           id: string
           line_number: string | null
+          part_number: string | null
           reason: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           hd_order_number: string
+          hd_orderlinecombo?: string | null
           id?: string
           line_number?: string | null
+          part_number?: string | null
           reason: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           hd_order_number?: string
+          hd_orderlinecombo?: string | null
           id?: string
           line_number?: string | null
+          part_number?: string | null
           reason?: string
           updated_at?: string
         }

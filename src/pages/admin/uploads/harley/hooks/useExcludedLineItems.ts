@@ -18,6 +18,8 @@ export const useExcludedLineItems = () => {
           id,
           hd_order_number,
           line_number,
+          part_number,
+          hd_orderlinecombo,
           reason,
           created_at
         `)
@@ -48,10 +50,11 @@ export const useExcludedLineItems = () => {
           id: exclusion.id,
           hd_order_number: exclusion.hd_order_number,
           line_number: exclusion.line_number,
-          part_number: lineItemDetails?.part_number || '-',
+          part_number: exclusion.part_number || lineItemDetails?.part_number || '-',
           description: lineItemDetails?.description || '-',
           reason: exclusion.reason as ExcludeReason,
-          created_at: exclusion.created_at
+          created_at: exclusion.created_at,
+          hd_orderlinecombo: exclusion.hd_orderlinecombo
         });
       }
 
@@ -64,7 +67,7 @@ export const useExcludedLineItems = () => {
     }
   };
 
-  const addExclusion = async (orderNumber: string, lineNumber: string, reason: ExcludeReason) => {
+  const addExclusion = async (orderNumber: string, lineNumber: string, partNumber: string, reason: ExcludeReason) => {
     try {
       // Check if the combination already exists
       const { data: existingItems, error: checkError } = await supabase
@@ -87,6 +90,7 @@ export const useExcludedLineItems = () => {
         .insert({ 
           hd_order_number: orderNumber, 
           line_number: lineNumber,
+          part_number: partNumber,
           reason 
         });
 
@@ -131,6 +135,7 @@ export const useExcludedLineItems = () => {
     addExclusion,
     removeExclusion,
     excludedLineItemKeys: excludedLineItems.map(item => `${item.hd_order_number}-${item.line_number}`),
+    excludedOrderLineCombos: excludedLineItems.map(item => item.hd_orderlinecombo || ''),
     refreshExcludedLineItems: fetchExcludedLineItems
   };
 };

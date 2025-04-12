@@ -10,12 +10,13 @@ import ReasonSelector from './ReasonSelector';
 import SubmitButton from './SubmitButton';
 
 interface ExcludeLineItemFormProps {
-  onAddExclusion: (orderNumber: string, lineNumber: string, reason: ExcludeReason) => void;
+  onAddExclusion: (orderNumber: string, lineNumber: string, partNumber: string, reason: ExcludeReason) => void;
 }
 
 const formSchema = z.object({
   orderNumber: z.string().min(1, { message: "Order number is required" }),
   lineNumber: z.string().min(1, { message: "Line number is required" }),
+  partNumber: z.string().optional(),
   reason: z.enum(['Check In', 'Not Shopify'], { 
     required_error: "Please select a reason for exclusion" 
   })
@@ -31,6 +32,7 @@ const ExcludeLineItemForm = ({ onAddExclusion }: ExcludeLineItemFormProps) => {
     defaultValues: {
       orderNumber: '',
       lineNumber: '',
+      partNumber: '',
       reason: 'Check In'
     }
   });
@@ -39,7 +41,12 @@ const ExcludeLineItemForm = ({ onAddExclusion }: ExcludeLineItemFormProps) => {
     setIsSubmitting(true);
     
     try {
-      await onAddExclusion(values.orderNumber, values.lineNumber, values.reason);
+      await onAddExclusion(
+        values.orderNumber, 
+        values.lineNumber, 
+        values.partNumber || '', 
+        values.reason
+      );
       form.reset();
     } finally {
       setIsSubmitting(false);
@@ -74,6 +81,22 @@ const ExcludeLineItemForm = ({ onAddExclusion }: ExcludeLineItemFormProps) => {
               <Input 
                 {...field}
                 placeholder="Enter line number"
+                className="bg-zinc-800 text-zinc-100 border-zinc-700 placeholder-zinc-500"
+              />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="partNumber"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel className="text-zinc-300">Part Number (Optional)</FormLabel>
+              <Input 
+                {...field}
+                placeholder="Enter part number"
                 className="bg-zinc-800 text-zinc-100 border-zinc-700 placeholder-zinc-500"
               />
               <FormMessage />

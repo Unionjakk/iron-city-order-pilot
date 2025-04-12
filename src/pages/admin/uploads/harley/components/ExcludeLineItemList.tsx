@@ -52,12 +52,10 @@ const ExcludeLineItemList = ({ excludedLineItems, isLoading, onRemoveExclusion }
           <TableRow className="border-zinc-700">
             <TableHead className="text-zinc-300">Order Number</TableHead>
             <TableHead className="text-zinc-300">Line Number</TableHead>
-            {/* Only show these columns if at least one item has details */}
+            <TableHead className="text-zinc-300">Part Number</TableHead>
+            {/* Only show description column if at least one item has details */}
             {hasDetailedLineItems && (
-              <>
-                <TableHead className="text-zinc-300">Part Number</TableHead>
-                <TableHead className="text-zinc-300">Description</TableHead>
-              </>
+              <TableHead className="text-zinc-300">Description</TableHead>
             )}
             <TableHead className="text-zinc-300">Reason</TableHead>
             <TableHead className="text-zinc-300">Added On</TableHead>
@@ -69,12 +67,10 @@ const ExcludeLineItemList = ({ excludedLineItems, isLoading, onRemoveExclusion }
             <TableRow key={item.id} className="border-zinc-800">
               <TableCell className="font-medium text-zinc-200">{item.hd_order_number}</TableCell>
               <TableCell className="text-zinc-300">{item.line_number}</TableCell>
-              {/* Only show these cells if we're showing the columns */}
+              <TableCell className="text-zinc-300">{item.part_number}</TableCell>
+              {/* Only show description cell if we're showing the column */}
               {hasDetailedLineItems && (
-                <>
-                  <TableCell className="text-zinc-300">{item.part_number}</TableCell>
-                  <TableCell className="text-zinc-300">{item.description}</TableCell>
-                </>
+                <TableCell className="text-zinc-300">{item.description}</TableCell>
               )}
               <TableCell>
                 <div className="flex items-center text-zinc-300">

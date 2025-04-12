@@ -20,4 +20,5 @@ export type ExcludedLineItem = {
   description?: string;
   reason: ExcludeReason;
   created_at: string;
+  hd_orderlinecombo?: string;
 };

@@ -51,6 +51,19 @@ export const processOrderLineItems = async (
     
     const orderId = existingOrders[0].id;
     
+    // Fetch exclusions for this order
+    const { data: exclusions, error: exclusionsError } = await supabase
+      .from('hd_line_items_exclude')
+      .select('line_number, part_number, hd_orderlinecombo')
+      .eq('hd_order_number', hdOrderNumber);
+    
+    if (exclusionsError) {
+      console.error(`Error fetching exclusions for order ${hdOrderNumber}:`, exclusionsError);
+    }
+    
+    const excludedLineNumbers = new Set(exclusions?.map(e => e.line_number) || []);
+    const excludedCombos = new Set(exclusions?.map(e => e.hd_orderlinecombo) || []);
+    
     // Check if there are existing line items for this order
     const { data: existingLineItems, error: lineItemsError } = await supabase
       .from('hd_order_line_items')
@@ -83,6 +96,15 @@ export const processOrderLineItems = async (
     // Insert all the line items
     for (const item of lineItems) {
       const lineNumberStr = String(item.line_number);
+      const partNumber = item.part_number || '';
+      
+      // Skip if this line is excluded
+      if (excludedLineNumbers.has(lineNumberStr) || 
+          excludedCombos.has(`${hdOrderNumber}${partNumber}`)) {
+        console.log(`Skipping excluded line: Order ${hdOrderNumber}, Line ${lineNumberStr}, Part ${partNumber}`);
+        continue;
+      }
+      
       const orderDate = item.order_date ? 
         (item.order_date instanceof Date ? 
           item.order_date.toISOString().split('T')[0] : 
@@ -116,7 +138,7 @@ export const processOrderLineItems = async (
           hd_order_id: orderId,  // This is the key change - we always set the order ID explicitly
           hd_order_number: hdOrderNumber,
           line_number: lineNumberStr,
-          part_number: item.part_number || '',
+          part_number: partNumber,
           description: item.description || '',
           order_quantity: item.order_quantity || 0,
           open_quantity: item.open_quantity || 0,
