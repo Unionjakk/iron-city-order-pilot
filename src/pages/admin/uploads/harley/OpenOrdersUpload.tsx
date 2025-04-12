@@ -189,23 +189,23 @@ const OpenOrdersUpload = () => {
       const { data: ordersWithLineItems, error: lineItemsError } = await supabase
         .from('hd_order_line_items')
         .select('hd_order_number')
-        .in('hd_order_number', orderNumbers)
-        .distinct();
+        .in('hd_order_number', orderNumbers);
       
       if (!lineItemsError && ordersWithLineItems && ordersWithLineItems.length > 0) {
-        const orderNumbersWithLines = ordersWithLineItems.map(o => o.hd_order_number);
+        // Get unique order numbers
+        const uniqueOrderNumbers = [...new Set(ordersWithLineItems.map(o => o.hd_order_number))];
         
         // Update has_line_items flag
-        if (orderNumbersWithLines.length > 0) {
+        if (uniqueOrderNumbers.length > 0) {
           const { error: updateError } = await supabase
             .from('hd_orders')
             .update({ has_line_items: true })
-            .in('hd_order_number', orderNumbersWithLines);
+            .in('hd_order_number', uniqueOrderNumbers);
           
           if (updateError) {
             console.error('Error updating has_line_items:', updateError);
           } else {
-            console.log(`Updated has_line_items for ${orderNumbersWithLines.length} orders`);
+            console.log(`Updated has_line_items for ${uniqueOrderNumbers.length} orders`);
           }
         }
       }
