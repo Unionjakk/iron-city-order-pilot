@@ -124,10 +124,27 @@ const OpenOrdersUpload = () => {
       const orderNumbers = parsedData.map(order => order.hd_order_number);
       console.log(`Found ${orderNumbers.length} order numbers to process...`);
       
-      // Delete existing orders without impacting line items
-      // This uses a direct DELETE query instead of cascading deletes
+      // First, save the has_line_items status for each order to preserve after deletion
+      const { data: ordersWithLineItems, error: lineItemsQueryError } = await supabase
+        .from('hd_orders')
+        .select('hd_order_number, has_line_items')
+        .in('hd_order_number', orderNumbers)
+        .eq('has_line_items', true);
+      
+      console.log('Orders with line items before deletion:', ordersWithLineItems);
+      
+      // Store the order numbers with line items
+      const orderNumbersWithLineItems = ordersWithLineItems 
+        ? ordersWithLineItems.map(o => o.hd_order_number) 
+        : [];
+      
+      console.log('Order numbers with line items:', orderNumbersWithLineItems);
+      
+      // Delete existing orders - use a direct DELETE without cascade
       if (orderNumbers.length > 0) {
         console.log('Deleting existing orders before inserting new ones...');
+        
+        // IMPORTANT: Delete directly from hd_orders table without affecting line items
         const { error: deleteError } = await supabase
           .from('hd_orders')
           .delete()
@@ -159,6 +176,8 @@ const OpenOrdersUpload = () => {
           order_type: order.order_type || '',
           terms: order.terms || '',
           notes: order.notes || '',
+          // Maintain has_line_items status if it previously had line items
+          has_line_items: orderNumbersWithLineItems.includes(order.hd_order_number)
         };
       });
       
@@ -184,28 +203,28 @@ const OpenOrdersUpload = () => {
         console.log(`Successfully inserted batch: ${i} to ${i + batch.length - 1}`);
       }
       
-      // Update has_line_items status 
-      // Fetch all orders that have line items
-      const { data: ordersWithLineItems, error: lineItemsError } = await supabase
+      // Additional check to ensure has_line_items flag is set correctly
+      // Get all orders that have line items in the hd_order_line_items table
+      const { data: currentOrdersWithLineItems, error: lineItemsFetchError } = await supabase
         .from('hd_order_line_items')
-        .select('hd_order_number')
-        .in('hd_order_number', orderNumbers);
+        .select('hd_order_number');
       
-      if (!lineItemsError && ordersWithLineItems && ordersWithLineItems.length > 0) {
-        // Get unique order numbers
-        const uniqueOrderNumbers = [...new Set(ordersWithLineItems.map(o => o.hd_order_number))];
+      if (!lineItemsFetchError && currentOrdersWithLineItems && currentOrdersWithLineItems.length > 0) {
+        // Create a Set of unique order numbers
+        const uniqueOrderNumbers = [...new Set(currentOrdersWithLineItems.map(o => o.hd_order_number))];
         
-        // Update has_line_items flag
         if (uniqueOrderNumbers.length > 0) {
+          console.log(`Updating has_line_items flag for ${uniqueOrderNumbers.length} orders`);
+          
           const { error: updateError } = await supabase
             .from('hd_orders')
             .update({ has_line_items: true })
             .in('hd_order_number', uniqueOrderNumbers);
           
           if (updateError) {
-            console.error('Error updating has_line_items:', updateError);
+            console.error('Error updating has_line_items flag:', updateError);
           } else {
-            console.log(`Updated has_line_items for ${uniqueOrderNumbers.length} orders`);
+            console.log(`Successfully updated has_line_items flag for ${uniqueOrderNumbers.length} orders`);
           }
         }
       }
@@ -275,8 +294,8 @@ const OpenOrdersUpload = () => {
               <ul className="list-disc list-inside space-y-1 text-sm text-zinc-300">
                 <li>Do not modify the exported file before uploading</li>
                 <li>Make sure the file contains all necessary columns including HD Order Number and PO Number</li>
-                <li>This upload will replace existing orders with new data</li>
-                <li>Line items from existing orders will be preserved</li>
+                <li>This upload will update open orders data without affecting line items</li>
+                <li>Any existing line items will be preserved</li>
                 <li>After upload, you may proceed to uploading Order Line Items for any new orders</li>
               </ul>
             </div>
