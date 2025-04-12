@@ -79,6 +79,7 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
     setProcessing(true);
     
     try {
+      // First delete any existing progress entries for this order/SKU combination
       await supabase
         .from('iron_city_order_progress')
         .delete()
@@ -87,13 +88,22 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
       
       const requiredQuantity = item.quantity || 1;
       
+      // Determine quantities based on the action
       const quantityPicked = action === "Picked" ? pickQuantity : 0;
       const remainingQuantity = requiredQuantity - quantityPicked;
       
-      // Determine if this is a partial pick that needs to be ordered
-      const needsOrdering = action === "Picked" && isPartial && remainingQuantity > 0;
+      // Determine if this is a partial pick
+      const needsPartialFlag = action === "Picked" && isPartial && remainingQuantity > 0;
       
-      // Create the initial record (Picked or To Order)
+      // Add notes about partial picking if applicable
+      let finalNotes = note;
+      if (needsPartialFlag && quantityPicked < requiredQuantity) {
+        finalNotes = note 
+          ? `${note} | Partial pick: ${quantityPicked} picked, ${remainingQuantity} to order` 
+          : `Partial pick: ${quantityPicked} picked, ${remainingQuantity} to order`;
+      }
+      
+      // Create the record with appropriate status and quantities
       const { error } = await supabase
         .from('iron_city_order_progress')
         .insert({
@@ -101,43 +111,19 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
           shopify_order_number: order.shopify_order_number,
           sku: item.sku,
           progress: action,
-          notes: note,
+          notes: finalNotes,
           quantity: requiredQuantity,
           quantity_required: requiredQuantity,
           quantity_picked: quantityPicked,
-          is_partial: isPartial
+          is_partial: needsPartialFlag
         });
       
       if (error) throw error;
       
-      // If this is a partial pick with remaining items to order, create a second record
-      if (needsOrdering) {
-        const orderNote = note 
-          ? `${note} | Partial pick: ${quantityPicked} picked, ${remainingQuantity} to order` 
-          : `Partial pick: ${quantityPicked} picked, ${remainingQuantity} to order`;
-        
-        const { error: orderError } = await supabase
-          .from('iron_city_order_progress')
-          .insert({
-            shopify_order_id: order.shopify_order_id,
-            shopify_order_number: order.shopify_order_number,
-            sku: item.sku,
-            progress: "To Order",
-            notes: orderNote,
-            quantity: requiredQuantity,
-            quantity_required: remainingQuantity,
-            quantity_picked: 0,
-            quantity_ordered: remainingQuantity,
-            is_partial: true
-          });
-        
-        if (orderError) throw orderError;
-      }
-      
       toast({
         title: "Success",
-        description: isPartial && action === "Picked" 
-          ? `Item marked as partially ${action} with ${pickQuantity} of ${requiredQuantity} picked`
+        description: needsPartialFlag
+          ? `Item marked as partially picked (${quantityPicked} of ${requiredQuantity})`
           : `Item marked as ${action}`,
       });
       

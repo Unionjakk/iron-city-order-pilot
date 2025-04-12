@@ -105,27 +105,12 @@ export const fetchPickedItemsProgress = async () => {
     }
     
     // Check if the is_partial column exists by trying to select it
-    const { data: columnCheckData, error: columnCheckError } = await supabase
-      .from('iron_city_order_progress')
-      .select('is_partial')
-      .limit(1);
-    
-    // If the column doesn't exist, we'll get an error, so use a select without that column
-    if (columnCheckError) {
-      console.log("The is_partial column does not exist yet, using query without it");
-      const { data, error } = await supabase
+    try {
+      const { data: columnCheckData } = await supabase
         .from('iron_city_order_progress')
-        .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number, quantity_picked, quantity_required')
-        .eq('progress', 'Picked');
-        
-      if (error) {
-        console.error("Progress fetch error:", error);
-        return [];
-      }
+        .select('is_partial')
+        .limit(1);
       
-      console.log(`Fetched ${data?.length || 0} 'Picked' progress items without is_partial field`);
-      return data || [];
-    } else {
       // If the column exists, we can safely include it in our query
       const { data, error } = await supabase
         .from('iron_city_order_progress')
@@ -138,6 +123,21 @@ export const fetchPickedItemsProgress = async () => {
       }
       
       console.log(`Fetched ${data?.length || 0} 'Picked' progress items with is_partial field:`, data);
+      return data || [];
+    } catch (error) {
+      // The column doesn't exist, so use a select without that column
+      console.log("The is_partial column does not exist yet, using query without it");
+      const { data, error } = await supabase
+        .from('iron_city_order_progress')
+        .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number, quantity_picked, quantity_required')
+        .eq('progress', 'Picked');
+        
+      if (error) {
+        console.error("Progress fetch error:", error);
+        return [];
+      }
+      
+      console.log(`Fetched ${data?.length || 0} 'Picked' progress items without is_partial field`);
       return data || [];
     }
   } catch (error) {
