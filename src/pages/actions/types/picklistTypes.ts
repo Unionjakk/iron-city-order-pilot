@@ -1,7 +1,12 @@
-
-/**
- * Type definitions for the picklist feature
- */
+export interface PicklistOrder {
+  id: string;
+  shopify_order_id: string;
+  shopify_order_number: string | null;
+  customer_name: string;
+  customer_email: string | null;
+  created_at: string;
+  items: PicklistOrderItem[];
+}
 
 export interface PicklistOrderItem {
   id: string;
@@ -13,37 +18,30 @@ export interface PicklistOrderItem {
   price: number | null;
   created_at: string;
   location_id: string;
-  location_name: string | null;
-  // Pinnacle stock data
+  location_name: string;
+  // Stock data
   in_stock: boolean;
   stock_quantity: number | null;
   bin_location: string | null;
   cost: number | null;
-  // Progress tracking
+  // Progress data
   progress: string | null;
   notes: string | null;
-  // Harley Davidson order data
   hd_orderlinecombo: string | null;
   status: string | null;
   dealer_po_number: string | null;
   // Quantity tracking
   quantity_required?: number;
   quantity_picked?: number;
-  quantity_ordered?: number;
-  // Partial pick flag
   is_partial?: boolean;
-  // Picked quantity
-  pickedQuantity?: number;
 }
 
-export interface PicklistOrder {
-  id: string;
-  shopify_order_id: string;
-  shopify_order_number: string | null;
-  customer_name: string;
-  customer_email: string | null;
-  created_at: string;
-  items: PicklistOrderItem[];
+export interface PicklistDataResult {
+  orders: PicklistOrder[];
+  isLoading: boolean;
+  error: string | null;
+  refreshData: () => void;
+  debugInfo: PicklistDebugInfo;
 }
 
 export interface PicklistDebugInfo {
@@ -52,17 +50,16 @@ export interface PicklistDebugInfo {
   progressItemCount: number;
   finalOrderCount: number;
   finalItemCount: number;
-  orderStatus: any[];
+  orderStatus: string[];
   fetchStartTime: string;
-  endTime?: string;
-  timeTaken?: number;
-  [key: string]: any;
-}
-
-export interface PicklistDataResult {
-  orders: PicklistOrder[];
-  isLoading: boolean;
-  error: string | null;
-  refreshData: () => Promise<void>;
-  debugInfo: PicklistDebugInfo;
+  endTime: string;
+  timeTaken: number;
+  progressFetchResult?: string;
+  ordersFetchResult?: string;
+  lineItemsFetchResult?: string;
+  allLineItems?: number;
+  error?: string;
+  progressItems?: any[];
+  ordersData?: any[];
+  lineItemsData?: any[];
 }

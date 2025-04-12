@@ -318,6 +318,7 @@ export type Database = {
           dealer_po_number: string | null
           hd_orderlinecombo: string | null
           id: string
+          is_partial: boolean | null
           notes: string | null
           progress: string | null
           quantity: number | null
@@ -335,6 +336,7 @@ export type Database = {
           dealer_po_number?: string | null
           hd_orderlinecombo?: string | null
           id?: string
+          is_partial?: boolean | null
           notes?: string | null
           progress?: string | null
           quantity?: number | null
@@ -352,6 +354,7 @@ export type Database = {
           dealer_po_number?: string | null
           hd_orderlinecombo?: string | null
           id?: string
+          is_partial?: boolean | null
           notes?: string | null
           progress?: string | null
           quantity?: number | null
