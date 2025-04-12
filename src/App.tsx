@@ -6,6 +6,7 @@ import {
   Route,
   Link,
   Outlet,
+  Navigate
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -54,6 +55,10 @@ function App() {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            
+            {/* Add a redirect for direct /visualiser access */}
+            <Route path="/visualiser" element={<Navigate to="/actions/visualiser" replace />} />
+            
             <Route element={<ProtectedRoute />}>
               {/* Add NavBar for all protected routes */}
               <Route element={
