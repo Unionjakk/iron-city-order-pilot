@@ -1,10 +1,13 @@
 
 import React from "react";
 import { format } from "date-fns";
-import { ExternalLink, Mail, CheckCircle } from "lucide-react";
+import { ExternalLink, Mail, CheckCircle, TruckIcon } from "lucide-react";
 import { PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
 import PickedOrderItem from "./PickedOrderItem";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PickedOrderComponentProps {
   order: PicklistOrder;
@@ -12,6 +15,9 @@ interface PickedOrderComponentProps {
 }
 
 const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps) => {
+  const { toast } = useToast();
+  const [processing, setProcessing] = React.useState(false);
+  
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "dd/MM/yyyy");
@@ -36,6 +42,48 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
   const totalPickedQuantity = order.items.reduce((sum, item) => sum + (item.quantity_picked || 0), 0);
   const pickingProgress = Math.round((totalPickedQuantity / totalRequiredQuantity) * 100);
 
+  // Handle moving all items in the order to "To Dispatch" status
+  const handleMoveToDispatch = async () => {
+    if (!isCompleteOrder) return;
+    
+    setProcessing(true);
+    try {
+      // Update all items in this order to "To Dispatch" status
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const note = `Order marked ready for dispatch: ${timestamp}`;
+      
+      const { error } = await supabase
+        .from('iron_city_order_progress')
+        .update({
+          progress: "To Dispatch",
+          notes: supabase.rpc('append_note', { 
+            current_notes: '', 
+            new_note: note 
+          })
+        })
+        .eq('shopify_order_id', order.shopify_order_id)
+        .eq('progress', 'Picked');
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Order moved to dispatch",
+        description: `Order ${order.shopify_order_number || order.shopify_order_id} has been marked for dispatch`,
+      });
+      
+      refreshData();
+    } catch (error: any) {
+      console.error("Error moving order to dispatch:", error);
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <>
       <TableRow key={`order-${order.id}`} className="bg-zinc-800/20">
@@ -56,6 +104,18 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
                 <CheckCircle className="h-4 w-4 mr-1" />
                 Picked {!isCompleteOrder && <span className="text-amber-400 ml-1">({pickingProgress}%)</span>}
               </span>
+              
+              {isCompleteOrder && (
+                <Button 
+                  onClick={handleMoveToDispatch}
+                  disabled={processing}
+                  size="sm"
+                  className="ml-4 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <TruckIcon className="mr-1 h-4 w-4" />
+                  Move Order to Dispatch
+                </Button>
+              )}
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <div>
