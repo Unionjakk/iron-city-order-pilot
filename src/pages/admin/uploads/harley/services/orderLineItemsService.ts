@@ -93,6 +93,9 @@ export const processOrderLineItems = async (
         totalLinesReplaced++;
       }
       
+      // Ensure dealer_po_number is explicitly set even if it's an empty string
+      const dealerPoNumber = item.dealer_po_number || '';
+      
       const { error: insertError } = await supabase
         .from('hd_order_line_items')
         .insert({
@@ -106,7 +109,7 @@ export const processOrderLineItems = async (
           unit_price: item.unit_price || 0,
           total_price: item.total_price || 0,
           status: item.status || '',
-          dealer_po_number: item.dealer_po_number || '', // Ensure dealer PO number is included, even if empty string
+          dealer_po_number: dealerPoNumber,
           order_date: orderDate
         });
       

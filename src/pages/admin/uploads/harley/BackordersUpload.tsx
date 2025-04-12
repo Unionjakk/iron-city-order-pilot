@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import UploadSuccessDisplay from './components/UploadSuccessDisplay';
 
 interface BackorderDataItem {
   hd_order_number: string;
@@ -21,6 +22,12 @@ interface BackorderDataItem {
   projected_shipping_date?: string | Date;
   projected_shipping_quantity?: number;
   total_price?: number;
+}
+
+interface UploadStats {
+  processed: number;
+  replaced: number;
+  errors: number;
 }
 
 const parseExcelFile = async (file: File): Promise<BackorderDataItem[]> => {
@@ -54,13 +61,40 @@ const parseExcelFile = async (file: File): Promise<BackorderDataItem[]> => {
         // Map the Excel data to our expected format, accounting for different possible column names
         const mappedData: BackorderDataItem[] = jsonData.map(row => {
           // Find the HD order number (could have different column names)
-          const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || '';
+          const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || row['HD ORDER'] || '';
           
           // Find line number (could have different column names)
-          const lineNumber = row['LINE NUMBER'] || row['LINE'] || row['LINE #'] || '';
+          const lineNumber = row['LINE NUMBER'] || row['LINE'] || row['LINE #'] || row['*LINE'] || '';
           
           // Get part number (could have different column names)
-          const partNumber = row['PART NUMBER'] || row['PART'] || row['PART #'] || row['PART NO'] || '';
+          const partNumber = row['PART NUMBER'] || row['PART'] || row['PART #'] || row['PART NO'] || row['*PART NUMBER'] || '';
+          
+          // More extensive matching for dealer PO number field
+          const dealerPoNumber = row['DEALER PO NUMBER'] || row['PO NUMBER'] || row['PURCHASE ORDER'] || 
+                                row['DEALER PO'] || row['CUST PO'] || row['*DEALER PO NUMBER'] || '';
+          
+          // Find backorder clear by date with more variations
+          const backorderClearBy = row['BACKORDER CLEAR BY'] || row['CLEAR BY'] || row['BO CLEAR'] || row['*B/O CLEAR'] || '';
+          
+          // Parse projected shipping quantity, ensuring it's converted to a number
+          let projectedShippingQty = 0;
+          const projShippingQtyRaw = row['PROJECTED SHIPPING QUANTITY'] || row['PROJ SHIPPING QTY'] || 
+                                    row['SHIP QTY'] || row['*PROJECTED SHIPPING QTY'] || '';
+                                    
+          if (projShippingQtyRaw) {
+            // Try to convert to number, handling various formats
+            try {
+              // Remove any non-numeric characters except decimal point
+              const numericStr = String(projShippingQtyRaw).replace(/[^0-9.]/g, '');
+              projectedShippingQty = parseFloat(numericStr) || 0;
+            } catch (err) {
+              console.warn('Error parsing projected shipping quantity:', projShippingQtyRaw);
+              projectedShippingQty = 0;
+            }
+          }
+          
+          // Log found values for debugging
+          console.log(`Order: ${hdOrderNumber}, Line: ${lineNumber}, PO: ${dealerPoNumber}, B/O Clear: ${backorderClearBy}, Ship Qty: ${projectedShippingQty}`);
           
           if (!hdOrderNumber || !partNumber) {
             console.warn('Missing required fields in row:', row);
@@ -69,15 +103,15 @@ const parseExcelFile = async (file: File): Promise<BackorderDataItem[]> => {
           return {
             hd_order_number: hdOrderNumber,
             line_number: lineNumber,
-            dealer_po_number: row['PO NUMBER'] || row['PURCHASE ORDER'] || row['DEALER PO'] || '',
-            order_date: row['ORDER DATE'] || null,
-            backorder_clear_by: row['BACKORDER CLEAR BY'] || row['CLEAR BY'] || null,
-            description: row['DESCRIPTION'] || row['PART DESCRIPTION'] || '',
+            dealer_po_number: dealerPoNumber,
+            order_date: row['ORDER DATE'] || row['ORDER'] || null,
+            backorder_clear_by: backorderClearBy,
+            description: row['DESCRIPTION'] || row['PART DESCRIPTION'] || row['*DESCRIPTION'] || '',
             part_number: partNumber,
-            quantity: parseFloat(row['QUANTITY'] || row['QTY'] || '0'),
-            projected_shipping_date: row['PROJECTED SHIPPING DATE'] || row['SHIP DATE'] || null,
-            projected_shipping_quantity: parseFloat(row['PROJECTED SHIPPING QUANTITY'] || row['SHIP QTY'] || '0'),
-            total_price: parseFloat(row['TOTAL PRICE'] || row['PRICE'] || '0')
+            quantity: parseFloat(String(row['QUANTITY'] || row['QTY'] || row['*QUANTITY'] || '0').replace(/[^0-9.]/g, '')) || 0,
+            projected_shipping_date: row['PROJECTED SHIPPING DATE'] || row['SHIP DATE'] || row['*PROJECTED SHIPPING DATE'] || null,
+            projected_shipping_quantity: projectedShippingQty,
+            total_price: parseFloat(String(row['TOTAL PRICE'] || row['PRICE'] || row['TOTAL'] || row['*TOTAL'] || '0').replace(/[^0-9.]/g, '')) || 0
           };
         }).filter(item => item.hd_order_number && item.part_number);
         
@@ -104,6 +138,11 @@ const BackordersUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadStats, setUploadStats] = useState<UploadStats>({
+    processed: 0,
+    replaced: 0,
+    errors: 0
+  });
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
@@ -176,6 +215,10 @@ const BackordersUpload = () => {
           continue;
         }
         
+        // Log debug information
+        console.log(`Looking for line item: Order=${item.hd_order_number}, Line=${lineNumberStr}, Part=${item.part_number}`);
+        console.log(`Found line items:`, lineItems);
+        
         // Prepare date fields as strings
         const backorderClearBy = item.backorder_clear_by ? 
           (item.backorder_clear_by instanceof Date ? 
@@ -202,6 +245,22 @@ const BackordersUpload = () => {
           console.warn(`No matching line item found for order ${item.hd_order_number}, line ${lineNumberStr}, part ${item.part_number}`);
           notFoundCount++;
         }
+        
+        // Log the values being inserted
+        console.log('Inserting backorder with values:', {
+          line_item_id: lineItemId,
+          hd_order_number: item.hd_order_number,
+          line_number: lineNumberStr,
+          dealer_po_number: item.dealer_po_number,
+          order_date: orderDate,
+          backorder_clear_by: backorderClearBy,
+          description: item.description,
+          part_number: item.part_number,
+          quantity: item.quantity,
+          projected_shipping_date: projectedShippingDate,
+          projected_shipping_quantity: item.projected_shipping_quantity,
+          total_price: item.total_price
+        });
         
         // Insert the backorder record with or without line_item_id
         const { error: insertError } = await supabase
@@ -253,6 +312,14 @@ const BackordersUpload = () => {
         total: parsedData.length
       });
       
+      const stats: UploadStats = {
+        processed: successCount,
+        replaced: notFoundCount,
+        errors: errorCount
+      };
+      
+      setUploadStats(stats);
+      
       if (errorCount === 0) {
         if (notFoundCount > 0) {
           toast.warning(`Processed ${successCount} backorder items. ${notFoundCount} items didn't match existing line items but were still recorded.`);
@@ -266,10 +333,6 @@ const BackordersUpload = () => {
       setUploadSuccess(true);
       setIsProcessing(false);
       
-      setTimeout(() => {
-        navigate('/admin/uploads/harley/dashboard');
-      }, 3000);
-      
     } catch (error) {
       console.error('Error processing upload:', error);
       toast.error('An error occurred during processing');
@@ -277,6 +340,10 @@ const BackordersUpload = () => {
       setIsProcessing(false);
     }
   };
+  
+  if (uploadSuccess) {
+    return <UploadSuccessDisplay stats={uploadStats} />;
+  }
   
   return (
     <div className="space-y-6">
@@ -335,51 +402,43 @@ const BackordersUpload = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {uploadSuccess ? (
-              <div className="flex flex-col items-center justify-center w-full h-64 bg-green-900/20 border-2 border-green-500 rounded-lg">
-                <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
-                <p className="text-green-400 text-lg font-semibold">Upload Successful!</p>
-                <p className="text-zinc-300 mt-2">Redirecting to dashboard...</p>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center w-full">
-                <label 
-                  htmlFor="dropzone-file" 
-                  className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer ${
-                    file ? 'border-orange-500 bg-orange-500/10' : 'border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800'
-                  }`}
-                >
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    {file ? (
-                      <>
-                        <Truck className="w-10 h-10 mb-3 text-orange-500" />
-                        <p className="mb-2 text-sm text-zinc-200 font-semibold">{file.name}</p>
-                        <p className="text-xs text-zinc-400">{(file.size / 1024).toFixed(2)} KB</p>
-                        <p className="mt-2 text-xs text-orange-400">File ready for upload</p>
-                      </>
-                    ) : (
-                      <>
-                        <UploadCloud className="w-10 h-10 mb-3 text-zinc-400" />
-                        <p className="mb-2 text-sm text-zinc-300">
-                          <span className="font-semibold">Click to upload</span> or drag and drop
-                        </p>
-                        <p className="text-xs text-zinc-400">Excel files only (.xls, .xlsx)</p>
-                      </>
-                    )}
-                  </div>
-                  <input 
-                    id="dropzone-file" 
-                    type="file" 
-                    className="hidden" 
-                    accept=".xls,.xlsx" 
-                    onChange={handleFileChange}
-                    disabled={isUploading || isProcessing}
-                  />
-                </label>
-              </div>
-            )}
+            <div className="flex items-center justify-center w-full">
+              <label 
+                htmlFor="dropzone-file" 
+                className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer ${
+                  file ? 'border-orange-500 bg-orange-500/10' : 'border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800'
+                }`}
+              >
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  {file ? (
+                    <>
+                      <Truck className="w-10 h-10 mb-3 text-orange-500" />
+                      <p className="mb-2 text-sm text-zinc-200 font-semibold">{file.name}</p>
+                      <p className="text-xs text-zinc-400">{(file.size / 1024).toFixed(2)} KB</p>
+                      <p className="mt-2 text-xs text-orange-400">File ready for upload</p>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-10 h-10 mb-3 text-zinc-400" />
+                      <p className="mb-2 text-sm text-zinc-300">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-zinc-400">Excel files only (.xls, .xlsx)</p>
+                    </>
+                  )}
+                </div>
+                <input 
+                  id="dropzone-file" 
+                  type="file" 
+                  className="hidden" 
+                  accept=".xls,.xlsx" 
+                  onChange={handleFileChange}
+                  disabled={isUploading || isProcessing}
+                />
+              </label>
+            </div>
             
-            {file && !uploadSuccess && (
+            {file && (
               <div className="flex justify-center mt-4">
                 <Button
                   onClick={handleUpload}
