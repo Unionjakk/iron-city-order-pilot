@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import { 
   Dialog, 
   DialogContent, 
@@ -12,28 +11,10 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { format } from "date-fns";
-
-interface HarleyOrderMatch {
-  hd_order_number: string;
-  part_number: string;
-  dealer_po_number: string | null;
-  order_quantity: number | null;
-  matched_quantity: number | null;
-  status: string | null;
-  hd_orderlinecombo: string | null;
-  order_date: string | null;
-  expected_arrival_dealership: string | null;
-}
+import HarleyOrdersTable, { HarleyOrderMatch } from "./harley-orders/HarleyOrdersTable";
+import HarleyOrderSearchForm from "./harley-orders/HarleyOrderSearchForm";
+import { formatDate } from "../utils/dateUtils";
+import { searchHarleyOrders, matchToHarleyOrder } from "../services/harleyOrdersService";
 
 interface MatchToOrderDialogProps {
   isOpen: boolean;
@@ -62,22 +43,13 @@ const MatchToOrderDialog = ({
   useEffect(() => {
     if (isOpen && sku) {
       setSearchTerm(sku);
-      searchHarleyOrders(sku);
+      handleSearch(sku);
     } else {
       setMatchedOrders([]);
     }
   }, [isOpen, sku]);
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "N/A";
-    try {
-      return format(new Date(dateString), "dd/MM/yyyy");
-    } catch (e) {
-      return "Invalid date";
-    }
-  };
-
-  const searchHarleyOrders = async (searchSku: string) => {
+  const handleSearch = async (searchSku: string) => {
     if (!searchSku || searchSku.trim() === "") {
       toast.error("Please enter a valid SKU to search");
       return;
@@ -85,19 +57,8 @@ const MatchToOrderDialog = ({
 
     try {
       setIsLoading(true);
-      
-      // Search the hd_order_matches view for matching part_number
-      const { data, error } = await supabase
-        .from('hd_order_matches')
-        .select('hd_order_number, part_number, dealer_po_number, order_quantity, matched_quantity, status, hd_orderlinecombo, order_date, expected_arrival_dealership')
-        .eq('part_number', searchSku)
-        .order('hd_order_number', { ascending: true });
-      
-      if (error) {
-        throw error;
-      }
-      
-      setMatchedOrders(data || []);
+      const data = await searchHarleyOrders(searchSku);
+      setMatchedOrders(data);
     } catch (error: any) {
       console.error("Error searching Harley orders:", error);
       toast.error("Failed to search for Harley orders");
@@ -106,32 +67,15 @@ const MatchToOrderDialog = ({
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    searchHarleyOrders(searchTerm);
+    handleSearch(searchTerm);
   };
 
-  const matchToOrder = async (order: HarleyOrderMatch) => {
+  const handleMatchToOrder = async (order: HarleyOrderMatch) => {
     try {
       setIsMatching(true);
-      
-      // Update the progress record with Harley Davidson order info
-      const { error } = await supabase
-        .from('iron_city_order_progress')
-        .update({
-          progress: "Ordered",
-          hd_orderlinecombo: order.hd_orderlinecombo,
-          status: order.status,
-          dealer_po_number: order.dealer_po_number,
-          notes: `Matched to HD order: ${order.hd_order_number} | ${new Date().toISOString().slice(0, 10)}`
-        })
-        .eq('shopify_order_id', shopifyOrderId)
-        .eq('sku', sku);
-        
-      if (error) {
-        throw error;
-      }
-      
+      await matchToHarleyOrder(order, shopifyOrderId, sku);
       toast.success("Successfully matched to Harley order");
       onOrderMatched();
       onClose();
@@ -160,75 +104,25 @@ const MatchToOrderDialog = ({
           </div>
         </div>
         
-        <form onSubmit={handleSearch} className="flex gap-2 mt-2">
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by SKU"
-            className="flex-grow bg-zinc-800 border-zinc-700 text-zinc-300"
-          />
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 mr-1" />}
-            Search
-          </Button>
-        </form>
+        <HarleyOrderSearchForm 
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          onSearch={handleSearchSubmit}
+          isLoading={isLoading}
+        />
 
         <div className="mt-4 max-h-96 overflow-auto">
-          {matchedOrders.length === 0 ? (
+          {isLoading ? (
             <div className="text-center py-8 text-zinc-400">
-              {isLoading 
-                ? "Searching..."
-                : "No matching Harley orders found. Try a different search term."}
+              Searching...
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-zinc-800/50">
-                  <TableHead className="text-zinc-300">Order #</TableHead>
-                  <TableHead className="text-zinc-300">Part #</TableHead>
-                  <TableHead className="text-zinc-300">PO #</TableHead>
-                  <TableHead className="text-zinc-300 text-center">Quantity</TableHead>
-                  <TableHead className="text-zinc-300">Status</TableHead>
-                  <TableHead className="text-zinc-300">Order Date</TableHead>
-                  <TableHead className="text-zinc-300">Expected Arrival</TableHead>
-                  <TableHead className="text-zinc-300"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {matchedOrders.map((order, index) => (
-                  <TableRow key={`${order.hd_order_number}-${index}`} className="hover:bg-zinc-800/30 border-zinc-800/30">
-                    <TableCell className="text-zinc-300">{order.hd_order_number}</TableCell>
-                    <TableCell className="text-zinc-300">{order.part_number}</TableCell>
-                    <TableCell className="text-zinc-300">{order.dealer_po_number || "N/A"}</TableCell>
-                    <TableCell className="text-zinc-300 text-center">
-                      {order.order_quantity || "N/A"}
-                      {order.matched_quantity && order.matched_quantity > 0 ? (
-                        <span className="text-amber-400 ml-1 font-medium">
-                          ({order.matched_quantity} matched)
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="text-zinc-300">{order.status || "N/A"}</TableCell>
-                    <TableCell className="text-zinc-300">{formatDate(order.order_date)}</TableCell>
-                    <TableCell className="text-zinc-300">{formatDate(order.expected_arrival_dealership)}</TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        className="bg-orange-500 hover:bg-orange-600 text-white"
-                        onClick={() => matchToOrder(order)}
-                        disabled={isMatching}
-                      >
-                        {isMatching ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                        ) : (
-                          "Match"
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <HarleyOrdersTable 
+              orders={matchedOrders}
+              isMatching={isMatching}
+              onMatchOrder={handleMatchToOrder}
+              formatDateFn={formatDate}
+            />
           )}
         </div>
         
