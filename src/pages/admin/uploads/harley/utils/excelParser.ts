@@ -1,5 +1,11 @@
 
 import * as XLSX from 'xlsx';
+import { 
+  findColumnValue, 
+  parseNumericValue, 
+  detectColumnMappings, 
+  processProjectedShippingQuantity 
+} from './excelParserHelpers';
 
 export interface OrderLineItem {
   hd_order_number: string;
@@ -47,6 +53,7 @@ export const columnMappings = {
   // Order Quantity variations
   'ORDER QUANTITY': 'order_quantity',
   'ORDER QTY': 'order_quantity',
+  'QUANTITY': 'order_quantity',
   
   // Open Quantity variations
   'OPEN QUANTITY': 'open_quantity',
@@ -106,7 +113,8 @@ export const columnMappings = {
   'PROJ SHIP QTY': 'projected_shipping_quantity',
   'SHIP QTY': 'projected_shipping_quantity',
   'PROJECTED QTY': 'projected_shipping_quantity',
-  'SHIPPING QTY': 'projected_shipping_quantity'
+  'SHIPPING QTY': 'projected_shipping_quantity',
+  'PROJECTED SHIPPING QTY': 'projected_shipping_quantity'
 };
 
 /**
@@ -144,7 +152,7 @@ const convertExcelToJson = (data: string | ArrayBuffer): any[] => {
     const worksheet = workbook.Sheets[firstSheetName];
     
     const jsonData = XLSX.utils.sheet_to_json<any>(worksheet, { raw: false });
-    console.log('Raw Excel data:', jsonData);
+    console.log('Raw Excel data:', jsonData.slice(0, 2)); // Log first two rows for debugging
     
     if (!jsonData || jsonData.length === 0) {
       throw new Error('No data found in Excel file');
@@ -158,100 +166,12 @@ const convertExcelToJson = (data: string | ArrayBuffer): any[] => {
 };
 
 /**
- * Detect actual column names from the data
- */
-const detectColumnMappings = (jsonData: any[]): Record<string, string> => {
-  const actualColumnNames: Record<string, string> = {};
-  
-  if (jsonData.length > 0) {
-    const firstRow = jsonData[0];
-    for (const key in firstRow) {
-      for (const possibleName in columnMappings) {
-        if (key.toUpperCase() === possibleName) {
-          actualColumnNames[columnMappings[possibleName]] = key;
-          break;
-        }
-      }
-    }
-  }
-  
-  console.log('Detected column mappings:', actualColumnNames);
-  return actualColumnNames;
-};
-
-/**
- * Find a value in a row using various possible column names
- */
-const findColumnValue = (row: any, columnOptions: string[]): string => {
-  for (const col of columnOptions) {
-    if (row[col] !== undefined) {
-      return row[col];
-    }
-  }
-  return '';
-};
-
-/**
- * Parse a numeric value from string, removing non-numeric characters
- */
-const parseNumericValue = (value: any): number => {
-  if (!value && value !== 0) return 0;
-  
-  try {
-    // Remove any non-numeric characters except decimal point
-    const numericStr = String(value).replace(/[^0-9.]/g, '');
-    return parseFloat(numericStr) || 0;
-  } catch (error) {
-    console.warn('Error parsing numeric value:', value);
-    return 0;
-  }
-};
-
-/**
- * Process projected shipping quantity from row
- */
-const processProjectedShippingQuantity = (row: any): number => {
-  let projectedShippingQty = 0;
-  const columnOptions = [
-    'PROJECTED SHIPPING QUANTITY', 
-    'PROJECTED SHIPPING QTY', 
-    'PROJ SHIPPING QTY', 
-    '*PROJECTED SHIPPING QTY', 
-    'PROJECTED SHIPPING', 
-    'PROJ SHIP QTY', 
-    'SHIP QTY',
-    'PROJECTED QTY', 
-    'SHIPPING QTY'
-  ];
-  
-  for (const col of columnOptions) {
-    if (row[col] !== undefined) {
-      try {
-        const rawValue = row[col];
-        console.log(`Converting shipping qty from "${rawValue}" to number`);
-        // Remove any non-numeric characters except decimal point
-        const numericStr = String(rawValue).replace(/[^0-9.]/g, '');
-        projectedShippingQty = parseFloat(numericStr) || 0;
-        
-        // Ensure it's a whole number since it's a quantity
-        projectedShippingQty = Math.round(projectedShippingQty);
-        
-        console.log(`Converted projected shipping qty: ${projectedShippingQty}`);
-      } catch (err) {
-        console.warn('Error parsing projected shipping quantity:', row[col]);
-        projectedShippingQty = 0;
-      }
-      break;
-    }
-  }
-  
-  return projectedShippingQty;
-};
-
-/**
  * Map row data to OrderLineItem structure
  */
 const mapRowToOrderLineItem = (row: any): OrderLineItem => {
+  // Debug the entire row to see what we're working with
+  console.log('Processing row:', row);
+
   // Find the correct column for HD Order Number
   const hdOrderNumber = findColumnValue(row, [
     'HD ORDER NUMBER', 'ORDER NUMBER', 'SALES ORDER', 'HD ORDER', 'ORDER #'
@@ -287,17 +207,10 @@ const mapRowToOrderLineItem = (row: any): OrderLineItem => {
   const lineNumberStr = String(lineNumber);
   
   // Log the found values to debug
-  if (dealerPoNumber) {
-    console.log(`Found dealer PO number: ${dealerPoNumber} for order: ${hdOrderNumber}, line: ${lineNumberStr}`);
-  }
-  
-  if (backorderClearBy) {
-    console.log(`Found backorder clear by: ${backorderClearBy} for order: ${hdOrderNumber}, line: ${lineNumberStr}`);
-  }
-
-  if (projectedShippingQty) {
-    console.log(`Found projected shipping quantity: ${projectedShippingQty} for order: ${hdOrderNumber}, line: ${lineNumberStr}`);
-  }
+  console.log(`Found values for order: ${hdOrderNumber}, line: ${lineNumberStr}:`);
+  console.log(`  Dealer PO: ${dealerPoNumber}`);
+  console.log(`  Backorder clear by: ${backorderClearBy}`);
+  console.log(`  Projected shipping qty: ${projectedShippingQty}`);
   
   if (!hdOrderNumber || !partNumber) {
     console.warn('Missing required fields in row:', row);
@@ -308,14 +221,14 @@ const mapRowToOrderLineItem = (row: any): OrderLineItem => {
     line_number: lineNumberStr,
     part_number: partNumber,
     description: row['DESCRIPTION'] || row['PART DESCRIPTION'] || row['*DESCRIPTION'] || '',
-    order_quantity: parseNumericValue(row['ORDER QUANTITY'] || row['ORDER QTY'] || '0'),
+    order_quantity: parseNumericValue(row['ORDER QUANTITY'] || row['ORDER QTY'] || row['QUANTITY'] || '0'),
     open_quantity: parseNumericValue(row['OPEN QUANTITY'] || row['OPEN QTY'] || '0'),
     unit_price: parseNumericValue(row['UNIT PRICE'] || row['PRICE'] || '0'),
     total_price: parseNumericValue(row['TOTAL PRICE'] || row['TOTAL'] || row['*TOTAL'] || '0'),
     status: row['STATUS'] || '',
-    dealer_po_number: dealerPoNumber, 
+    dealer_po_number: dealerPoNumber || '', 
     order_date: row['ORDER DATE'] || row['DATE'] || null,
-    backorder_clear_by: backorderClearBy,
+    backorder_clear_by: backorderClearBy || null,
     projected_shipping_quantity: projectedShippingQty
   };
 };
@@ -333,15 +246,20 @@ export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
     // Convert to JSON
     const jsonData = convertExcelToJson(data);
     
+    // Log raw column headers to identify potential issues
+    if (jsonData.length > 0) {
+      console.log('Available column headers in raw data:', Object.keys(jsonData[0]));
+    }
+    
     // Detect column mappings
-    detectColumnMappings(jsonData);
+    detectColumnMappings(jsonData, columnMappings);
     
     // Map each row to OrderLineItem and filter out invalid items
     const mappedData: OrderLineItem[] = jsonData
       .map(mapRowToOrderLineItem)
       .filter(item => item.hd_order_number && item.part_number);
     
-    console.log('Mapped data:', mappedData);
+    console.log('Mapped data (first 3 items):', mappedData.slice(0, 3));
     return mappedData;
   } catch (error) {
     console.error('Error parsing Excel file:', error);
