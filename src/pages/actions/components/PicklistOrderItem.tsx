@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { PicklistOrderItem as PicklistOrderItemType, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -121,7 +120,14 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
       <TableRow className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
         <TableCell className="font-mono text-zinc-300 pr-1">{item.sku || "No SKU"}</TableCell>
         <TableCell className="pl-1 text-orange-400">{item.title}</TableCell>
-        <TableCell className="text-center">{item.quantity}</TableCell>
+        <TableCell className="text-center">
+          <div>
+            {item.quantity}
+            {item.quantity_picked > 0 && (
+              <span className="text-orange-300 text-sm ml-1">({item.quantity_picked} picked)</span>
+            )}
+          </div>
+        </TableCell>
         <TableCell className="text-center">
           {item.price ? `£${item.price.toFixed(2)}` : "N/A"}
         </TableCell>
