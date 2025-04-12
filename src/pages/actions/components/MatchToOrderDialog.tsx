@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { format } from "date-fns";
 
 interface HarleyOrderMatch {
   hd_order_number: string;
@@ -29,6 +30,8 @@ interface HarleyOrderMatch {
   order_quantity: number | null;
   status: string | null;
   hd_orderlinecombo: string | null;
+  order_date: string | null;
+  expected_arrival_dealership: string | null;
 }
 
 interface MatchToOrderDialogProps {
@@ -38,7 +41,7 @@ interface MatchToOrderDialogProps {
   shopifyOrderId: string;
   shopifyOrderNumber: string | null;
   onOrderMatched: () => void;
-  quantity?: number; // Add prop for Shopify quantity required
+  quantity?: number;
 }
 
 const MatchToOrderDialog = ({
@@ -48,7 +51,7 @@ const MatchToOrderDialog = ({
   shopifyOrderId,
   shopifyOrderNumber,
   onOrderMatched,
-  quantity = 1 // Default to 1 if not provided
+  quantity = 1
 }: MatchToOrderDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [matchedOrders, setMatchedOrders] = useState<HarleyOrderMatch[]>([]);
@@ -64,6 +67,15 @@ const MatchToOrderDialog = ({
     }
   }, [isOpen, sku]);
 
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "dd/MM/yyyy");
+    } catch (e) {
+      return "Invalid date";
+    }
+  };
+
   const searchHarleyOrders = async (searchSku: string) => {
     if (!searchSku || searchSku.trim() === "") {
       toast.error("Please enter a valid SKU to search");
@@ -76,7 +88,7 @@ const MatchToOrderDialog = ({
       // Search the hd_combined view for matching part_number
       const { data, error } = await supabase
         .from('hd_combined')
-        .select('hd_order_number, part_number, dealer_po_number, order_quantity, status, hd_orderlinecombo')
+        .select('hd_order_number, part_number, dealer_po_number, order_quantity, status, hd_orderlinecombo, order_date, expected_arrival_dealership')
         .eq('part_number', searchSku)
         .order('hd_order_number', { ascending: true });
       
@@ -132,7 +144,7 @@ const MatchToOrderDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl bg-zinc-900 border-zinc-700">
+      <DialogContent className="max-w-4xl bg-zinc-900 border-zinc-700">
         <DialogHeader>
           <DialogTitle className="text-orange-400">Match to Harley Order</DialogTitle>
           <DialogDescription className="text-zinc-300">
@@ -176,6 +188,8 @@ const MatchToOrderDialog = ({
                   <TableHead className="text-zinc-300">PO #</TableHead>
                   <TableHead className="text-zinc-300">Quantity Ordered</TableHead>
                   <TableHead className="text-zinc-300">Status</TableHead>
+                  <TableHead className="text-zinc-300">Order Date</TableHead>
+                  <TableHead className="text-zinc-300">Expected Arrival</TableHead>
                   <TableHead className="text-zinc-300"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -187,6 +201,8 @@ const MatchToOrderDialog = ({
                     <TableCell className="text-zinc-300">{order.dealer_po_number || "N/A"}</TableCell>
                     <TableCell className="text-zinc-300">{order.order_quantity || "N/A"}</TableCell>
                     <TableCell className="text-zinc-300">{order.status || "N/A"}</TableCell>
+                    <TableCell className="text-zinc-300">{formatDate(order.order_date)}</TableCell>
+                    <TableCell className="text-zinc-300">{formatDate(order.expected_arrival_dealership)}</TableCell>
                     <TableCell>
                       <Button
                         size="sm"
