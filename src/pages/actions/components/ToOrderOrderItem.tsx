@@ -1,9 +1,9 @@
-
 import React, { useState } from "react";
 import { ExternalLink, Clipboard, FileWarning, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import MatchToOrderDialog from "./MatchToOrderDialog";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { usePicklistItemActions } from "../hooks/usePicklistItemActions";
 
 interface OrderItemProps {
   id: string;
@@ -47,8 +46,34 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
 }) => {
   const [showMatchDialog, setShowMatchDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const { resetItemProgress, isResetting } = usePicklistItemActions();
   const { toast } = useToast();
+  
+  const resetItemProgress = async () => {
+    try {
+      const { error } = await supabase
+        .from('iron_city_order_progress')
+        .delete()
+        .eq('shopify_order_id', shopify_order_id)
+        .eq('sku', sku);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Progress Reset",
+        description: "Item has been reset to 'To Pick' status",
+      });
+      
+      onItemUpdated();
+    } catch (error: any) {
+      console.error("Error resetting item progress:", error);
+      toast({
+        title: "Reset Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleCopySku = () => {
     navigator.clipboard.writeText(sku);
@@ -59,9 +84,13 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
   };
 
   const handleResetItem = async () => {
-    await resetItemProgress(shopify_order_id, sku);
-    onItemUpdated();
-    setShowResetDialog(false);
+    setIsResetting(true);
+    try {
+      await resetItemProgress();
+    } finally {
+      setIsResetting(false);
+      setShowResetDialog(false);
+    }
   };
 
   return (
@@ -150,7 +179,6 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
         </td>
       </tr>
 
-      {/* Match to Order Dialog */}
       <MatchToOrderDialog
         isOpen={showMatchDialog}
         onClose={() => setShowMatchDialog(false)}
@@ -161,7 +189,6 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
         quantity={quantity}
       />
 
-      {/* Reset Dialog */}
       <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
         <AlertDialogContent className="bg-zinc-900 border-zinc-700">
           <AlertDialogHeader>

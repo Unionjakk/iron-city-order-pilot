@@ -5,6 +5,7 @@ import { ExternalLink, Mail } from "lucide-react";
 import { PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
 import ToOrderOrderItem from "./ToOrderOrderItem";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ToOrderOrderComponentProps {
   order: PicklistOrder;
@@ -64,9 +65,18 @@ const ToOrderOrderComponent = ({ order, refreshData }: ToOrderOrderComponentProp
       {order.items.map((item) => (
         <ToOrderOrderItem 
           key={`item-${item.id}`} 
-          item={item} 
-          order={order} 
-          refreshData={refreshData} 
+          id={item.id}
+          shopify_order_id={order.shopify_order_id}
+          shopify_order_number={order.shopify_order_number}
+          sku={item.sku}
+          title={item.title}
+          quantity={item.quantity}
+          price={item.price}
+          cost={item.cost}
+          bin_location={item.bin_location}
+          stock_quantity={item.stock_quantity}
+          notes={item.notes}
+          onItemUpdated={refreshData}
         />
       ))}
     </React.Fragment>
