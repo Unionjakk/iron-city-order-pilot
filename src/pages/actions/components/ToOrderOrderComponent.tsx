@@ -44,15 +44,15 @@ const ToOrderOrderComponent = ({ order, refreshData }: ToOrderOrderComponentProp
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <div>
-                <span className="text-zinc-400 mr-2">Date:</span>
+                <span className="text-orange-400 mr-2">Date:</span>
                 <span className="text-zinc-300">{formatDate(order.created_at)}</span>
               </div>
               <div>
-                <span className="text-zinc-400 mr-2">Customer:</span>
+                <span className="text-orange-400 mr-2">Customer:</span>
                 <span className="text-zinc-300">{order.customer_name}</span>
               </div>
               <div className="flex items-center">
-                <Mail className="mr-1 h-3 w-3 text-zinc-400" />
+                <Mail className="mr-1 h-3 w-3 text-orange-400" />
                 <a href={`mailto:${order.customer_email}`} className="text-zinc-300 hover:text-orange-400">
                   {order.customer_email || "No email"}
                 </a>
