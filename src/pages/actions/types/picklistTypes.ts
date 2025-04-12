@@ -22,7 +22,7 @@ export interface PicklistOrderItem {
   // Progress tracking
   progress: string | null;
   notes: string | null;
-  // Harley Davidson order data
+  // Harley Davidson order data (optional properties for now until SQL migration completes)
   hd_orderlinecombo?: string | null;
   status?: string | null;
   dealer_po_number?: string | null;

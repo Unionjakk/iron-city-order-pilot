@@ -101,7 +101,7 @@ export const fetchToOrderItemsProgress = async () => {
   
   const { data, error } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, progress, notes, hd_orderlinecombo, status, dealer_po_number')
+    .select('shopify_order_id, sku, progress, notes')
     .eq('progress', 'To Order');
     
   if (error) {
