@@ -53,8 +53,11 @@ export const fetchOrdersWithPickedItems = async () => {
     
     console.log(`Found ${progressData.length} orders with 'Picked' progress items:`, progressData);
     
-    // Extract the order IDs
-    const orderIds = [...new Set(progressData.map(item => item.shopify_order_id))];
+    // Extract the order IDs - fix TypeScript error by ensuring we only take strings
+    // and explicitly mapping to string[] type to avoid the 'unknown[]' error
+    const orderIds: string[] = [...new Set(progressData.map(item => 
+      typeof item.shopify_order_id === 'string' ? item.shopify_order_id : String(item.shopify_order_id)
+    ))];
     
     const { data, error } = await supabase
       .from('shopify_orders')
