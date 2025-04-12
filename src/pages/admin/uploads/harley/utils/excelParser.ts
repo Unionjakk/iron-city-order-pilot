@@ -97,6 +97,8 @@ export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
           'DEALER PO': 'dealer_po_number',
           'CUST PO': 'dealer_po_number',
           '*DEALER PO NUMBER': 'dealer_po_number',
+          'CUSTOMER PO': 'dealer_po_number',
+          'DEALER PO#': 'dealer_po_number',
           
           // Order Date variations
           'ORDER DATE': 'order_date',
@@ -111,6 +113,9 @@ export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
           '*B/O CLEAR': 'backorder_clear_by',
           'CLEAR BY': 'backorder_clear_by',
           'B/O CLEAR DATE': 'backorder_clear_by',
+          'BACKORDER CLEAR': 'backorder_clear_by',
+          'BACK ORDER CLEAR BY': 'backorder_clear_by',
+          'CLEAR DATE': 'backorder_clear_by',
 
           // Projected Shipping Date variations
           'PROJECTED SHIPPING DATE': 'projected_shipping_date',
@@ -125,7 +130,9 @@ export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
           '*PROJECTED SHIPPING QTY': 'projected_shipping_quantity',
           'PROJECTED SHIPPING': 'projected_shipping_quantity',
           'PROJ SHIP QTY': 'projected_shipping_quantity',
-          'SHIP QTY': 'projected_shipping_quantity'
+          'SHIP QTY': 'projected_shipping_quantity',
+          'PROJECTED QTY': 'projected_shipping_quantity',
+          'SHIPPING QTY': 'projected_shipping_quantity'
         };
 
         // Find the actual column names from the first row
@@ -183,19 +190,37 @@ export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
 
           // Find the correct column for Backorder Clear By
           let backorderClearBy = '';
-          for (const col of ['BACKORDER CLEAR BY', 'B/O CLEAR BY', 'BO CLEAR', 'BO CLEAR BY', '*B/O CLEAR', 'CLEAR BY', 'B/O CLEAR DATE']) {
+          for (const col of ['BACKORDER CLEAR BY', 'B/O CLEAR BY', 'BO CLEAR', 'BO CLEAR BY', 
+                            '*B/O CLEAR', 'CLEAR BY', 'B/O CLEAR DATE', 'BACKORDER CLEAR', 
+                            'BACK ORDER CLEAR BY', 'CLEAR DATE']) {
             if (row[col] !== undefined) {
               backorderClearBy = row[col];
               break;
             }
           }
 
-          // Find the correct column for Projected Shipping Quantity
-          let projectedShippingQty = '';
+          // Find the correct column for Projected Shipping Quantity and ensure it's a number
+          let projectedShippingQty = 0;
           for (const col of ['PROJECTED SHIPPING QUANTITY', 'PROJECTED SHIPPING QTY', 'PROJ SHIPPING QTY', 
-                            '*PROJECTED SHIPPING QTY', 'PROJECTED SHIPPING', 'PROJ SHIP QTY', 'SHIP QTY']) {
+                            '*PROJECTED SHIPPING QTY', 'PROJECTED SHIPPING', 'PROJ SHIP QTY', 'SHIP QTY',
+                            'PROJECTED QTY', 'SHIPPING QTY']) {
             if (row[col] !== undefined) {
-              projectedShippingQty = row[col];
+              // Convert to number, handling various formats
+              try {
+                const rawValue = row[col];
+                console.log(`Converting shipping qty from "${rawValue}" to number`);
+                // Remove any non-numeric characters except decimal point
+                const numericStr = String(rawValue).replace(/[^0-9.]/g, '');
+                projectedShippingQty = parseFloat(numericStr) || 0;
+                
+                // Ensure it's a whole number since it's a quantity
+                projectedShippingQty = Math.round(projectedShippingQty);
+                
+                console.log(`Converted projected shipping qty: ${projectedShippingQty}`);
+              } catch (err) {
+                console.warn('Error parsing projected shipping quantity:', row[col]);
+                projectedShippingQty = 0;
+              }
               break;
             }
           }
