@@ -10,14 +10,39 @@ export const fetchOrdersWithPickedItems = async () => {
   
   try {
     // First get the shopify order IDs that have "Picked" progress
-    const { data: progressData, error: progressError } = await supabase
-      .from('iron_city_order_progress')
-      .select('shopify_order_id, sku, quantity, is_partial')
-      .eq('progress', 'Picked');
-      
-    if (progressError) {
-      console.error("Progress fetch error:", progressError);
-      throw new Error(`Progress fetch error: ${progressError.message}`);
+    let progressData;
+    
+    try {
+      // Try to query with the is_partial field
+      const { data, error } = await supabase
+        .from('iron_city_order_progress')
+        .select('shopify_order_id, sku, quantity, is_partial')
+        .eq('progress', 'Picked');
+        
+      if (error) {
+        if (error.message && error.message.includes("column 'is_partial' does not exist")) {
+          // Handle missing column by querying without it
+          const fallbackResult = await supabase
+            .from('iron_city_order_progress')
+            .select('shopify_order_id, sku, quantity')
+            .eq('progress', 'Picked');
+            
+          if (fallbackResult.error) {
+            console.error("Progress fetch error (fallback):", fallbackResult.error);
+            throw new Error(`Progress fetch error: ${fallbackResult.error.message}`);
+          }
+          
+          progressData = fallbackResult.data;
+        } else {
+          console.error("Progress fetch error:", error);
+          throw new Error(`Progress fetch error: ${error.message}`);
+        }
+      } else {
+        progressData = data;
+      }
+    } catch (queryError) {
+      console.error("Query error:", queryError);
+      throw queryError;
     }
     
     // If no orders have "Picked" items, return empty array
