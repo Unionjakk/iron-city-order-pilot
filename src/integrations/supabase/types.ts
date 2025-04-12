@@ -90,6 +90,13 @@ export type Database = {
             foreignKeyName: "hd_backorders_line_item_id_fkey"
             columns: ["line_item_id"]
             isOneToOne: false
+            referencedRelation: "hd_combined"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hd_backorders_line_item_id_fkey"
+            columns: ["line_item_id"]
+            isOneToOne: false
             referencedRelation: "hd_order_line_items"
             referencedColumns: ["id"]
           },
@@ -727,7 +734,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      hd_combined: {
+        Row: {
+          backorder_clear_by: string | null
+          customer_expected_date: string | null
+          dealer_po_number: string | null
+          description: string | null
+          expected_arrival_dealership: string | null
+          hd_order_number: string | null
+          hd_orderlinecombo: string | null
+          id: string | null
+          invoice_date: string | null
+          invoice_number: string | null
+          is_backorder: boolean | null
+          is_invoiced: boolean | null
+          line_number: string | null
+          open_quantity: number | null
+          order_date: string | null
+          order_quantity: number | null
+          part_number: string | null
+          price_totaled: number | null
+          status: string | null
+          unit_price: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       apply_sku_corrections: {

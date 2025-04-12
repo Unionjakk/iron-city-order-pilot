@@ -81,7 +81,8 @@ export const processOrderLineItems = async (
     
     const replacedLineNumbers: string[] = [];
     
-    // First delete existing line items for this order
+    // First delete existing line items for THIS ORDER ONLY
+    // This ensures we're only replacing line items for the orders in the current file
     const { error: deleteError } = await supabase
       .from('hd_order_line_items')
       .delete()
@@ -135,7 +136,7 @@ export const processOrderLineItems = async (
       const { error: insertError } = await supabase
         .from('hd_order_line_items')
         .insert({
-          hd_order_id: orderId,  // This is the key change - we always set the order ID explicitly
+          hd_order_id: orderId,
           hd_order_number: hdOrderNumber,
           line_number: lineNumberStr,
           part_number: partNumber,

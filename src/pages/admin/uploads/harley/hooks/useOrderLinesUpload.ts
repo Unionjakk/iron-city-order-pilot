@@ -43,43 +43,49 @@ export const useOrderLinesUpload = () => {
     setUploadStats({ processed: 0, replaced: 0, errors: 0 });
     
     try {
-      let finalStats = { processed: 0, replaced: 0, errors: 0 };
+      // Create a cumulative stats object to track all files processed
+      let cumulativeStats = { processed: 0, replaced: 0, errors: 0 };
       
+      // Process each file individually
       for (const file of files) {
         console.log(`Processing file: ${file.name}`);
         
+        // Parse the Excel file
         const parsedData = await parseExcelFile(file);
-        console.log('Parsed data:', parsedData);
+        console.log(`Parsed data from ${file.name}:`, parsedData.length, 'rows');
         
         if (parsedData.length === 0) {
           console.warn(`No data found in file: ${file.name}`);
+          toast.warning(`No data found in file: ${file.name}`);
           continue;
         }
         
-        await processOrderLineItems(parsedData, finalStats, setUploadStats);
+        // Process the line items for this file and update the stats
+        await processOrderLineItems(
+          parsedData, 
+          cumulativeStats,
+          (newStats) => {
+            cumulativeStats = newStats;
+            setUploadStats(newStats);
+          }
+        );
         
+        // Record upload history for this file
         await recordUploadHistory(
           file.name, 
           parsedData.length, 
-          finalStats.replaced > 0
+          cumulativeStats.replaced > 0
         );
-        
-        // Update the finalStats for toast message
-        finalStats = { ...uploadStats };
       }
       
       console.log('Upload completed successfully!');
-      // Only show the toast message once with the final stats
-      toast.success(`Successfully uploaded ${uploadStats.processed} line items (${uploadStats.replaced} replaced)`);
+      toast.success(`Successfully uploaded ${cumulativeStats.processed} line items (${cumulativeStats.replaced} replaced)`);
       setUploadSuccess(true);
-      setIsProcessing(false);
-      setIsUploading(false);
-      
-      // Removed the automatic redirect to dashboard
       
     } catch (error) {
       console.error('Error processing upload:', error);
       toast.error('An error occurred during processing');
+    } finally {
       setIsUploading(false);
       setIsProcessing(false);
     }

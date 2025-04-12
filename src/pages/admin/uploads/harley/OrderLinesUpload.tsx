@@ -1,12 +1,13 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Code } from '@/components/ui/code';
-import { FileText } from 'lucide-react'; // Add this import for the FileText icon
+import { FileText, AlertTriangle } from 'lucide-react'; 
 import OrdersNeedingLineItems from './components/OrdersNeedingLineItems';
 import OrderLinesInstructions from './components/OrderLinesInstructions';
 import FileUploadZone from './components/FileUploadZone';
 import UploadSuccessDisplay from './components/UploadSuccessDisplay';
 import useOrderLinesUpload from './hooks/useOrderLinesUpload';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const OrderLinesUpload = () => {
   const {
@@ -38,6 +39,14 @@ const OrderLinesUpload = () => {
           <CardDescription className="text-zinc-400">Upload H-D NET Order Line Items export files</CardDescription>
         </CardHeader>
         <CardContent>
+          <Alert variant="warning" className="mb-4 bg-orange-500/10 text-orange-400 border-orange-500/50">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Multiple files upload is supported. Each file should contain data for a single HD Order.
+              Line items for each order will be replaced when uploaded.
+            </AlertDescription>
+          </Alert>
+          
           {uploadSuccess ? (
             <UploadSuccessDisplay stats={uploadStats} />
           ) : (
