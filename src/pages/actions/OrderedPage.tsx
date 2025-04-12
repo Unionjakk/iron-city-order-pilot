@@ -76,8 +76,8 @@ const OrderedPage = () => {
     <div className="space-y-6">
       <div className="mb-4 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-green-500">Ordered</h1>
-          <p className="text-green-400/80">View and manage items that have been ordered from suppliers</p>
+          <h1 className="text-2xl font-bold text-orange-500">Ordered</h1>
+          <p className="text-orange-400/80">View and manage items that have been ordered from suppliers</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -94,7 +94,7 @@ const OrderedPage = () => {
       
       <Card className="card-styled">
         <CardHeader className="bg-zinc-800/50 rounded-t-lg border-b border-zinc-700/50">
-          <CardTitle className="text-green-500">Ordered Items Dashboard</CardTitle>
+          <CardTitle className="text-orange-500">Ordered Items Dashboard</CardTitle>
           <CardDescription className="text-zinc-400">
             Items that have been ordered from suppliers
           </CardDescription>
@@ -104,8 +104,8 @@ const OrderedPage = () => {
             <PicklistLoading />
           ) : filteredOrders.length === 0 && !searchQuery ? (
             <div className="p-10 text-center">
-              <Package className="mx-auto h-16 w-16 text-green-500/50" />
-              <h3 className="mt-6 text-xl font-semibold text-green-500">No ordered items</h3>
+              <Package className="mx-auto h-16 w-16 text-orange-500/50" />
+              <h3 className="mt-6 text-xl font-semibold text-orange-500">No ordered items</h3>
               <p className="mt-2 text-zinc-400 max-w-md mx-auto">
                 No items have been marked as "Ordered" yet.
               </p>
@@ -126,7 +126,7 @@ const OrderedPage = () => {
               
               {filteredOrders.length === 0 && searchQuery ? (
                 <div className="p-10 text-center">
-                  <h3 className="text-xl font-semibold text-green-500">No matching items found</h3>
+                  <h3 className="text-xl font-semibold text-orange-500">No matching items found</h3>
                   <p className="mt-2 text-zinc-400 max-w-md mx-auto">
                     No "Ordered" items match your search for "{searchQuery}".
                   </p>
@@ -170,7 +170,7 @@ const OrderedPage = () => {
           <CollapsibleContent>
             {debugInfo && (
               <div className="bg-zinc-900 p-4 text-sm">
-                <div className="mb-2 text-green-400">
+                <div className="mb-2 text-orange-400">
                   Search Results: {filteredOrders.length} of {orders.length} orders
                 </div>
                 <pre className="text-xs overflow-auto max-h-96 text-zinc-400 font-mono">

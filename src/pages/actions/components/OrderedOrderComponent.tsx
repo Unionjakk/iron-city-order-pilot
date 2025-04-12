@@ -30,7 +30,7 @@ const OrderedOrderComponent = ({ order, refreshData }: OrderedOrderComponentProp
         <TableCell colSpan={9} className="py-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between">
             <div className="flex items-center">
-              <span className="font-semibold text-green-400">Order:</span>
+              <span className="font-semibold text-orange-400">Order:</span>
               <a 
                 href={getShopifyOrderUrl(order.shopify_order_id)} 
                 target="_blank" 
@@ -47,12 +47,12 @@ const OrderedOrderComponent = ({ order, refreshData }: OrderedOrderComponentProp
                 <span className="text-zinc-300">{formatDate(order.created_at)}</span>
               </div>
               <div>
-                <span className="text-green-400 mr-2">Customer:</span>
+                <span className="text-orange-400 mr-2">Customer:</span>
                 <span className="text-zinc-300">{order.customer_name}</span>
               </div>
               <div className="flex items-center">
-                <Mail className="mr-1 h-3 w-3 text-green-400" />
-                <a href={`mailto:${order.customer_email}`} className="text-zinc-300 hover:text-green-400">
+                <Mail className="mr-1 h-3 w-3 text-orange-400" />
+                <a href={`mailto:${order.customer_email}`} className="text-zinc-300 hover:text-orange-400">
                   {order.customer_email || "No email"}
                 </a>
               </div>
@@ -76,6 +76,7 @@ const OrderedOrderComponent = ({ order, refreshData }: OrderedOrderComponentProp
           stock_quantity={item.stock_quantity}
           notes={item.notes}
           dealer_po_number={item.dealer_po_number}
+          hd_orderlinecombo={item.hd_orderlinecombo}
           onItemUpdated={refreshData}
         />
       ))}

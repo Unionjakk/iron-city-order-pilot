@@ -73,3 +73,27 @@ export const fetchOrderedItemsProgress = async () => {
   console.log(`Fetched ${data?.length || 0} 'Ordered' progress items`);
   return data || [];
 };
+
+/**
+ * Mark an ordered item as picked (when it arrives)
+ */
+export const markOrderedItemAsPicked = async (shopifyOrderId: string, sku: string, notes?: string) => {
+  const currentDate = new Date().toISOString().slice(0, 10);
+  const noteAddition = `Marked as arrived & picked: ${currentDate}`;
+  const updatedNotes = notes ? `${notes} | ${noteAddition}` : noteAddition;
+  
+  const { data, error } = await supabase
+    .from('iron_city_order_progress')
+    .update({
+      progress: "Picked",
+      notes: updatedNotes
+    })
+    .eq('shopify_order_id', shopifyOrderId)
+    .eq('sku', sku);
+    
+  if (error) {
+    throw error;
+  }
+  
+  return data;
+};
