@@ -66,6 +66,27 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
     setIsPartial(e.target.checked);
   };
 
+  const validatePartialPick = (): boolean => {
+    const maxQuantity = item.quantity || 1;
+    // If picking less than the total quantity, partial pick must be checked
+    if (pickQuantity < maxQuantity && !isPartial) {
+      toast({
+        title: "Partial pick required",
+        description: "Please check the 'Partial pick' box when picking less than the total quantity",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    // If picking the full quantity, partial pick should be unchecked
+    if (pickQuantity >= maxQuantity && isPartial) {
+      // Auto-uncheck it instead of showing error
+      setIsPartial(false);
+    }
+    
+    return true;
+  };
+
   const handleSubmit = async () => {
     if (!action) {
       toast({
@@ -73,6 +94,11 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
         description: "Please select an action before submitting",
         variant: "destructive",
       });
+      return;
+    }
+    
+    // For "Picked" action, validate partial pick settings
+    if (action === "Picked" && !validatePartialPick()) {
       return;
     }
     
@@ -145,7 +171,7 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
   };
 
   return (
-    <React.Fragment>
+    <>
       <TableRow className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
         <TableCell className="font-mono text-zinc-300 pr-1">{item.sku || "No SKU"}</TableCell>
         <TableCell className="pl-1 text-orange-400">{item.title}</TableCell>
@@ -242,7 +268,7 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
           />
         </TableCell>
       </TableRow>
-    </React.Fragment>
+    </>
   );
 };
 
