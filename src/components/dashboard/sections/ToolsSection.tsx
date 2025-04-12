@@ -37,7 +37,6 @@ const ToolsSection = () => {
           title="Drag and Drop"
           description="Organize orders in a Trello-style kanban board"
           to="/drag-and-drop"
-          comingSoon={true}
           className="w-full md:w-1/4 lg:w-1/4"
         />
       </div>
