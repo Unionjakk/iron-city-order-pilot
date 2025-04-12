@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
+import { PicklistDebugInfo } from "../types/picklistTypes";
 
 /**
  * Fetch unfulfilled orders from Supabase that have items marked as "Ordered"
@@ -96,4 +97,28 @@ export const markOrderedItemAsPicked = async (shopifyOrderId: string, sku: strin
   }
   
   return data;
+};
+
+/**
+ * Initialize debug information object
+ */
+export const initializeDebugInfo = (): PicklistDebugInfo => {
+  return {
+    orderCount: 0,
+    lineItemCount: 0,
+    progressItemCount: 0,
+    finalOrderCount: 0,
+    finalItemCount: 0,
+    orderStatus: [],
+    fetchStartTime: new Date().toISOString()
+  };
+};
+
+/**
+ * Update debug information with timestamps and timing
+ */
+export const finalizeDebugInfo = (debug: PicklistDebugInfo): PicklistDebugInfo => {
+  debug.endTime = new Date().toISOString();
+  debug.timeTaken = (new Date(debug.endTime).getTime() - new Date(debug.fetchStartTime).getTime()) / 1000;
+  return debug;
 };
