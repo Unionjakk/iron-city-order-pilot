@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,6 +20,7 @@ const AwaitingLineItemsList = ({
   isLoading 
 }: AwaitingLineItemsListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [filteredLineItems, setFilteredLineItems] = useState<any[]>([]);
 
   const { data: lineItems, isLoading: isLoadingLineItems } = useQuery({
     queryKey: ['awaiting-line-items'],
@@ -50,6 +51,32 @@ const AwaitingLineItemsList = ({
     enabled: !isLoading
   });
 
+  // Filter line items whenever search term or line items data changes
+  useEffect(() => {
+    if (!lineItems) {
+      setFilteredLineItems([]);
+      return;
+    }
+
+    if (!searchTerm.trim()) {
+      setFilteredLineItems(lineItems);
+      return;
+    }
+    
+    const search = searchTerm.toLowerCase();
+    const filtered = lineItems.filter(item => {
+      return (
+        (item.hd_order_number && item.hd_order_number.toLowerCase().includes(search)) ||
+        (item.line_number && item.line_number.toLowerCase().includes(search)) ||
+        (item.part_number && item.part_number.toLowerCase().includes(search)) ||
+        (item.description && item.description.toLowerCase().includes(search)) ||
+        (item.dealer_po_number && item.dealer_po_number.toLowerCase().includes(search))
+      );
+    });
+    
+    setFilteredLineItems(filtered);
+  }, [searchTerm, lineItems]);
+
   const isLineItemExcluded = (orderNumber: string, lineNumber: string) => {
     return excludedLineItemKeys.includes(`${orderNumber}-${lineNumber}`);
   };
@@ -58,19 +85,9 @@ const AwaitingLineItemsList = ({
     onCheckInLineItem(orderNumber, lineNumber, partNumber, 'Check In');
   };
 
-  // Filter line items based on search term
-  const filteredLineItems = lineItems?.filter(item => {
-    if (!searchTerm.trim()) return true;
-    
-    const search = searchTerm.toLowerCase();
-    return (
-      (item.hd_order_number && item.hd_order_number.toLowerCase().includes(search)) ||
-      (item.line_number && item.line_number.toLowerCase().includes(search)) ||
-      (item.part_number && item.part_number.toLowerCase().includes(search)) ||
-      (item.description && item.description.toLowerCase().includes(search)) ||
-      (item.dealer_po_number && item.dealer_po_number.toLowerCase().includes(search))
-    );
-  });
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
 
   if (isLoading || isLoadingLineItems) {
     return (
@@ -96,7 +113,7 @@ const AwaitingLineItemsList = ({
         <Input
           placeholder="Search by order #, line #, part #, or description..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={handleSearchChange}
           className="pl-10 bg-zinc-800 text-zinc-100 border-zinc-700 placeholder-zinc-500"
         />
       </div>
