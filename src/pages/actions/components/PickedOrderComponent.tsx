@@ -52,19 +52,31 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
       const timestamp = new Date().toISOString().slice(0, 10);
       const note = `Order marked ready for dispatch: ${timestamp}`;
       
-      const { error } = await supabase
+      // First get the current items to retrieve their notes
+      const { data: currentItems, error: fetchError } = await supabase
         .from('iron_city_order_progress')
-        .update({
-          progress: "To Dispatch",
-          notes: supabase.rpc('append_note', { 
-            current_notes: '', 
-            new_note: note 
-          })
-        })
+        .select('id, notes')
         .eq('shopify_order_id', order.shopify_order_id)
         .eq('progress', 'Picked');
+        
+      if (fetchError) throw fetchError;
       
-      if (error) throw error;
+      // Now update each item, properly appending notes
+      for (const item of currentItems || []) {
+        const updatedNote = item.notes 
+          ? `${item.notes} | ${note}` 
+          : note;
+          
+        const { error: updateError } = await supabase
+          .from('iron_city_order_progress')
+          .update({
+            progress: "To Dispatch",
+            notes: updatedNote
+          })
+          .eq('id', item.id);
+          
+        if (updateError) throw updateError;
+      }
       
       toast({
         title: "Order moved to dispatch",
