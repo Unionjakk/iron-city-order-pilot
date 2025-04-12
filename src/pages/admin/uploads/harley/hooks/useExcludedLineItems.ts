@@ -100,20 +100,18 @@ export const useExcludedLineItems = () => {
         }
       }
 
-      // Generate the orderlinecombo
-      const orderlinecombo = finalPartNumber ? `${orderNumber}${finalPartNumber}` : null;
-
+      // Important: Do NOT include hd_orderlinecombo field as it's a generated column
       const { error } = await supabase
         .from('hd_line_items_exclude')
         .insert({ 
           hd_order_number: orderNumber, 
           line_number: lineNumber,
           part_number: finalPartNumber,
-          reason,
-          hd_orderlinecombo: orderlinecombo
+          reason
         });
 
       if (error) {
+        console.error('Error adding exclusion:', error);
         throw error;
       }
 
@@ -158,4 +156,3 @@ export const useExcludedLineItems = () => {
     refreshExcludedLineItems: fetchExcludedLineItems
   };
 };
-
