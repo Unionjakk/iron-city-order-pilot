@@ -13,6 +13,8 @@ export interface OrderLineItem {
   status?: string;
   dealer_po_number?: string;
   order_date?: string | Date;
+  backorder_clear_by?: string | Date;
+  projected_shipping_quantity?: number;
 }
 
 export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
