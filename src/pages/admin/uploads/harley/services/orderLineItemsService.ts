@@ -85,6 +85,15 @@ export const processOrderLineItems = async (
           String(item.order_date)) : 
         null;
       
+      // Process backorder fields if they exist in the order line item
+      const backorderClearBy = item.backorder_clear_by ? 
+        (item.backorder_clear_by instanceof Date ? 
+          item.backorder_clear_by.toISOString().split('T')[0] : 
+          String(item.backorder_clear_by)) : 
+        null;
+        
+      const projectedShippingQuantity = item.projected_shipping_quantity || 0;
+      
       // Log dealer PO number to debug
       console.log(`Inserting line item with dealer PO number: ${item.dealer_po_number || 'NONE'}`);
       
@@ -110,7 +119,9 @@ export const processOrderLineItems = async (
           total_price: item.total_price || 0,
           status: item.status || '',
           dealer_po_number: dealerPoNumber,
-          order_date: orderDate
+          order_date: orderDate,
+          backorder_clear_by: backorderClearBy,
+          projected_shipping_quantity: projectedShippingQuantity
         });
       
       if (insertError) {

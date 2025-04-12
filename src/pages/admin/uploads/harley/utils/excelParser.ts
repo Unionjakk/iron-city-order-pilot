@@ -99,7 +99,31 @@ export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
           // Order Date variations
           'ORDER DATE': 'order_date',
           'DATE': 'order_date',
-          'ORDER': 'order_date'
+          'ORDER': 'order_date',
+
+          // Backorder Clear By variations
+          'BACKORDER CLEAR BY': 'backorder_clear_by',
+          'B/O CLEAR BY': 'backorder_clear_by',
+          'BO CLEAR': 'backorder_clear_by',
+          'BO CLEAR BY': 'backorder_clear_by',
+          '*B/O CLEAR': 'backorder_clear_by',
+          'CLEAR BY': 'backorder_clear_by',
+          'B/O CLEAR DATE': 'backorder_clear_by',
+
+          // Projected Shipping Date variations
+          'PROJECTED SHIPPING DATE': 'projected_shipping_date',
+          'PROJ SHIP DATE': 'projected_shipping_date',
+          'SHIP DATE': 'projected_shipping_date',
+          '*PROJECTED SHIPPING DATE': 'projected_shipping_date',
+
+          // Projected Shipping Quantity variations
+          'PROJECTED SHIPPING QUANTITY': 'projected_shipping_quantity',
+          'PROJECTED SHIPPING QTY': 'projected_shipping_quantity',
+          'PROJ SHIPPING QTY': 'projected_shipping_quantity',
+          '*PROJECTED SHIPPING QTY': 'projected_shipping_quantity',
+          'PROJECTED SHIPPING': 'projected_shipping_quantity',
+          'PROJ SHIP QTY': 'projected_shipping_quantity',
+          'SHIP QTY': 'projected_shipping_quantity'
         };
 
         // Find the actual column names from the first row
@@ -154,16 +178,43 @@ export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
               break;
             }
           }
+
+          // Find the correct column for Backorder Clear By
+          let backorderClearBy = '';
+          for (const col of ['BACKORDER CLEAR BY', 'B/O CLEAR BY', 'BO CLEAR', 'BO CLEAR BY', '*B/O CLEAR', 'CLEAR BY', 'B/O CLEAR DATE']) {
+            if (row[col] !== undefined) {
+              backorderClearBy = row[col];
+              break;
+            }
+          }
+
+          // Find the correct column for Projected Shipping Quantity
+          let projectedShippingQty = '';
+          for (const col of ['PROJECTED SHIPPING QUANTITY', 'PROJECTED SHIPPING QTY', 'PROJ SHIPPING QTY', 
+                            '*PROJECTED SHIPPING QTY', 'PROJECTED SHIPPING', 'PROJ SHIP QTY', 'SHIP QTY']) {
+            if (row[col] !== undefined) {
+              projectedShippingQty = row[col];
+              break;
+            }
+          }
           
           // Convert line number to string
           const lineNumberStr = String(lineNumber);
           
-          // Log the found dealer PO number to debug
+          // Convert backorder clear by to a date string if it exists
+          const backorderClearByDate = backorderClearBy ? backorderClearBy : null;
+          
+          // Log the found dealer PO number and backorder clear by to debug
           if (dealerPoNumber) {
             console.log(`Found dealer PO number: ${dealerPoNumber} for order: ${hdOrderNumber}, line: ${lineNumberStr}`);
-          } else {
-            console.log(`No dealer PO number found for order: ${hdOrderNumber}, line: ${lineNumberStr}`);
-            console.log('Row keys:', Object.keys(row));
+          }
+          
+          if (backorderClearByDate) {
+            console.log(`Found backorder clear by: ${backorderClearByDate} for order: ${hdOrderNumber}, line: ${lineNumberStr}`);
+          }
+
+          if (projectedShippingQty) {
+            console.log(`Found projected shipping quantity: ${projectedShippingQty} for order: ${hdOrderNumber}, line: ${lineNumberStr}`);
           }
           
           if (!hdOrderNumber || !partNumber) {
@@ -181,7 +232,9 @@ export const parseExcelFile = async (file: File): Promise<OrderLineItem[]> => {
             total_price: parseFloat(String(row['TOTAL PRICE'] || row['TOTAL'] || row['*TOTAL'] || '0').replace(/[^0-9.]/g, '')) || 0,
             status: row['STATUS'] || '',
             dealer_po_number: dealerPoNumber, 
-            order_date: row['ORDER DATE'] || row['DATE'] || null
+            order_date: row['ORDER DATE'] || row['DATE'] || null,
+            backorder_clear_by: backorderClearByDate,
+            projected_shipping_quantity: projectedShippingQty
           };
         }).filter(item => item.hd_order_number && item.part_number);
         

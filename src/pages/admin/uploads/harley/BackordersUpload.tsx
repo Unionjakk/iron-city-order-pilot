@@ -51,17 +51,22 @@ const parseExcelFile = async (file: File): Promise<BackorderDataItem[]> => {
         
         // Convert to JSON with header row
         const jsonData = XLSX.utils.sheet_to_json<any>(worksheet, { raw: false });
-        console.log('Raw Excel data:', jsonData);
+        console.log('Raw Excel data (first 3 rows):', jsonData.slice(0, 3));
         
         if (!jsonData || jsonData.length === 0) {
           reject(new Error('No data found in Excel file'));
           return;
         }
         
+        // Log the first row to see what headers we have
+        if (jsonData.length > 0) {
+          console.log('Available columns in Excel:', Object.keys(jsonData[0]));
+        }
+        
         // Map the Excel data to our expected format, accounting for different possible column names
         const mappedData: BackorderDataItem[] = jsonData.map(row => {
           // Find the HD order number (could have different column names)
-          const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || row['HD ORDER'] || '';
+          const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || row['HD ORDER'] || row['HD ORDER'] || '';
           
           // Find line number (could have different column names)
           const lineNumber = row['LINE NUMBER'] || row['LINE'] || row['LINE #'] || row['*LINE'] || '';
@@ -74,12 +79,14 @@ const parseExcelFile = async (file: File): Promise<BackorderDataItem[]> => {
                                 row['DEALER PO'] || row['CUST PO'] || row['*DEALER PO NUMBER'] || '';
           
           // Find backorder clear by date with more variations
-          const backorderClearBy = row['BACKORDER CLEAR BY'] || row['CLEAR BY'] || row['BO CLEAR'] || row['*B/O CLEAR'] || '';
+          const backorderClearBy = row['BACKORDER CLEAR BY'] || row['B/O CLEAR BY'] || row['BO CLEAR BY'] || 
+                                  row['BO CLEAR'] || row['*B/O CLEAR'] || row['CLEAR BY'] || row['B/O CLEAR DATE'] || '';
           
           // Parse projected shipping quantity, ensuring it's converted to a number
           let projectedShippingQty = 0;
-          const projShippingQtyRaw = row['PROJECTED SHIPPING QUANTITY'] || row['PROJ SHIPPING QTY'] || 
-                                    row['SHIP QTY'] || row['*PROJECTED SHIPPING QTY'] || '';
+          const projShippingQtyRaw = row['PROJECTED SHIPPING QUANTITY'] || row['PROJECTED SHIPPING QTY'] || 
+                                    row['PROJ SHIPPING QTY'] || row['*PROJECTED SHIPPING QTY'] || row['PROJECTED SHIPPING'] || 
+                                    row['PROJ SHIP QTY'] || row['SHIP QTY'] || '';
                                     
           if (projShippingQtyRaw) {
             // Try to convert to number, handling various formats
@@ -87,6 +94,12 @@ const parseExcelFile = async (file: File): Promise<BackorderDataItem[]> => {
               // Remove any non-numeric characters except decimal point
               const numericStr = String(projShippingQtyRaw).replace(/[^0-9.]/g, '');
               projectedShippingQty = parseFloat(numericStr) || 0;
+              
+              // Ensure it's a whole number since it's a quantity
+              projectedShippingQty = Math.round(projectedShippingQty);
+              
+              // Log the projected shipping quantity conversion
+              console.log(`Converting projected shipping qty from "${projShippingQtyRaw}" to ${projectedShippingQty}`);
             } catch (err) {
               console.warn('Error parsing projected shipping quantity:', projShippingQtyRaw);
               projectedShippingQty = 0;
@@ -94,7 +107,9 @@ const parseExcelFile = async (file: File): Promise<BackorderDataItem[]> => {
           }
           
           // Log found values for debugging
-          console.log(`Order: ${hdOrderNumber}, Line: ${lineNumber}, PO: ${dealerPoNumber}, B/O Clear: ${backorderClearBy}, Ship Qty: ${projectedShippingQty}`);
+          if (hdOrderNumber && backorderClearBy) {
+            console.log(`Order: ${hdOrderNumber}, Line: ${lineNumber}, PO: ${dealerPoNumber}, B/O Clear: ${backorderClearBy}, Ship Qty: ${projectedShippingQty}`);
+          }
           
           if (!hdOrderNumber || !partNumber) {
             console.warn('Missing required fields in row:', row);
@@ -109,13 +124,13 @@ const parseExcelFile = async (file: File): Promise<BackorderDataItem[]> => {
             description: row['DESCRIPTION'] || row['PART DESCRIPTION'] || row['*DESCRIPTION'] || '',
             part_number: partNumber,
             quantity: parseFloat(String(row['QUANTITY'] || row['QTY'] || row['*QUANTITY'] || '0').replace(/[^0-9.]/g, '')) || 0,
-            projected_shipping_date: row['PROJECTED SHIPPING DATE'] || row['SHIP DATE'] || row['*PROJECTED SHIPPING DATE'] || null,
+            projected_shipping_date: row['PROJECTED SHIPPING DATE'] || row['PROJ SHIP DATE'] || row['SHIP DATE'] || row['*PROJECTED SHIPPING DATE'] || null,
             projected_shipping_quantity: projectedShippingQty,
             total_price: parseFloat(String(row['TOTAL PRICE'] || row['PRICE'] || row['TOTAL'] || row['*TOTAL'] || '0').replace(/[^0-9.]/g, '')) || 0
           };
         }).filter(item => item.hd_order_number && item.part_number);
         
-        console.log('Mapped data:', mappedData);
+        console.log('Mapped data (first 3 items):', mappedData.slice(0, 3));
         resolve(mappedData);
       } catch (error) {
         console.error('Error parsing Excel file:', error);
@@ -162,7 +177,7 @@ const BackordersUpload = () => {
     try {
       console.log('Starting to parse Excel file...');
       const parsedData = await parseExcelFile(file);
-      console.log('Parsed data:', parsedData);
+      console.log('Parsed data count:', parsedData.length);
       
       if (parsedData.length === 0) {
         console.warn('No data found in file');
@@ -217,7 +232,11 @@ const BackordersUpload = () => {
         
         // Log debug information
         console.log(`Looking for line item: Order=${item.hd_order_number}, Line=${lineNumberStr}, Part=${item.part_number}`);
-        console.log(`Found line items:`, lineItems);
+        
+        if (lineItems && lineItems.length === 0) {
+          console.warn(`No matching line item found for order ${item.hd_order_number}, line ${lineNumberStr}, part ${item.part_number}`);
+          notFoundCount++;
+        }
         
         // Prepare date fields as strings
         const backorderClearBy = item.backorder_clear_by ? 
@@ -241,10 +260,15 @@ const BackordersUpload = () => {
         // Determine if we have a matching line item
         const lineItemId = lineItems && lineItems.length > 0 ? lineItems[0].id : null;
         
-        if (!lineItemId) {
-          console.warn(`No matching line item found for order ${item.hd_order_number}, line ${lineNumberStr}, part ${item.part_number}`);
-          notFoundCount++;
+        // Debug logging for backorder clear by date
+        if (backorderClearBy) {
+          console.log(`Backorder clear by date for order ${item.hd_order_number}, line ${lineNumberStr}: ${backorderClearBy}`);
+        } else {
+          console.log(`No backorder clear by date for order ${item.hd_order_number}, line ${lineNumberStr}`);
         }
+        
+        // Debug logging for projected shipping quantity
+        console.log(`Projected shipping quantity for order ${item.hd_order_number}, line ${lineNumberStr}: ${item.projected_shipping_quantity}`);
         
         // Log the values being inserted
         console.log('Inserting backorder with values:', {
