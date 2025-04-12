@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -13,7 +14,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
-import UsersPage from "./pages/UsersPage";
+import UsersPage from "./pages/users/UsersPage"; // Fixed the import path
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminSettings from "./pages/admin/AdminSettings";
 import UploadsIndex from "./pages/admin/uploads/UploadsIndex";
