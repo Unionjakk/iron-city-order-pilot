@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { OrderLineItem, parseExcelFile } from '../utils/excelParser';
+import { OrderLineItem, parseExcelFile } from '../utils/parser';
 import { 
   processOrderLineItems, 
   recordUploadHistory, 
