@@ -146,7 +146,7 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
           <div className="flex flex-col items-center">
             <span>{item.quantity_required || item.quantity || 1}</span>
             <span className={isFullyPicked ? "text-emerald-500" : "text-amber-400"}>
-              ({item.quantity_picked || 0} picked)
+              ({item.quantity_picked || 0} picked total)
             </span>
             {!isFullyPicked && (
               <span className="text-xs text-orange-400">

@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import { PicklistOrderItem as PicklistOrderItemType, PicklistOrder } from "../types/picklistTypes";
+import { PicklistOrderItemType, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,14 +22,13 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
   const [processing, setProcessing] = useState<boolean>(false);
   const [action, setAction] = useState<string>("");
   const [note, setNote] = useState<string>("");
-  
+
   const { 
     getStockColor,
     getLocationColor,
     getCostColor
   } = usePicklistItemActions(order, item.id, item.sku, refreshData);
 
-  // Load picked quantity for this SKU
   useEffect(() => {
     if (item.sku) {
       const loadPickedQuantity = async () => {
@@ -42,24 +40,20 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
     }
   }, [item.sku]);
 
-  // Handle action change
   const handleActionChange = (value: string) => {
     setAction(value);
   };
 
-  // Handle note change
   const handleNoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNote(e.target.value);
   };
 
-  // Handle pick quantity change
   const handlePickQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
     const maxQuantity = item.quantity || 1;
     setPickQuantity(isNaN(value) || value < 1 ? 1 : Math.min(value, maxQuantity));
   };
 
-  // Submit the action
   const handleSubmit = async () => {
     if (!action) {
       toast({
@@ -73,20 +67,16 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
     setProcessing(true);
     
     try {
-      // First delete any existing progress entries for this order/SKU combination
       await supabase
         .from('iron_city_order_progress')
         .delete()
         .eq('shopify_order_id', order.shopify_order_id)
         .eq('sku', item.sku);
       
-      // Set required quantity to the item quantity automatically
       const requiredQuantity = item.quantity || 1;
       
-      // For "Picked" action, use the pickQuantity, otherwise set picked to 0
       const quantityPicked = action === "Picked" ? pickQuantity : 0;
       
-      // Insert new progress entry with quantity tracking
       const { error } = await supabase
         .from('iron_city_order_progress')
         .insert({
@@ -109,11 +99,9 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
           : `Item marked as ${action}`,
       });
       
-      // Reset form
       setNote("");
       setAction("");
       
-      // Refresh data
       refreshData();
     } catch (error: any) {
       console.error("Error updating progress:", error);
@@ -139,7 +127,7 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
         <TableCell className="text-center">
           <span className={getStockColor(item.in_stock, item.stock_quantity, item.quantity)}>
             {item.stock_quantity || 0}
-            {pickedQuantity ? <span className="text-amber-400"> ({pickedQuantity} picked)</span> : null}
+            {pickedQuantity ? <span className="text-amber-400"> ({pickedQuantity} picked total)</span> : null}
           </span>
         </TableCell>
         <TableCell>
@@ -200,7 +188,6 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
         </TableCell>
       </TableRow>
       
-      {/* Notes field moved under each item */}
       <TableRow className="border-none">
         <TableCell colSpan={9} className="pt-0 pb-2">
           <Input
