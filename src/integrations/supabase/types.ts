@@ -781,6 +781,20 @@ export type Database = {
         }
         Relationships: []
       }
+      hd_order_matches: {
+        Row: {
+          dealer_po_number: string | null
+          expected_arrival_dealership: string | null
+          hd_order_number: string | null
+          hd_orderlinecombo: string | null
+          matched_quantity: number | null
+          order_date: string | null
+          order_quantity: number | null
+          part_number: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
       hd_orders_with_lookup: {
         Row: {
           has_line_items: boolean | null

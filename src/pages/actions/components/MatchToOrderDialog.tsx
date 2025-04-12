@@ -28,6 +28,7 @@ interface HarleyOrderMatch {
   part_number: string;
   dealer_po_number: string | null;
   order_quantity: number | null;
+  matched_quantity: number | null;
   status: string | null;
   hd_orderlinecombo: string | null;
   order_date: string | null;
@@ -85,10 +86,10 @@ const MatchToOrderDialog = ({
     try {
       setIsLoading(true);
       
-      // Search the hd_combined view for matching part_number
+      // Search the hd_order_matches view for matching part_number
       const { data, error } = await supabase
-        .from('hd_combined')
-        .select('hd_order_number, part_number, dealer_po_number, order_quantity, status, hd_orderlinecombo, order_date, expected_arrival_dealership')
+        .from('hd_order_matches')
+        .select('hd_order_number, part_number, dealer_po_number, order_quantity, matched_quantity, status, hd_orderlinecombo, order_date, expected_arrival_dealership')
         .eq('part_number', searchSku)
         .order('hd_order_number', { ascending: true });
       
@@ -186,7 +187,7 @@ const MatchToOrderDialog = ({
                   <TableHead className="text-zinc-300">Order #</TableHead>
                   <TableHead className="text-zinc-300">Part #</TableHead>
                   <TableHead className="text-zinc-300">PO #</TableHead>
-                  <TableHead className="text-zinc-300">Quantity Ordered</TableHead>
+                  <TableHead className="text-zinc-300 text-center">Quantity</TableHead>
                   <TableHead className="text-zinc-300">Status</TableHead>
                   <TableHead className="text-zinc-300">Order Date</TableHead>
                   <TableHead className="text-zinc-300">Expected Arrival</TableHead>
@@ -199,7 +200,14 @@ const MatchToOrderDialog = ({
                     <TableCell className="text-zinc-300">{order.hd_order_number}</TableCell>
                     <TableCell className="text-zinc-300">{order.part_number}</TableCell>
                     <TableCell className="text-zinc-300">{order.dealer_po_number || "N/A"}</TableCell>
-                    <TableCell className="text-zinc-300">{order.order_quantity || "N/A"}</TableCell>
+                    <TableCell className="text-zinc-300 text-center">
+                      {order.order_quantity || "N/A"}
+                      {order.matched_quantity && order.matched_quantity > 0 ? (
+                        <span className="text-amber-400 ml-1 font-medium">
+                          ({order.matched_quantity} matched)
+                        </span>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="text-zinc-300">{order.status || "N/A"}</TableCell>
                     <TableCell className="text-zinc-300">{formatDate(order.order_date)}</TableCell>
                     <TableCell className="text-zinc-300">{formatDate(order.expected_arrival_dealership)}</TableCell>
