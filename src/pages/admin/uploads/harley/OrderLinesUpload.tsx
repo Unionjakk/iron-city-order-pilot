@@ -64,7 +64,7 @@ const OrderLinesUpload = () => {
           <div className="w-full text-xs text-zinc-400">
             <p>Expected file format for each Order Line Items file:</p>
             <Code className="mt-2">
-              HD ORDER NUMBER | LINE NUMBER | PART NUMBER | DESCRIPTION | ORDER QUANTITY | OPEN QUANTITY | UNIT PRICE | TOTAL PRICE | STATUS | PO NUMBER | ORDER DATE
+              HD ORDER NUMBER | LINE NUMBER | PART NUMBER | DESCRIPTION | ORDER QUANTITY | OPEN QUANTITY | UNIT PRICE | TOTAL PRICE | STATUS | PO NUMBER | ORDER DATE | INVOICE NUMBER | INVOICE DATE
             </Code>
           </div>
         </CardFooter>

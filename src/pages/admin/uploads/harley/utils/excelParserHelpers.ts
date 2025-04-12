@@ -73,6 +73,7 @@ export const detectColumnMappings = (
     
     // Try fuzzy matching if exact matching fails for important columns
     const keysMapped = Object.values(actualColumnNames);
+    
     if (!keysMapped.includes('dealer_po_number')) {
       console.log('Trying fuzzy matching for dealer_po_number...');
       for (const key in firstRow) {
@@ -91,6 +92,29 @@ export const detectColumnMappings = (
             (key.toUpperCase().includes('CLEAR') || key.toUpperCase().includes('DATE'))) {
           actualColumnNames['backorder_clear_by'] = key;
           console.log(`Fuzzy mapped backorder clear by column: ${key} -> backorder_clear_by`);
+          break;
+        }
+      }
+    }
+    
+    if (!keysMapped.includes('invoice_number')) {
+      console.log('Trying fuzzy matching for invoice_number...');
+      for (const key in firstRow) {
+        if (key.toUpperCase().includes('INVOICE') && 
+            (key.toUpperCase().includes('NUMBER') || key.toUpperCase().includes('#'))) {
+          actualColumnNames['invoice_number'] = key;
+          console.log(`Fuzzy mapped invoice number column: ${key} -> invoice_number`);
+          break;
+        }
+      }
+    }
+    
+    if (!keysMapped.includes('invoice_date')) {
+      console.log('Trying fuzzy matching for invoice_date...');
+      for (const key in firstRow) {
+        if (key.toUpperCase().includes('INVOICE') && key.toUpperCase().includes('DATE')) {
+          actualColumnNames['invoice_date'] = key;
+          console.log(`Fuzzy mapped invoice date column: ${key} -> invoice_date`);
           break;
         }
       }

@@ -119,10 +119,18 @@ export const processOrderLineItems = async (
           String(item.backorder_clear_by)) : 
         null;
         
+      // Process invoice date if it exists
+      const invoiceDate = item.invoice_date ? 
+        (item.invoice_date instanceof Date ? 
+          item.invoice_date.toISOString().split('T')[0] : 
+          String(item.invoice_date)) : 
+        null;
+        
       const projectedShippingQuantity = item.projected_shipping_quantity || 0;
       
-      // Log dealer PO number to debug
+      // Log dealer PO number and invoice info to debug
       console.log(`Inserting line item with dealer PO number: ${item.dealer_po_number || 'NONE'}`);
+      console.log(`Invoice number: ${item.invoice_number || 'NONE'}, Invoice date: ${invoiceDate || 'NONE'}`);
       
       if (existingLineNumbers.has(lineNumberStr)) {
         replacedLineNumbers.push(lineNumberStr);
@@ -149,7 +157,9 @@ export const processOrderLineItems = async (
           dealer_po_number: dealerPoNumber,
           order_date: orderDate,
           backorder_clear_by: backorderClearBy,
-          projected_shipping_quantity: projectedShippingQuantity
+          projected_shipping_quantity: projectedShippingQuantity,
+          invoice_number: item.invoice_number || null,
+          invoice_date: invoiceDate
         });
       
       if (insertError) {

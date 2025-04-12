@@ -20,6 +20,8 @@ export interface OrderLineItem {
   order_date?: string | Date;
   backorder_clear_by?: string | Date;
   projected_shipping_quantity?: number;
+  invoice_number?: string;
+  invoice_date?: string | Date;
 }
 
 // Map of all possible column name variations to standard names
@@ -84,6 +86,19 @@ export const columnMappings = {
   'ORDER DATE': 'order_date',
   'DATE': 'order_date',
   'ORDER': 'order_date',
+
+  // Invoice Number variations
+  'INVOICE NUMBER': 'invoice_number',
+  'INVOICE #': 'invoice_number',
+  'INVOICE': 'invoice_number',
+  'INV NUMBER': 'invoice_number',
+  'INV #': 'invoice_number',
+  '*INVOICE NUMBER': 'invoice_number',
+  
+  // Invoice Date variations
+  'INVOICE DATE': 'invoice_date',
+  'INV DATE': 'invoice_date',
+  '*INVOICE DATE': 'invoice_date',
 
   // Backorder Clear By variations
   'BACKORDER CLEAR BY': 'backorder_clear_by',
@@ -190,6 +205,16 @@ const mapRowToOrderLineItem = (row: any): OrderLineItem => {
     'CUST PO', '*DEALER PO NUMBER', 'CUSTOMER PO', 'DEALER PO#'
   ]);
 
+  // Find the correct column for Invoice Number
+  const invoiceNumber = findColumnValue(row, [
+    'INVOICE NUMBER', 'INVOICE #', 'INVOICE', 'INV NUMBER', 'INV #', '*INVOICE NUMBER'
+  ]);
+  
+  // Find the correct column for Invoice Date
+  const invoiceDate = findColumnValue(row, [
+    'INVOICE DATE', 'INV DATE', '*INVOICE DATE'
+  ]);
+
   // Find the correct column for Backorder Clear By
   const backorderClearBy = findColumnValue(row, [
     'BACKORDER CLEAR BY', 'B/O CLEAR BY', 'BO CLEAR', 'BO CLEAR BY', 
@@ -206,6 +231,8 @@ const mapRowToOrderLineItem = (row: any): OrderLineItem => {
   // Log the found values to debug
   console.log(`Found values for order: ${hdOrderNumber}, line: ${lineNumberStr}:`);
   console.log(`  Dealer PO: ${dealerPoNumber}`);
+  console.log(`  Invoice Number: ${invoiceNumber}`);
+  console.log(`  Invoice Date: ${invoiceDate}`);
   console.log(`  Backorder clear by: ${backorderClearBy}`);
   console.log(`  Projected shipping qty: ${projectedShippingQty}`);
   
@@ -226,7 +253,9 @@ const mapRowToOrderLineItem = (row: any): OrderLineItem => {
     dealer_po_number: dealerPoNumber || '', 
     order_date: row['ORDER DATE'] || row['DATE'] || null,
     backorder_clear_by: backorderClearBy || null,
-    projected_shipping_quantity: projectedShippingQty
+    projected_shipping_quantity: projectedShippingQty,
+    invoice_number: invoiceNumber || '',
+    invoice_date: invoiceDate || null
   };
 };
 
