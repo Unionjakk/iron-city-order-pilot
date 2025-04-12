@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 
@@ -100,7 +99,7 @@ export const fetchPickedItemsProgress = async () => {
   
   const { data, error } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, progress, notes, quantity')
+    .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number')
     .eq('progress', 'Picked');
     
   if (error) {

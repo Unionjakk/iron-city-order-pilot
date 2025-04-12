@@ -51,6 +51,9 @@ const processPickedOrdersData = (
           // Initialize progress and notes to null
           let progress = null;
           let notes = null;
+          let hd_orderlinecombo = null;
+          let status = null;
+          let dealer_po_number = null;
           
           // First try to match with specific SKU
           if (item.sku) {
@@ -59,6 +62,9 @@ const processPickedOrdersData = (
             if (progressData) {
               progress = progressData.progress;
               notes = progressData.notes;
+              hd_orderlinecombo = progressData.hd_orderlinecombo;
+              status = progressData.status;
+              dealer_po_number = progressData.dealer_po_number;
             }
           }
           
@@ -69,6 +75,9 @@ const processPickedOrdersData = (
             if (noSkuProgressData) {
               progress = noSkuProgressData.progress;
               notes = noSkuProgressData.notes;
+              hd_orderlinecombo = noSkuProgressData.hd_orderlinecombo;
+              status = noSkuProgressData.status;
+              dealer_po_number = noSkuProgressData.dealer_po_number;
               console.log(`Matched "No SKU" progress for order ${shopifyOrderId}`);
             }
           }
@@ -100,7 +109,10 @@ const processPickedOrdersData = (
             cost: stock?.cost || null,
             // Progress data
             progress: progress,
-            notes: notes
+            notes: notes,
+            hd_orderlinecombo: hd_orderlinecombo,
+            status: status,
+            dealer_po_number: dealer_po_number
           };
         })
         .filter(Boolean); // Remove null items (ones without "Picked" progress status)
@@ -134,7 +146,10 @@ const processPickedOrdersData = (
             cost: null,
             // Progress data
             progress: noSkuProgress.progress,
-            notes: noSkuProgress.notes
+            notes: noSkuProgress.notes,
+            hd_orderlinecombo: noSkuProgress.hd_orderlinecombo,
+            status: noSkuProgress.status,
+            dealer_po_number: noSkuProgress.dealer_po_number
           });
         }
       }
