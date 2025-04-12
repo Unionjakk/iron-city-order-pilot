@@ -15,10 +15,9 @@ export const usePickedData = (): PicklistDataResult => {
     debugInfo 
   } = usePickedDataFetcher();
 
-  const fetchData = async () => {
-    const { orders: fetchedOrders, debug } = await fetchPickedData();
+  const fetchData = async (): Promise<void> => {
+    const { orders: fetchedOrders } = await fetchPickedData();
     setOrders(fetchedOrders);
-    return debug;
   };
   
   // Initial data fetch
