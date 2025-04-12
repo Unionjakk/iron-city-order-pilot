@@ -776,6 +776,17 @@ export type Database = {
         Row: {
           has_line_items: boolean | null
           hd_order_number: string | null
+          is_excluded: boolean | null
+        }
+        Insert: {
+          has_line_items?: never
+          hd_order_number?: string | null
+          is_excluded?: never
+        }
+        Update: {
+          has_line_items?: never
+          hd_order_number?: string | null
+          is_excluded?: never
         }
         Relationships: []
       }

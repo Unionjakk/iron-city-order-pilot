@@ -42,6 +42,7 @@ export const useHarleyDashboardData = () => {
         if (viewData) {
           console.log('Raw view data:', viewData);
           // Update stats with data from the new, more accurate view
+          // which now accounts for excluded orders in the orders_without_line_items count
           setStats({
             totalOrders: viewData.total_orders || 0,
             ordersWithoutLineItems: viewData.orders_without_line_items || 0,
