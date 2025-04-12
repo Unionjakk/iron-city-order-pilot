@@ -150,6 +150,9 @@ export const useToOrderData = (): PicklistDataResult => {
         // Debug - try to match progress for "No SKU" items
         let progress = null;
         let notes = null;
+        let hd_orderlinecombo = null;
+        let status = null;
+        let dealer_po_number = null;
         
         // Check for a match with the specific SKU
         if (item.sku) {
@@ -158,6 +161,9 @@ export const useToOrderData = (): PicklistDataResult => {
           if (progressData) {
             progress = progressData.progress;
             notes = progressData.notes;
+            hd_orderlinecombo = progressData.hd_orderlinecombo;
+            status = progressData.status;
+            dealer_po_number = progressData.dealer_po_number;
           }
         }
         
@@ -168,6 +174,9 @@ export const useToOrderData = (): PicklistDataResult => {
           if (noSkuProgressData) {
             progress = noSkuProgressData.progress;
             notes = noSkuProgressData.notes;
+            hd_orderlinecombo = noSkuProgressData.hd_orderlinecombo;
+            status = noSkuProgressData.status;
+            dealer_po_number = noSkuProgressData.dealer_po_number;
             console.log(`Debug - Matched "No SKU" progress for order ${shopifyOrderId}`);
           }
         }
@@ -185,7 +194,10 @@ export const useToOrderData = (): PicklistDataResult => {
           cost: stock?.cost || null,
           // Progress data
           progress: progress,
-          notes: notes
+          notes: notes,
+          hd_orderlinecombo: hd_orderlinecombo,
+          status: status,
+          dealer_po_number: dealer_po_number
         };
       });
       

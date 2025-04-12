@@ -22,6 +22,10 @@ export interface PicklistOrderItem {
   // Progress tracking
   progress: string | null;
   notes: string | null;
+  // Harley Davidson order data
+  hd_orderlinecombo?: string | null;
+  status?: string | null;
+  dealer_po_number?: string | null;
   // Picked quantity
   pickedQuantity?: number;
 }

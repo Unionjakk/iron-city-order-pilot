@@ -16,15 +16,15 @@ const ToOrderTable = ({ orders, refreshData }: ToOrderTableProps) => {
       <Table>
         <TableHeader>
           <TableRow className="bg-zinc-800/50">
-            <TableHead className="w-[10%]"></TableHead>
-            <TableHead className="w-[35%]"></TableHead>
-            <TableHead className="w-[5%] text-center"></TableHead>
-            <TableHead className="w-[8%] text-center"></TableHead>
+            <TableHead className="w-[10%]">SKU</TableHead>
+            <TableHead className="w-[35%]">Item</TableHead>
+            <TableHead className="w-[5%] text-center">Qty</TableHead>
+            <TableHead className="w-[8%] text-center">Price</TableHead>
             <TableHead className="text-green-500 w-[8%] text-center">Stock</TableHead>
             <TableHead className="text-green-500 w-[8%]">Location</TableHead>
             <TableHead className="text-green-500 w-[8%]">Cost</TableHead>
-            <TableHead className="w-[10%]"></TableHead>
-            <TableHead className="w-[8%]"></TableHead>
+            <TableHead className="w-[10%]">Status</TableHead>
+            <TableHead className="w-[8%]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

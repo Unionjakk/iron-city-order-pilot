@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import MatchToOrderDialog from "./MatchToOrderDialog";
 
 interface ToOrderOrderItemProps {
   item: PicklistOrderItem;
@@ -27,6 +28,7 @@ const ToOrderOrderItem = ({ item, order, refreshData }: ToOrderOrderItemProps) =
   const { toast } = useToast();
   const [processing, setProcessing] = useState<boolean>(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState<boolean>(false);
+  const [isMatchDialogOpen, setIsMatchDialogOpen] = useState<boolean>(false);
 
   // Utility functions for styling
   const getStockColor = (inStock: boolean, quantity: number | null, orderQuantity: number): string => {
@@ -88,6 +90,14 @@ const ToOrderOrderItem = ({ item, order, refreshData }: ToOrderOrderItemProps) =
     }
   };
 
+  const handleOpenMatchDialog = () => {
+    setIsMatchDialogOpen(true);
+  };
+
+  const handleCloseMatchDialog = () => {
+    setIsMatchDialogOpen(false);
+  };
+
   return (
     <React.Fragment>
       <TableRow className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
@@ -114,19 +124,31 @@ const ToOrderOrderItem = ({ item, order, refreshData }: ToOrderOrderItemProps) =
         </TableCell>
         <TableCell>
           <div className="w-full border-zinc-700 bg-zinc-800/50 text-zinc-300 py-2 px-3 rounded-md text-sm">
-            To Order
+            {item.status ? `${item.progress} - ${item.status}` : item.progress}
           </div>
         </TableCell>
         <TableCell>
-          <Button 
-            onClick={() => setIsClearDialogOpen(true)}
-            disabled={processing}
-            size="sm"
-            variant="destructive"
-            className="w-full"
-          >
-            {processing ? "Processing..." : "Clear"}
-          </Button>
+          <div className="flex gap-1">
+            <Button 
+              onClick={handleOpenMatchDialog}
+              disabled={processing}
+              size="sm"
+              variant="default"
+              className="bg-orange-500 hover:bg-orange-600 w-full"
+            >
+              Match Order
+            </Button>
+            
+            <Button 
+              onClick={() => setIsClearDialogOpen(true)}
+              disabled={processing}
+              size="sm"
+              variant="destructive"
+              className="w-8 p-0"
+            >
+              ×
+            </Button>
+          </div>
           
           <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
             <AlertDialogContent className="bg-zinc-900 border-zinc-700">
@@ -151,6 +173,15 @@ const ToOrderOrderItem = ({ item, order, refreshData }: ToOrderOrderItemProps) =
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          
+          <MatchToOrderDialog
+            isOpen={isMatchDialogOpen}
+            onClose={handleCloseMatchDialog}
+            sku={item.sku || ""}
+            shopifyOrderId={order.shopify_order_id}
+            shopifyOrderNumber={order.shopify_order_number}
+            onOrderMatched={refreshData}
+          />
         </TableCell>
       </TableRow>
       
