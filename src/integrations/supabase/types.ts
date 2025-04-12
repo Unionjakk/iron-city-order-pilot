@@ -315,6 +315,8 @@ export type Database = {
       iron_city_order_progress: {
         Row: {
           created_at: string
+          dealer_po_number: string | null
+          hd_orderlinecombo: string | null
           id: string
           notes: string | null
           progress: string | null
@@ -322,10 +324,13 @@ export type Database = {
           shopify_order_id: string
           shopify_order_number: string | null
           sku: string
+          status: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          dealer_po_number?: string | null
+          hd_orderlinecombo?: string | null
           id?: string
           notes?: string | null
           progress?: string | null
@@ -333,10 +338,13 @@ export type Database = {
           shopify_order_id: string
           shopify_order_number?: string | null
           sku: string
+          status?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          dealer_po_number?: string | null
+          hd_orderlinecombo?: string | null
           id?: string
           notes?: string | null
           progress?: string | null
@@ -344,6 +352,7 @@ export type Database = {
           shopify_order_id?: string
           shopify_order_number?: string | null
           sku?: string
+          status?: string | null
           updated_at?: string
         }
         Relationships: [
