@@ -1,7 +1,7 @@
 
 import React from "react";
 import ToolCard from "../ToolCard";
-import { BarChart3, Search, Calculator } from "lucide-react";
+import { BarChart3, Search, Calculator, Trello } from "lucide-react";
 
 const ToolsSection = () => {
   return (
@@ -13,7 +13,7 @@ const ToolsSection = () => {
           title="Visualiser"
           description="Visualize order progress through the system"
           to="/visualiser"
-          className="w-full md:w-1/3 lg:w-1/3"
+          className="w-full md:w-1/4 lg:w-1/4"
         />
         <ToolCard
           icon={Search}
@@ -22,7 +22,7 @@ const ToolsSection = () => {
           to="/order-lookup"
           disabled={true}
           comingSoon={true}
-          className="w-full md:w-1/3 lg:w-1/3"
+          className="w-full md:w-1/4 lg:w-1/4"
         />
         <ToolCard
           icon={Calculator}
@@ -30,7 +30,15 @@ const ToolsSection = () => {
           description="Make corrections to Pinnacle for accounting purposes"
           to="/accountant-corrections"
           comingSoon={true}
-          className="w-full md:w-1/3 lg:w-1/3"
+          className="w-full md:w-1/4 lg:w-1/4"
+        />
+        <ToolCard
+          icon={Trello}
+          title="Drag and Drop"
+          description="Organize orders in a Trello-style kanban board"
+          to="/drag-and-drop"
+          comingSoon={true}
+          className="w-full md:w-1/4 lg:w-1/4"
         />
       </div>
     </section>

@@ -36,6 +36,9 @@ import DispatchPage from "./pages/actions/DispatchPage";
 import BackorderPage from "./pages/actions/BackorderPage";
 import BackorderReportPage from "./pages/actions/BackorderReportPage";
 import VisualiserPage from "./pages/actions/VisualiserPage";
+import DragAndDropPage from "./pages/tools/DragAndDropPage";
+import OrderLookupPlaceholder from "./components/placeholder/OrderLookupPlaceholder";
+import AccountantCorrectionsPlaceholder from "./components/placeholder/AccountantCorrectionsPlaceholder";
 
 // Import components
 import Footer from "./components/Footer";
@@ -84,6 +87,11 @@ function App() {
                 <Route path="/actions/backorder" element={<BackorderPage />} />
                 <Route path="/actions/backorder-report" element={<BackorderReportPage />} />
                 <Route path="/actions/visualiser" element={<VisualiserPage />} />
+                
+                {/* Tools Routes */}
+                <Route path="/drag-and-drop" element={<DragAndDropPage />} />
+                <Route path="/order-lookup" element={<OrderLookupPlaceholder />} />
+                <Route path="/accountant-corrections" element={<AccountantCorrectionsPlaceholder />} />
                 
                 {/* Admin Routes */}
                 <Route path="/admin" element={<AdminDashboard />} />

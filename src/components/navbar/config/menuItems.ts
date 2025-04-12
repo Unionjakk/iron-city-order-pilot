@@ -1,5 +1,4 @@
-
-import { Users, CheckSquare, List, Clock, ShoppingCart, Settings, CheckCircle, Truck, Package, BarChart3, Search, Wrench, Calculator } from 'lucide-react';
+import { Users, CheckSquare, List, Clock, ShoppingCart, Settings, CheckCircle, Truck, Package, BarChart3, Search, Wrench, Calculator, Trello } from 'lucide-react';
 
 export interface MenuItem {
   path: string;
@@ -37,7 +36,7 @@ export const mainMenuItems: MenuItem[] = [
         icon: CheckCircle,
       },
       {
-        path: '/actions/to-order', // Changed from '/actions/toorder' to '/actions/to-order'
+        path: '/actions/to-order',
         label: 'To Order',
         icon: ShoppingCart,
       },
@@ -70,7 +69,7 @@ export const mainMenuItems: MenuItem[] = [
     isDropdown: true,
     children: [
       {
-        path: '/actions/visualiser', // Updated to correct path with full route
+        path: '/actions/visualiser',
         label: 'Visualiser',
         icon: BarChart3,
       },
@@ -83,6 +82,11 @@ export const mainMenuItems: MenuItem[] = [
         path: '/accountant-corrections',
         label: 'Accountant Corrections',
         icon: Calculator,
+      },
+      {
+        path: '/drag-and-drop',
+        label: 'Drag and Drop',
+        icon: Trello,
       },
     ],
   },
