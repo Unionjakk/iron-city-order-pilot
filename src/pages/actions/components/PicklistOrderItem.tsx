@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PicklistOrderItem as PicklistOrderItemType, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePicklistItemActions } from "../hooks/usePicklistItemActions";
+import { fetchTotalPickedQuantityForSku } from "../services/pickedDataService";
 
 interface PicklistOrderItemProps {
   item: PicklistOrderItemType;
@@ -17,6 +18,7 @@ interface PicklistOrderItemProps {
 
 const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps) => {
   const { toast } = useToast();
+  const [pickedQuantity, setPickedQuantity] = useState<number | null>(null);
   const [pickQuantity, setPickQuantity] = useState<number>(1);
   const [processing, setProcessing] = useState<boolean>(false);
   const [action, setAction] = useState<string>("");
@@ -27,6 +29,17 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
     getLocationColor,
     getCostColor
   } = usePicklistItemActions(order, item.id, item.sku, refreshData);
+
+  useEffect(() => {
+    if (item.sku) {
+      const loadPickedQuantity = async () => {
+        const pickedQty = await fetchTotalPickedQuantityForSku(item.sku);
+        setPickedQuantity(pickedQty);
+      };
+      
+      loadPickedQuantity();
+    }
+  }, [item.sku]);
 
   const handleActionChange = (value: string) => {
     setAction(value);
@@ -115,7 +128,7 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
         <TableCell className="text-center">
           <span className={getStockColor(item.in_stock, item.stock_quantity, item.quantity)}>
             {item.stock_quantity || 0}
-            {item.quantity_picked ? <span className="text-amber-400"> ({item.quantity_picked} picked total)</span> : null}
+            {pickedQuantity ? <span className="text-amber-400"> ({pickedQuantity} picked total)</span> : null}
           </span>
         </TableCell>
         <TableCell>
