@@ -29,51 +29,44 @@ export const useHarleyDashboardData = () => {
         console.log("Fetching Harley Davidson statistics...");
         
         // Fetch total orders count
-        const { data: totalOrdersData, error: totalOrdersError } = await supabase
+        const { count: totalOrders, error: totalOrdersError } = await supabase
           .from('hd_orders')
-          .select('id', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true });
         
         if (totalOrdersError) {
           throw totalOrdersError;
         }
         
-        const totalOrders = totalOrdersData?.count || 0;
-        
         // Fetch orders with line items count
-        const { data: ordersWithLineItemsData, error: ordersWithLineItemsError } = await supabase
+        const { count: ordersWithLineItems, error: ordersWithLineItemsError } = await supabase
           .from('hd_orders')
-          .select('id', { count: 'exact', head: true })
+          .select('*', { count: 'exact', head: true })
           .eq('has_line_items', true);
         
         if (ordersWithLineItemsError) {
           throw ordersWithLineItemsError;
         }
         
-        const ordersWithLineItems = ordersWithLineItemsData?.count || 0;
-        const ordersWithoutLineItems = totalOrders - ordersWithLineItems;
+        const ordersWithoutLineItems = totalOrders - (ordersWithLineItems || 0);
         
         // Fetch backorder items count
-        const { data: backorderItemsData, error: backorderItemsError } = await supabase
+        const { count: backorderItems, error: backorderItemsError } = await supabase
           .from('hd_order_line_items')
-          .select('id', { count: 'exact', head: true })
+          .select('*', { count: 'exact', head: true })
           .eq('is_backorder', true);
         
         if (backorderItemsError) {
           throw backorderItemsError;
         }
         
-        const backorderItems = backorderItemsData?.count || 0;
-        
         // Fetch total backorder items count
-        const { data: totalBackorderItemsData, error: totalBackorderItemsError } = await supabase
+        const { count: totalBackorderItems, error: totalBackorderItemsError } = await supabase
           .from('hd_backorders')
-          .select('id', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true });
         
         if (totalBackorderItemsError) {
           throw totalBackorderItemsError;
         }
-        
-        const totalBackorderItems = totalBackorderItemsData?.count || 0;
         
         // Fetch last upload dates
         const { data: lastUploadsData, error: lastUploadsError } = await supabase
@@ -111,10 +104,10 @@ export const useHarleyDashboardData = () => {
         
         // Update stats with data from database
         setStats({
-          totalOrders,
+          totalOrders: totalOrders || 0,
           ordersWithoutLineItems,
-          backorderItems,
-          totalBackorderItems,
+          backorderItems: backorderItems || 0,
+          totalBackorderItems: totalBackorderItems || 0,
           lastOpenOrdersUpload,
           lastLineItemsUpload,
           lastBackordersUpload
