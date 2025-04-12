@@ -760,6 +760,18 @@ export type Database = {
         }
         Relationships: []
       }
+      hd_dashboard_stats: {
+        Row: {
+          backorder_items: number | null
+          last_backorders_upload: string | null
+          last_line_items_upload: string | null
+          last_open_orders_upload: string | null
+          orders_without_line_items: number | null
+          total_backorder_items: number | null
+          total_orders: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       apply_sku_corrections: {

@@ -26,92 +26,30 @@ export const useHarleyDashboardData = () => {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true);
-        console.log("Fetching Harley Davidson statistics...");
+        console.log("Fetching Harley Davidson statistics from view...");
         
-        // Fetch total orders count
-        const { count: totalOrders, error: totalOrdersError } = await supabase
-          .from('hd_orders')
-          .select('*', { count: 'exact', head: true });
+        // Fetch stats from the new view
+        const { data: viewData, error: viewError } = await supabase
+          .from('hd_dashboard_stats')
+          .select('*')
+          .single();
         
-        if (totalOrdersError) {
-          throw totalOrdersError;
+        if (viewError) {
+          throw viewError;
         }
         
-        // Fetch orders with line items count
-        const { count: ordersWithLineItems, error: ordersWithLineItemsError } = await supabase
-          .from('hd_orders')
-          .select('*', { count: 'exact', head: true })
-          .eq('has_line_items', true);
-        
-        if (ordersWithLineItemsError) {
-          throw ordersWithLineItemsError;
+        if (viewData) {
+          // Update stats with data from the view
+          setStats({
+            totalOrders: viewData.total_orders || 0,
+            ordersWithoutLineItems: viewData.orders_without_line_items || 0,
+            backorderItems: viewData.backorder_items || 0,
+            totalBackorderItems: viewData.total_backorder_items || 0,
+            lastOpenOrdersUpload: viewData.last_open_orders_upload,
+            lastLineItemsUpload: viewData.last_line_items_upload,
+            lastBackordersUpload: viewData.last_backorders_upload
+          });
         }
-        
-        const ordersWithoutLineItems = totalOrders - (ordersWithLineItems || 0);
-        
-        // Fetch backorder items count
-        const { count: backorderItems, error: backorderItemsError } = await supabase
-          .from('hd_order_line_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_backorder', true);
-        
-        if (backorderItemsError) {
-          throw backorderItemsError;
-        }
-        
-        // Fetch total backorder items count
-        const { count: totalBackorderItems, error: totalBackorderItemsError } = await supabase
-          .from('hd_backorders')
-          .select('*', { count: 'exact', head: true });
-        
-        if (totalBackorderItemsError) {
-          throw totalBackorderItemsError;
-        }
-        
-        // Fetch last upload dates
-        const { data: lastUploadsData, error: lastUploadsError } = await supabase
-          .from('hd_upload_history')
-          .select('upload_type, upload_date')
-          .eq('status', 'success')
-          .in('upload_type', ['open_orders', 'order_lines', 'backorders'])
-          .order('upload_date', { ascending: false });
-        
-        if (lastUploadsError) {
-          throw lastUploadsError;
-        }
-        
-        // Find the most recent upload date for each type
-        let lastOpenOrdersUpload: string | null = null;
-        let lastLineItemsUpload: string | null = null;
-        let lastBackordersUpload: string | null = null;
-        
-        if (lastUploadsData && lastUploadsData.length > 0) {
-          for (const upload of lastUploadsData) {
-            if (upload.upload_type === 'open_orders' && !lastOpenOrdersUpload) {
-              lastOpenOrdersUpload = upload.upload_date;
-            } else if (upload.upload_type === 'order_lines' && !lastLineItemsUpload) {
-              lastLineItemsUpload = upload.upload_date;
-            } else if (upload.upload_type === 'backorders' && !lastBackordersUpload) {
-              lastBackordersUpload = upload.upload_date;
-            }
-            
-            // Break the loop if we found all types
-            if (lastOpenOrdersUpload && lastLineItemsUpload && lastBackordersUpload) {
-              break;
-            }
-          }
-        }
-        
-        // Update stats with data from database
-        setStats({
-          totalOrders: totalOrders || 0,
-          ordersWithoutLineItems,
-          backorderItems: backorderItems || 0,
-          totalBackorderItems: totalBackorderItems || 0,
-          lastOpenOrdersUpload,
-          lastLineItemsUpload,
-          lastBackordersUpload
-        });
         
         console.log('Harley Davidson stats loaded successfully');
         setIsLoadingStats(false);
@@ -131,7 +69,7 @@ export const useHarleyDashboardData = () => {
       try {
         setIsLoadingUploads(true);
         
-        // Fix: Use a direct query instead of rpc to avoid type mismatch issues
+        // Fetch recent uploads
         const { data, error } = await supabase
           .from('hd_upload_history')
           .select('id, upload_type, filename, upload_date, items_count, status')
