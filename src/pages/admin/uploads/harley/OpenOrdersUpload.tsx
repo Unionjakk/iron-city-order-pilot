@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -120,15 +119,11 @@ const OpenOrdersUpload = () => {
         return;
       }
       
-      // Get the HD order numbers from the data we're about to insert
-      const orderNumbers = parsedData.map(order => order.hd_order_number);
-      console.log(`Found ${orderNumbers.length} order numbers to process...`);
-      
-      // First, save the has_line_items status for each order to preserve after deletion
+      // Keep track of order numbers with line items
+      console.log('First retrieving orders with line items to preserve that status...');
       const { data: ordersWithLineItems, error: lineItemsQueryError } = await supabase
         .from('hd_orders')
         .select('hd_order_number, has_line_items')
-        .in('hd_order_number', orderNumbers)
         .eq('has_line_items', true);
       
       console.log('Orders with line items before deletion:', ordersWithLineItems);
@@ -140,25 +135,23 @@ const OpenOrdersUpload = () => {
       
       console.log('Order numbers with line items:', orderNumbersWithLineItems);
       
-      // Delete existing orders - use a direct DELETE without cascade
-      if (orderNumbers.length > 0) {
-        console.log('Deleting existing orders before inserting new ones...');
-        
-        // IMPORTANT: Delete directly from hd_orders table without affecting line items
-        const { error: deleteError } = await supabase
-          .from('hd_orders')
-          .delete()
-          .in('hd_order_number', orderNumbers);
-        
-        if (deleteError) {
-          console.error('Error deleting existing orders:', deleteError);
-          toast.error('Failed to update orders: could not remove existing data');
-          setIsUploading(false);
-          setIsProcessing(false);
-          return;
-        }
-        console.log(`Successfully deleted orders with numbers: ${orderNumbers.join(', ')}`);
+      // DELETE ALL EXISTING ORDERS - THIS IS THE KEY CHANGE
+      // We now delete all orders, not just the ones we're about to insert
+      console.log('Deleting ALL existing orders before inserting new ones...');
+      const { error: deleteError } = await supabase
+        .from('hd_orders')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // This will delete all rows
+      
+      if (deleteError) {
+        console.error('Error deleting existing orders:', deleteError);
+        toast.error('Failed to update orders: could not remove existing data');
+        setIsUploading(false);
+        setIsProcessing(false);
+        return;
       }
+      
+      console.log(`Successfully deleted all existing orders. Now inserting ${parsedData.length} new orders...`);
       
       const ordersToInsert = parsedData.map(order => {
         const orderDate = order.order_date ? 
@@ -205,6 +198,7 @@ const OpenOrdersUpload = () => {
       
       // Additional check to ensure has_line_items flag is set correctly
       // Get all orders that have line items in the hd_order_line_items table
+      console.log('Updating has_line_items flag based on actual line items presence...');
       const { data: currentOrdersWithLineItems, error: lineItemsFetchError } = await supabase
         .from('hd_order_line_items')
         .select('hd_order_number');
@@ -237,11 +231,20 @@ const OpenOrdersUpload = () => {
           filename: file.name,
           items_count: parsedData.length,
           status: 'success',
-          replaced_previous: false
+          replaced_previous: true // Changed to true since we're replacing all orders
         });
       
       if (historyError) {
         console.error('Error recording upload history:', historyError);
+      }
+      
+      // Perform a final count check to verify the total number of orders
+      const { count, error: countError } = await supabase
+        .from('hd_orders')
+        .select('*', { count: 'exact', head: true });
+        
+      if (!countError) {
+        console.log(`Final verification: ${count} orders in database after upload (should be ${parsedData.length})`);
       }
       
       console.log('Upload completed successfully!');
@@ -294,7 +297,7 @@ const OpenOrdersUpload = () => {
               <ul className="list-disc list-inside space-y-1 text-sm text-zinc-300">
                 <li>Do not modify the exported file before uploading</li>
                 <li>Make sure the file contains all necessary columns including HD Order Number and PO Number</li>
-                <li>This upload will update open orders data without affecting line items</li>
+                <li className="text-green-400 font-medium">This upload will replace ALL existing open orders in the system</li>
                 <li>Any existing line items will be preserved</li>
                 <li>After upload, you may proceed to uploading Order Line Items for any new orders</li>
               </ul>
