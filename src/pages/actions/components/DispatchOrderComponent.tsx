@@ -1,17 +1,17 @@
 
 import React from "react";
 import { format } from "date-fns";
-import { ExternalLink, Mail, CheckCircle } from "lucide-react";
+import { ExternalLink, Mail, Package } from "lucide-react";
 import { PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
-import PickedOrderItem from "./PickedOrderItem";
+import DispatchOrderItem from "./DispatchOrderItem";
 
-interface PickedOrderComponentProps {
+interface DispatchOrderComponentProps {
   order: PicklistOrder;
   refreshData: () => void;
 }
 
-const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps) => {
+const DispatchOrderComponent = ({ order, refreshData }: DispatchOrderComponentProps) => {
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "dd/MM/yyyy");
@@ -24,16 +24,13 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
     return `https://admin.shopify.com/store/opus-harley-davidson/orders/${orderId}`;
   };
 
-  // Check if all items in the order are picked
-  const isCompleteOrder = order.items.every(item => item.progress === "Picked");
-
   return (
     <>
       <TableRow key={`order-${order.id}`} className="bg-zinc-800/20">
         <TableCell colSpan={9} className="py-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between">
             <div className="flex items-center">
-              <span className="font-semibold text-orange-400">Order:</span>
+              <span className="font-semibold text-blue-400">Order:</span>
               <a 
                 href={getShopifyOrderUrl(order.shopify_order_id)} 
                 target="_blank" 
@@ -43,9 +40,9 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
                 {order.shopify_order_number || order.shopify_order_id.substring(0, 8)}
                 <ExternalLink className="ml-1 h-3 w-3" />
               </a>
-              <span className="ml-2 flex items-center text-emerald-500">
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Picked
+              <span className="ml-2 flex items-center text-blue-500">
+                <Package className="h-4 w-4 mr-1" />
+                Ready For Dispatch
               </span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
@@ -59,7 +56,7 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
               </div>
               <div className="flex items-center">
                 <Mail className="mr-1 h-3 w-3 text-zinc-400" />
-                <a href={`mailto:${order.customer_email}`} className="text-zinc-300 hover:text-orange-400">
+                <a href={`mailto:${order.customer_email}`} className="text-zinc-300 hover:text-blue-400">
                   {order.customer_email || "No email"}
                 </a>
               </div>
@@ -69,16 +66,15 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
       </TableRow>
       
       {order.items.map((item) => (
-        <PickedOrderItem 
+        <DispatchOrderItem 
           key={`item-${item.id}`} 
           item={item} 
           order={order} 
-          refreshData={refreshData}
-          isCompleteOrder={isCompleteOrder}
+          refreshData={refreshData} 
         />
       ))}
     </>
   );
 };
 
-export default PickedOrderComponent;
+export default DispatchOrderComponent;

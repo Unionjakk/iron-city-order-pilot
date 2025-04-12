@@ -4,7 +4,7 @@ import { PicklistOrderItem, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -22,9 +22,10 @@ interface PickedOrderItemProps {
   item: PicklistOrderItem;
   order: PicklistOrder;
   refreshData: () => void;
+  isCompleteOrder: boolean;
 }
 
-const PickedOrderItem = ({ item, order, refreshData }: PickedOrderItemProps) => {
+const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOrderItemProps) => {
   const { toast } = useToast();
   const [processing, setProcessing] = useState<boolean>(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState<boolean>(false);
@@ -90,6 +91,41 @@ const PickedOrderItem = ({ item, order, refreshData }: PickedOrderItemProps) => 
     }
   };
 
+  const handleReadyForDispatch = async () => {
+    setProcessing(true);
+    
+    try {
+      // Update progress entry to "To Dispatch" status
+      const { error } = await supabase
+        .from('iron_city_order_progress')
+        .update({
+          progress: "To Dispatch",
+          notes: (item.notes ? item.notes + " | " : "") + "Marked ready for dispatch: " + new Date().toISOString().slice(0, 10)
+        })
+        .eq('shopify_order_id', order.shopify_order_id)
+        .eq('sku', item.sku);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Ready for dispatch",
+        description: "Item has been marked as ready for dispatch",
+      });
+      
+      // Refresh data
+      refreshData();
+    } catch (error: any) {
+      console.error("Error marking for dispatch:", error);
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <>
       <TableRow className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
@@ -123,9 +159,21 @@ const PickedOrderItem = ({ item, order, refreshData }: PickedOrderItemProps) => 
           </span>
         </TableCell>
         <TableCell>
-          <div className="w-full border-zinc-700 bg-zinc-800/50 text-zinc-300 py-2 px-3 rounded-md text-sm">
-            Picked
-          </div>
+          {isCompleteOrder ? (
+            <Button 
+              onClick={handleReadyForDispatch}
+              disabled={processing}
+              size="sm"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Package className="mr-1 h-4 w-4" />
+              Ready For Dispatch
+            </Button>
+          ) : (
+            <div className="w-full border-zinc-700 bg-zinc-800/50 text-zinc-300 py-2 px-3 rounded-md text-sm">
+              Picked
+            </div>
+          )}
         </TableCell>
         <TableCell>
           <Button 
