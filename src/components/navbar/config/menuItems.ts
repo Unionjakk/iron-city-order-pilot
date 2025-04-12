@@ -37,7 +37,7 @@ export const mainMenuItems: MenuItem[] = [
         icon: CheckCircle,
       },
       {
-        path: '/actions/toorder',
+        path: '/actions/to-order', // Changed from '/actions/toorder' to '/actions/to-order'
         label: 'To Order',
         icon: ShoppingCart,
       },
@@ -70,7 +70,7 @@ export const mainMenuItems: MenuItem[] = [
     isDropdown: true,
     children: [
       {
-        path: '/visualiser',
+        path: '/actions/visualiser', // Updated to correct path with full route
         label: 'Visualiser',
         icon: BarChart3,
       },

@@ -55,8 +55,9 @@ function App() {
           <Routes>
             <Route path="/auth" element={<Auth />} />
             
-            {/* Add a redirect for direct /visualiser access */}
+            {/* Add redirects for URL variations */}
             <Route path="/visualiser" element={<Navigate to="/actions/visualiser" replace />} />
+            <Route path="/actions/toorder" element={<Navigate to="/actions/to-order" replace />} />
             
             {/* Add ProtectedRoute wrapper for all pages needing authentication */}
             <Route element={<ProtectedRoute />}>
