@@ -29,6 +29,7 @@ export interface PicklistOrderItem {
   // Quantity tracking
   quantity_required?: number;
   quantity_picked?: number;
+  quantity_ordered?: number;
   // Picked quantity
   pickedQuantity?: number;
 }

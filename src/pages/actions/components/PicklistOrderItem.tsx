@@ -88,7 +88,8 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
           notes: note,
           quantity: requiredQuantity,
           quantity_required: requiredQuantity,
-          quantity_picked: quantityPicked
+          quantity_picked: quantityPicked,
+          quantity_ordered: requiredQuantity // Set the new quantity_ordered field
         });
       
       if (error) throw error;

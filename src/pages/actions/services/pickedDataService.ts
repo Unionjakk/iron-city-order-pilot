@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 
@@ -138,29 +137,28 @@ export const fetchStockForSkus = async (skus: string[]) => {
 };
 
 /**
- * Get total picked quantity for a specific SKU across all orders
+ * Get total picked quantity for a given SKU across all orders
  */
-export const fetchTotalPickedQuantityForSku = async (sku: string) => {
-  if (!sku) {
-    return 0;
-  }
-  
-  console.log(`Fetching total picked quantity for SKU: ${sku}`);
-  
-  const { data, error } = await supabase
-    .from('iron_city_order_progress')
-    .select('quantity')
-    .eq('progress', 'Picked')
-    .eq('sku', sku);
+export const fetchTotalPickedQuantityForSku = async (sku: string): Promise<number> => {
+  try {
+    const { data, error } = await supabase
+      .from('iron_city_order_progress')
+      .select('quantity_picked')
+      .eq('sku', sku)
+      .eq('progress', 'Picked');
+      
+    if (error) throw error;
     
-  if (error) {
-    console.error("Picked quantity fetch error:", error);
+    // Sum up all picked quantities
+    const totalPicked = data?.reduce((sum, item) => {
+      return sum + (item.quantity_picked || 0);
+    }, 0);
+    
+    return totalPicked || 0;
+  } catch (error) {
+    console.error("Error fetching total picked quantity:", error);
     return 0;
   }
-  
-  const totalPicked = data?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0;
-  console.log(`Total picked quantity for SKU ${sku}: ${totalPicked}`);
-  return totalPicked;
 };
 
 /**
