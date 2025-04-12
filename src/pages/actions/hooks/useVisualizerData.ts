@@ -59,7 +59,8 @@ export const useVisualizerData = (): OrderVisualizerData => {
       orderStatus: [],
       fetchStartTime: new Date().toISOString(),
       endTime: '',
-      timeTaken: 0
+      timeTaken: 0,
+      totalLineItems: 0 // Added this field to fix the TypeScript error
     };
     
     try {
