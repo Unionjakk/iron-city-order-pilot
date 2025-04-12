@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,12 +32,10 @@ const parseExcelFile = async (file: File): Promise<OpenOrderData[]> => {
           return;
         }
         
-        // Parse the Excel file
         const workbook = XLSX.read(data, { type: 'binary' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Convert to JSON with header row
         const jsonData = XLSX.utils.sheet_to_json<any>(worksheet, { raw: false });
         console.log('Raw Excel data:', jsonData);
         
@@ -47,12 +44,9 @@ const parseExcelFile = async (file: File): Promise<OpenOrderData[]> => {
           return;
         }
         
-        // Map the Excel data to our expected format, accounting for different possible column names
         const mappedData: OpenOrderData[] = jsonData.map(row => {
-          // Find the HD order number (could have different column names)
           const hdOrderNumber = row['HD ORDER NUMBER'] || row['ORDER NUMBER'] || row['SALES ORDER'] || row['HD ORDER'] || '';
           
-          // Look for PO number in multiple possible columns
           const poNumber = row['PO NUMBER'] || row['PURCHASE ORDER'] || row['DEALER PO'] || row['DEALER PO NUMBER'] || '';
           
           if (!hdOrderNumber) {
@@ -125,8 +119,7 @@ const OpenOrdersUpload = () => {
         return;
       }
       
-      // First check if there are any existing orders before trying to clear them
-      console.log('Checking if there are existing orders to clear...');
+      console.log('Checking if there are existing orders...');
       const { count, error: countError } = await supabase
         .from('hd_orders')
         .select('*', { count: 'exact', head: true });
@@ -139,31 +132,9 @@ const OpenOrdersUpload = () => {
         return;
       }
       
-      // Only clear existing orders if there are any
-      if (count && count > 0) {
-        console.log(`Found ${count} existing orders, clearing them...`);
-        const { error: clearError } = await supabase
-          .from('hd_orders')
-          .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
-        
-        if (clearError) {
-          console.error('Error clearing existing orders:', clearError);
-          toast.error('Failed to clear existing orders');
-          setIsUploading(false);
-          setIsProcessing(false);
-          return;
-        }
-        console.log('Successfully cleared existing orders');
-      } else {
-        console.log('No existing orders found, skipping deletion step');
-      }
+      console.log(`Found ${count} existing orders, upserting new data...`);
       
-      console.log('Inserting new order data...');
-      
-      // Prepare the array of orders to insert - making sure to convert Date objects to strings
-      const ordersToInsert = parsedData.map(order => {
-        // Convert order_date to string if it's a Date object
+      const ordersToUpsert = parsedData.map(order => {
         const orderDate = order.order_date ? 
           (order.order_date instanceof Date ? 
             order.order_date.toISOString().split('T')[0] : 
@@ -179,32 +150,35 @@ const OpenOrdersUpload = () => {
           order_type: order.order_type || '',
           terms: order.terms || '',
           notes: order.notes || '',
-          has_line_items: false
         };
       });
       
-      // Log a sample order to check the dealer_po_number
-      console.log('Sample order to insert:', ordersToInsert[0]);
+      console.log('Sample order to upsert:', ordersToUpsert[0]);
       
-      // Insert the orders
-      for (let i = 0; i < ordersToInsert.length; i += 100) {
-        // Process in batches of 100 to avoid payload size issues
-        const batch = ordersToInsert.slice(i, i + 100);
-        const { error: insertError } = await supabase
-          .from('hd_orders')
-          .insert(batch);
+      let successfulUpserts = 0;
+      for (let i = 0; i < ordersToUpsert.length; i += 100) {
+        const batch = ordersToUpsert.slice(i, i + 100);
         
-        if (insertError) {
-          console.error('Error inserting orders batch:', insertError);
-          toast.error('Failed to insert all orders');
+        const { error: upsertError, data: upsertData } = await supabase
+          .from('hd_orders')
+          .upsert(batch, { 
+            onConflict: 'hd_order_number',
+            ignoreDuplicates: false
+          });
+        
+        if (upsertError) {
+          console.error('Error upserting orders batch:', upsertError);
+          toast.error('Failed to update all orders');
           setIsUploading(false);
           setIsProcessing(false);
           return;
         }
+        
+        successfulUpserts += batch.length;
+        console.log(`Successfully upserted batch: ${i} to ${i + batch.length - 1}`);
       }
       
       console.log('Recording upload history...');
-      // Insert upload history record
       const { error: historyError } = await supabase
         .from('hd_upload_history')
         .insert({
@@ -212,7 +186,7 @@ const OpenOrdersUpload = () => {
           filename: file.name,
           items_count: parsedData.length,
           status: 'success',
-          replaced_previous: true
+          replaced_previous: false
         });
       
       if (historyError) {
@@ -220,13 +194,11 @@ const OpenOrdersUpload = () => {
       }
       
       console.log('Upload completed successfully!');
-      toast.success(`Successfully uploaded ${parsedData.length} orders`);
+      toast.success(`Successfully processed ${parsedData.length} orders`);
       setUploadSuccess(true);
       setUploadedCount(parsedData.length);
       setIsProcessing(false);
       setIsUploading(false);
-      
-      // Removed the automatic redirect to the dashboard
       
     } catch (error) {
       console.error('Error processing upload:', error);
@@ -271,8 +243,9 @@ const OpenOrdersUpload = () => {
               <ul className="list-disc list-inside space-y-1 text-sm text-zinc-300">
                 <li>Do not modify the exported file before uploading</li>
                 <li>Make sure the file contains all necessary columns including HD Order Number and PO Number</li>
-                <li>This upload will replace any previous Open Orders data</li>
-                <li>After upload, you should proceed to uploading the Order Line Items for each order</li>
+                <li>This upload will update existing orders and add new ones</li>
+                <li>Line items from existing orders will be preserved</li>
+                <li>After upload, you should proceed to uploading the Order Line Items for any new orders</li>
               </ul>
             </div>
           </div>
@@ -293,7 +266,7 @@ const OpenOrdersUpload = () => {
               <div className="flex flex-col items-center justify-center w-full h-64 bg-green-900/20 border-2 border-green-500 rounded-lg">
                 <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
                 <p className="text-green-400 text-lg font-semibold">Upload Successful!</p>
-                <p className="text-zinc-300 mt-2">Successfully uploaded {uploadedCount} orders</p>
+                <p className="text-zinc-300 mt-2">Successfully processed {uploadedCount} orders</p>
                 <div className="mt-6 flex gap-4">
                   <Button
                     onClick={() => setUploadSuccess(false)}
