@@ -41,6 +41,8 @@ export const processPickedOrdersData = (
           let hd_orderlinecombo = null;
           let status = null;
           let dealer_po_number = null;
+          let quantity_required = null;
+          let quantity_picked = null;
           
           // First try to match with specific SKU
           if (item.sku) {
@@ -52,6 +54,8 @@ export const processPickedOrdersData = (
               hd_orderlinecombo = progressData.hd_orderlinecombo;
               status = progressData.status;
               dealer_po_number = progressData.dealer_po_number;
+              quantity_required = progressData.quantity_required;
+              quantity_picked = progressData.quantity_picked;
             }
           }
           
@@ -65,13 +69,16 @@ export const processPickedOrdersData = (
               hd_orderlinecombo = noSkuProgressData.hd_orderlinecombo;
               status = noSkuProgressData.status;
               dealer_po_number = noSkuProgressData.dealer_po_number;
+              quantity_required = noSkuProgressData.quantity_required;
+              quantity_picked = noSkuProgressData.quantity_picked;
               console.log(`Matched "No SKU" progress for order ${shopifyOrderId}`);
             }
           }
           
           // Log what we're doing
           console.log(`Processing item for order ${order.id}, SKU: ${item.sku || 'No SKU'}, ` +
-                      `Progress: ${progress}, Notes: ${notes}`);
+                      `Progress: ${progress}, Notes: ${notes}, ` +
+                      `Quantities: Required=${quantity_required}, Picked=${quantity_picked}`);
           
           // Only include line items that have "Picked" progress status
           if (progress !== "Picked") {
@@ -99,7 +106,10 @@ export const processPickedOrdersData = (
             notes: notes,
             hd_orderlinecombo: hd_orderlinecombo,
             status: status,
-            dealer_po_number: dealer_po_number
+            dealer_po_number: dealer_po_number,
+            // Quantity tracking
+            quantity_required: quantity_required,
+            quantity_picked: quantity_picked
           } as PicklistOrderItem;
         })
         .filter(Boolean); // Remove null items (ones without "Picked" progress status)
@@ -136,7 +146,10 @@ export const processPickedOrdersData = (
             notes: noSkuProgress.notes,
             hd_orderlinecombo: noSkuProgress.hd_orderlinecombo,
             status: noSkuProgress.status,
-            dealer_po_number: noSkuProgress.dealer_po_number
+            dealer_po_number: noSkuProgress.dealer_po_number,
+            // Quantity tracking
+            quantity_required: noSkuProgress.quantity_required,
+            quantity_picked: noSkuProgress.quantity_picked
           } as PicklistOrderItem);
         }
       }

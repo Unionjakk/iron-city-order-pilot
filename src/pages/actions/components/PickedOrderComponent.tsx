@@ -24,8 +24,17 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
     return `https://admin.shopify.com/store/opus-harley-davidson/orders/${orderId}`;
   };
 
-  // Check if all items in the order are picked - ensure all are actually 'Picked'
-  const isCompleteOrder = order.items.length > 0 && order.items.every(item => item.progress === "Picked");
+  // Check if all items in the order are fully picked
+  const isCompleteOrder = order.items.length > 0 && order.items.every(item => {
+    const quantityRequired = item.quantity_required || item.quantity || 1;
+    const quantityPicked = item.quantity_picked || 0;
+    return quantityPicked >= quantityRequired;
+  });
+
+  // Calculate overall picking progress
+  const totalRequiredQuantity = order.items.reduce((sum, item) => sum + (item.quantity_required || item.quantity || 1), 0);
+  const totalPickedQuantity = order.items.reduce((sum, item) => sum + (item.quantity_picked || 0), 0);
+  const pickingProgress = Math.round((totalPickedQuantity / totalRequiredQuantity) * 100);
 
   return (
     <>
@@ -45,7 +54,7 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
               </a>
               <span className="ml-2 flex items-center text-emerald-500">
                 <CheckCircle className="h-4 w-4 mr-1" />
-                Picked
+                Picked {!isCompleteOrder && <span className="text-amber-400 ml-1">({pickingProgress}%)</span>}
               </span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">

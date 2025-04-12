@@ -20,6 +20,7 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
   const { toast } = useToast();
   const [pickedQuantity, setPickedQuantity] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
+  const [pickQuantity, setPickQuantity] = useState<number>(1);
   
   const { 
     note, 
@@ -27,7 +28,6 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
     processing,
     handleNoteChange,
     handleActionChange,
-    handleSubmit: originalHandleSubmit,
     getStockColor,
     getLocationColor,
     getCostColor
@@ -51,7 +51,13 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
     setQuantity(isNaN(value) || value < 1 ? 1 : value);
   };
 
-  // Wrap the original submit function to include quantity
+  // Handle pick quantity change
+  const handlePickQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    setPickQuantity(isNaN(value) || value < 1 ? 1 : Math.min(value, item.quantity));
+  };
+
+  // Wrap the original submit function to include quantity and pick quantity
   const handleSubmit = async () => {
     try {
       // First delete any existing progress entries for this order/SKU combination
@@ -61,7 +67,7 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
         .eq('shopify_order_id', order.shopify_order_id)
         .eq('sku', item.sku);
       
-      // Insert new progress entry with quantity
+      // Insert new progress entry with quantity tracking
       const { error } = await supabase
         .from('iron_city_order_progress')
         .insert({
@@ -70,14 +76,18 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
           sku: item.sku,
           progress: action,
           notes: note,
-          quantity: quantity
+          quantity: quantity,
+          quantity_required: quantity,
+          quantity_picked: action === "Picked" ? pickQuantity : 0
         });
       
       if (error) throw error;
       
       toast({
         title: "Success",
-        description: `Item marked as ${action} with quantity ${quantity}`,
+        description: action === "Picked" 
+          ? `Item marked as ${action} with ${pickQuantity} of ${quantity} picked`
+          : `Item marked as ${action} with quantity ${quantity}`,
       });
       
       // Refresh data
@@ -118,26 +128,45 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
           </span>
         </TableCell>
         <TableCell>
-          <div className="flex items-center gap-2">
-            <Select 
-              value={action} 
-              onValueChange={handleActionChange}
-            >
-              <SelectTrigger className="w-full border-zinc-700 bg-zinc-800/50 text-zinc-300">
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Picked">Picked</SelectItem>
-                <SelectItem value="To Order">To Order</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input 
-              type="number"
-              min="1"
-              className="w-16 h-10 border-zinc-700 bg-zinc-800/50 text-zinc-300"
-              value={quantity}
-              onChange={handleQuantityChange}
-            />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Select 
+                value={action} 
+                onValueChange={handleActionChange}
+              >
+                <SelectTrigger className="w-full border-zinc-700 bg-zinc-800/50 text-zinc-300">
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Picked">Picked</SelectItem>
+                  <SelectItem value="To Order">To Order</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input 
+                type="number"
+                min="1"
+                className="w-16 h-10 border-zinc-700 bg-zinc-800/50 text-zinc-300"
+                value={quantity}
+                onChange={handleQuantityChange}
+                title="Total quantity required"
+              />
+            </div>
+            
+            {action === "Picked" && (
+              <div className="flex items-center gap-2">
+                <span className="text-zinc-400 text-sm">Picked:</span>
+                <Input 
+                  type="number"
+                  min="1"
+                  max={quantity}
+                  className="w-16 h-8 border-zinc-700 bg-zinc-800/50 text-zinc-300"
+                  value={pickQuantity}
+                  onChange={handlePickQuantityChange}
+                  title="Quantity picked so far"
+                />
+                <span className="text-zinc-400 text-sm">of {quantity}</span>
+              </div>
+            )}
           </div>
         </TableCell>
         <TableCell>

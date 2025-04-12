@@ -26,6 +26,9 @@ export interface PicklistOrderItem {
   hd_orderlinecombo: string | null;
   status: string | null;
   dealer_po_number: string | null;
+  // Quantity tracking
+  quantity_required?: number;
+  quantity_picked?: number;
   // Picked quantity
   pickedQuantity?: number;
 }
