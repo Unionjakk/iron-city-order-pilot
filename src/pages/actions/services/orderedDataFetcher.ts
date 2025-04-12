@@ -1,4 +1,3 @@
-
 import { LEEDS_LOCATION_ID } from "../constants/picklistConstants";
 import { PicklistDebugInfo } from "../types/picklistTypes";
 import { 
@@ -52,11 +51,9 @@ export const fetchOrderedData = async (debug: PicklistDebugInfo) => {
   const ordersData = await fetchOrdersWithOrderedItems();
   
   // Save first few order statuses for debugging
-  debug.orderStatus = ordersData?.slice(0, 5).map(o => ({
-    id: o.shopify_order_id,
-    status: o.status,
-    number: o.shopify_order_number
-  }));
+  debug.orderStatus = ordersData?.slice(0, 5).map(o => 
+    `${o.shopify_order_id} (${o.status}, ${o.shopify_order_number || 'No number'})`
+  );
   
   if (!ordersData || ordersData.length === 0) {
     console.log("No orders found with 'Ordered' items");
@@ -82,7 +79,7 @@ export const fetchOrderedData = async (debug: PicklistDebugInfo) => {
   const allLineItemsData = await fetchLineItemsForOrders(orderIds);
   
   console.log(`Found ${allLineItemsData?.length || 0} total line items for all orders`);
-  debug.totalLineItems = allLineItemsData?.length || 0;
+  debug.allLineItems = allLineItemsData?.length || 0;
   
   // Now filter for Leeds location
   const lineItemsData = filterLeedsLineItems(allLineItemsData);

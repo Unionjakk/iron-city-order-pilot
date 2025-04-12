@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 import { PicklistDebugInfo } from "../types/picklistTypes";
@@ -110,7 +109,9 @@ export const initializeDebugInfo = (): PicklistDebugInfo => {
     finalOrderCount: 0,
     finalItemCount: 0,
     orderStatus: [],
-    fetchStartTime: new Date().toISOString()
+    fetchStartTime: new Date().toISOString(),
+    endTime: '',
+    timeTaken: 0
   };
 };
 

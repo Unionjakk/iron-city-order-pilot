@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { PicklistDebugInfo } from "../types/picklistTypes";
 import { LEEDS_LOCATION_ID } from "../constants/picklistConstants";
@@ -38,7 +37,9 @@ export const useDispatchDataFetcher = () => {
       finalOrderCount: 0,
       finalItemCount: 0,
       orderStatus: [],
-      fetchStartTime: new Date().toISOString()
+      fetchStartTime: new Date().toISOString(),
+      endTime: '',
+      timeTaken: 0
     };
     
     try {
@@ -87,7 +88,7 @@ export const useDispatchDataFetcher = () => {
       const allLineItemsData = await fetchLineItemsForOrders(orderIds);
       
       console.log(`Found ${allLineItemsData?.length || 0} total line items for all orders`);
-      debug.totalLineItems = allLineItemsData?.length || 0;
+      debug.allLineItems = allLineItemsData?.length || 0;
       
       // Now filter for Leeds location
       const lineItemsData = filterLeedsLineItems(allLineItemsData);
@@ -134,7 +135,7 @@ export const useDispatchDataFetcher = () => {
         orders: processedOrders, 
         debug 
       };
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error fetching dispatch data:", err);
       setError(err.message);
       debug.endTime = new Date().toISOString();

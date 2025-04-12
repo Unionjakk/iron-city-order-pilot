@@ -38,7 +38,9 @@ export const usePickedDataFetcher = () => {
       finalOrderCount: 0,
       finalItemCount: 0,
       orderStatus: [],
-      fetchStartTime: new Date().toISOString()
+      fetchStartTime: new Date().toISOString(),
+      endTime: '',
+      timeTaken: 0
     };
     
     try {
@@ -87,7 +89,7 @@ export const usePickedDataFetcher = () => {
       const allLineItemsData = await fetchLineItemsForOrders(orderIds);
       
       console.log(`Found ${allLineItemsData?.length || 0} total line items for all orders`);
-      debug.totalLineItems = allLineItemsData?.length || 0;
+      debug.allLineItems = allLineItemsData?.length || 0;
       
       // Now filter for Leeds location
       const lineItemsData = filterLeedsLineItems(allLineItemsData);

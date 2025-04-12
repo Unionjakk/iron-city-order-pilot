@@ -1,3 +1,4 @@
+
 export interface PicklistOrder {
   id: string;
   shopify_order_id: string;
@@ -62,4 +63,8 @@ export interface PicklistDebugInfo {
   progressItems?: any[];
   ordersData?: any[];
   lineItemsData?: any[];
+  locationDistribution?: {[key: string]: number};
+  availableStatuses?: string[];
+  lineItemsFirstFew?: any[];
+  totalLineItems?: number;
 }
