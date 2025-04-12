@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -26,20 +25,22 @@ export const useHarleyDashboardData = () => {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true);
-        console.log("Fetching Harley Davidson statistics from view...");
+        console.log("Fetching Harley Davidson statistics from improved view...");
         
-        // Fetch stats from the new view
+        // Fetch stats from the enhanced database view
         const { data: viewData, error: viewError } = await supabase
           .from('hd_dashboard_stats')
           .select('*')
           .single();
         
         if (viewError) {
+          console.error('Error fetching stats from view:', viewError);
           throw viewError;
         }
         
         if (viewData) {
-          // Update stats with data from the view
+          console.log('Raw view data:', viewData);
+          // Update stats with data from the new, more accurate view
           setStats({
             totalOrders: viewData.total_orders || 0,
             ordersWithoutLineItems: viewData.orders_without_line_items || 0,
@@ -51,7 +52,7 @@ export const useHarleyDashboardData = () => {
           });
         }
         
-        console.log('Harley Davidson stats loaded successfully');
+        console.log('Harley Davidson stats loaded successfully using improved view');
         setIsLoadingStats(false);
       } catch (error) {
         console.error('Error fetching Harley Davidson stats:', error);

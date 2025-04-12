@@ -772,6 +772,13 @@ export type Database = {
         }
         Relationships: []
       }
+      hd_orders_with_lookup: {
+        Row: {
+          has_line_items: boolean | null
+          hd_order_number: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       apply_sku_corrections: {
