@@ -144,7 +144,7 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
         <TableCell className="font-mono text-zinc-300 pr-1">{item.sku || "No SKU"}</TableCell>
         <TableCell className="pl-1 text-emerald-500 flex items-center">
           {isPartialPick ? (
-            <SplitIcon className="h-4 w-4 mr-2 text-amber-500" title="Partial pick" />
+            <SplitIcon className="h-4 w-4 mr-2 text-amber-500" aria-label="Partial pick" />
           ) : (
             <CheckCircle className="h-4 w-4 mr-2 text-emerald-500" />
           )}

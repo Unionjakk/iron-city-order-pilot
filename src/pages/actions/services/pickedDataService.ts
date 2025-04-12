@@ -8,49 +8,54 @@ import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 export const fetchOrdersWithPickedItems = async () => {
   console.log("Fetching orders with 'Picked' items...");
   
-  // First get the shopify order IDs that have "Picked" progress
-  const { data: progressData, error: progressError } = await supabase
-    .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, quantity, is_partial')
-    .eq('progress', 'Picked');
+  try {
+    // First get the shopify order IDs that have "Picked" progress
+    const { data: progressData, error: progressError } = await supabase
+      .from('iron_city_order_progress')
+      .select('shopify_order_id, sku, quantity, is_partial')
+      .eq('progress', 'Picked');
+      
+    if (progressError) {
+      console.error("Progress fetch error:", progressError);
+      throw new Error(`Progress fetch error: ${progressError.message}`);
+    }
     
-  if (progressError) {
-    console.error("Progress fetch error:", progressError);
-    throw new Error(`Progress fetch error: ${progressError.message}`);
-  }
-  
-  // If no orders have "Picked" items, return empty array
-  if (!progressData || progressData.length === 0) {
-    console.log("No orders have 'Picked' items");
-    return [];
-  }
-  
-  console.log(`Found ${progressData.length} orders with 'Picked' progress items:`, progressData);
-  
-  // Extract the order IDs
-  const orderIds = [...new Set(progressData.map(item => item.shopify_order_id))];
-  
-  const { data, error } = await supabase
-    .from('shopify_orders')
-    .select(`
-      id,
-      shopify_order_id,
-      shopify_order_number,
-      customer_name,
-      customer_email,
-      created_at,
-      status
-    `)
-    .eq('status', UNFULFILLED_STATUS)
-    .in('shopify_order_id', orderIds);
+    // If no orders have "Picked" items, return empty array
+    if (!progressData || progressData.length === 0) {
+      console.log("No orders have 'Picked' items");
+      return [];
+    }
     
-  if (error) {
-    console.error("Orders fetch error:", error);
-    throw new Error(`Orders fetch error: ${error.message}`);
+    console.log(`Found ${progressData.length} orders with 'Picked' progress items:`, progressData);
+    
+    // Extract the order IDs
+    const orderIds = [...new Set(progressData.map(item => item.shopify_order_id))];
+    
+    const { data, error } = await supabase
+      .from('shopify_orders')
+      .select(`
+        id,
+        shopify_order_id,
+        shopify_order_number,
+        customer_name,
+        customer_email,
+        created_at,
+        status
+      `)
+      .eq('status', UNFULFILLED_STATUS)
+      .in('shopify_order_id', orderIds);
+      
+    if (error) {
+      console.error("Orders fetch error:", error);
+      throw new Error(`Orders fetch error: ${error.message}`);
+    }
+    
+    console.log(`Fetched ${data?.length || 0} unfulfilled orders with 'Picked' items`);
+    return data || [];
+  } catch (error) {
+    console.error("Error in fetchOrdersWithPickedItems:", error);
+    throw error;
   }
-  
-  console.log(`Fetched ${data?.length || 0} unfulfilled orders with 'Picked' items`);
-  return data || [];
 };
 
 /**
@@ -84,32 +89,37 @@ export const fetchLineItemsForOrders = async (orderIds: string[]) => {
 export const fetchPickedItemsProgress = async () => {
   console.log("Fetching 'Picked' progress items...");
   
-  // Debug query to see all progress values
-  const { data: allProgress, error: allProgressError } = await supabase
-    .from('iron_city_order_progress')
-    .select('progress')
-    .limit(10);
+  try {
+    // Debug query to see all progress values
+    const { data: allProgress, error: allProgressError } = await supabase
+      .from('iron_city_order_progress')
+      .select('progress')
+      .limit(10);
+      
+    if (allProgressError) {
+      console.error("Progress fetch error:", allProgressError);
+    } else {
+      // Log unique progress values to debug case issues
+      const uniqueProgresses = [...new Set(allProgress.map(p => p.progress))];
+      console.log("Debug - Available progress values:", uniqueProgresses);
+    }
     
-  if (allProgressError) {
-    console.error("Progress fetch error:", allProgressError);
-  } else {
-    // Log unique progress values to debug case issues
-    const uniqueProgresses = [...new Set(allProgress.map(p => p.progress))];
-    console.log("Debug - Available progress values:", uniqueProgresses);
-  }
-  
-  const { data, error } = await supabase
-    .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number, quantity_picked, quantity_required, is_partial')
-    .eq('progress', 'Picked');
+    const { data, error } = await supabase
+      .from('iron_city_order_progress')
+      .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number, quantity_picked, quantity_required, is_partial')
+      .eq('progress', 'Picked');
+      
+    if (error) {
+      console.error("Progress fetch error:", error);
+      throw new Error(`Progress fetch error: ${error.message}`);
+    }
     
-  if (error) {
-    console.error("Progress fetch error:", error);
-    throw new Error(`Progress fetch error: ${error.message}`);
+    console.log(`Fetched ${data?.length || 0} 'Picked' progress items:`, data);
+    return data || [];
+  } catch (error) {
+    console.error("Error in fetchPickedItemsProgress:", error);
+    return [];
   }
-  
-  console.log(`Fetched ${data?.length || 0} 'Picked' progress items:`, data);
-  return data || [];
 };
 
 /**
