@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 
@@ -10,7 +11,7 @@ export const fetchOrdersWithPickedItems = async () => {
   // First get the shopify order IDs that have "Picked" progress
   const { data: progressData, error: progressError } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, quantity')
+    .select('shopify_order_id, sku, quantity, is_partial')
     .eq('progress', 'Picked');
     
   if (progressError) {
@@ -99,7 +100,7 @@ export const fetchPickedItemsProgress = async () => {
   
   const { data, error } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number')
+    .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number, quantity_picked, quantity_required, is_partial')
     .eq('progress', 'Picked');
     
   if (error) {

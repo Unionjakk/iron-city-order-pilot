@@ -30,6 +30,8 @@ export interface PicklistOrderItem {
   quantity_required?: number;
   quantity_picked?: number;
   quantity_ordered?: number;
+  // Partial pick flag
+  is_partial?: boolean;
   // Picked quantity
   pickedQuantity?: number;
 }

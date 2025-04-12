@@ -4,7 +4,7 @@ import { PicklistOrderItem, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, Package, AlertTriangle } from "lucide-react";
+import { CheckCircle, Package, AlertTriangle, SplitIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -68,7 +68,8 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
           notes: item.notes || "",
           quantity: item.quantity || 1,
           quantity_required: item.quantity || 1,
-          quantity_picked: 0
+          quantity_picked: 0,
+          is_partial: false
         });
       
       if (error) throw error;
@@ -134,12 +135,19 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
   // Calculate how many items still need to be picked
   const remainingToPick = Math.max(0, (item.quantity_required || item.quantity || 1) - (item.quantity_picked || 0));
 
+  // Flag to show if this is a partial pick
+  const isPartialPick = item.is_partial === true;
+
   return (
     <>
       <TableRow className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
         <TableCell className="font-mono text-zinc-300 pr-1">{item.sku || "No SKU"}</TableCell>
         <TableCell className="pl-1 text-emerald-500 flex items-center">
-          <CheckCircle className="h-4 w-4 mr-2 text-emerald-500" />
+          {isPartialPick ? (
+            <SplitIcon className="h-4 w-4 mr-2 text-amber-500" title="Partial pick" />
+          ) : (
+            <CheckCircle className="h-4 w-4 mr-2 text-emerald-500" />
+          )}
           {item.title}
         </TableCell>
         <TableCell className="text-center">
@@ -151,6 +159,11 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
             {!isFullyPicked && (
               <span className="text-xs text-orange-400">
                 {remainingToPick} remaining
+              </span>
+            )}
+            {isPartialPick && (
+              <span className="text-xs text-amber-500 font-semibold">
+                Partial pick
               </span>
             )}
           </div>

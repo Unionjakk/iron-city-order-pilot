@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { PicklistOrderItem as PicklistOrderItemType, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -22,6 +23,7 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
   const [processing, setProcessing] = useState<boolean>(false);
   const [action, setAction] = useState<string>("");
   const [note, setNote] = useState<string>("");
+  const [isPartial, setIsPartial] = useState<boolean>(false);
 
   const { 
     getStockColor,
@@ -42,6 +44,9 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
 
   const handleActionChange = (value: string) => {
     setAction(value);
+    
+    // Reset isPartial when action changes
+    setIsPartial(false);
   };
 
   const handleNoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,6 +57,13 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
     const value = parseInt(e.target.value);
     const maxQuantity = item.quantity || 1;
     setPickQuantity(isNaN(value) || value < 1 ? 1 : Math.min(value, maxQuantity));
+    
+    // Auto-set partial flag if pick quantity is less than required quantity
+    setIsPartial(value < maxQuantity);
+  };
+
+  const handlePartialChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsPartial(e.target.checked);
   };
 
   const handleSubmit = async () => {
@@ -76,7 +88,12 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
       const requiredQuantity = item.quantity || 1;
       
       const quantityPicked = action === "Picked" ? pickQuantity : 0;
+      const remainingQuantity = requiredQuantity - quantityPicked;
       
+      // Determine if this is a partial pick that needs to be ordered
+      const needsOrdering = action === "Picked" && isPartial && remainingQuantity > 0;
+      
+      // Create the initial record (Picked or To Order)
       const { error } = await supabase
         .from('iron_city_order_progress')
         .insert({
@@ -87,20 +104,46 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
           notes: note,
           quantity: requiredQuantity,
           quantity_required: requiredQuantity,
-          quantity_picked: quantityPicked
+          quantity_picked: quantityPicked,
+          is_partial: isPartial
         });
       
       if (error) throw error;
       
+      // If this is a partial pick with remaining items to order, create a second record
+      if (needsOrdering) {
+        const orderNote = note 
+          ? `${note} | Partial pick: ${quantityPicked} picked, ${remainingQuantity} to order` 
+          : `Partial pick: ${quantityPicked} picked, ${remainingQuantity} to order`;
+        
+        const { error: orderError } = await supabase
+          .from('iron_city_order_progress')
+          .insert({
+            shopify_order_id: order.shopify_order_id,
+            shopify_order_number: order.shopify_order_number,
+            sku: item.sku,
+            progress: "To Order",
+            notes: orderNote,
+            quantity: requiredQuantity,
+            quantity_required: remainingQuantity,
+            quantity_picked: 0,
+            quantity_ordered: remainingQuantity,
+            is_partial: true
+          });
+        
+        if (orderError) throw orderError;
+      }
+      
       toast({
         title: "Success",
-        description: action === "Picked" 
-          ? `Item marked as ${action} with ${pickQuantity} of ${requiredQuantity} picked`
+        description: isPartial && action === "Picked" 
+          ? `Item marked as partially ${action} with ${pickQuantity} of ${requiredQuantity} picked`
           : `Item marked as ${action}`,
       });
       
       setNote("");
       setAction("");
+      setIsPartial(false);
       
       refreshData();
     } catch (error: any) {
@@ -158,21 +201,36 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
             </div>
             
             {action === "Picked" && (
-              <div className="flex items-center gap-2">
-                <span className="text-zinc-400 text-sm">Pick quantity:</span>
-                <Input 
-                  type="number"
-                  min="1"
-                  max={item.quantity || 1}
-                  className="w-16 h-8 border-zinc-700 bg-zinc-800/50 text-zinc-300"
-                  value={pickQuantity}
-                  onChange={handlePickQuantityChange}
-                  title="How many you are picking now"
-                />
-                <span className="text-zinc-400 text-sm">
-                  (max: {item.quantity})
-                </span>
-              </div>
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-zinc-400 text-sm">Pick quantity:</span>
+                  <Input 
+                    type="number"
+                    min="1"
+                    max={item.quantity || 1}
+                    className="w-16 h-8 border-zinc-700 bg-zinc-800/50 text-zinc-300"
+                    value={pickQuantity}
+                    onChange={handlePickQuantityChange}
+                    title="How many you are picking now"
+                  />
+                  <span className="text-zinc-400 text-sm">
+                    (max: {item.quantity})
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id={`partial-${item.id}`}
+                    checked={isPartial}
+                    onChange={handlePartialChange}
+                    className="h-4 w-4 rounded border-zinc-700 bg-zinc-800/50 text-orange-500"
+                  />
+                  <label htmlFor={`partial-${item.id}`} className="text-zinc-300 text-sm">
+                    Partial pick (need to order remaining)
+                  </label>
+                </div>
+              </>
             )}
           </div>
         </TableCell>
