@@ -8,6 +8,29 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Get a sample order for debugging
+async function getSampleOrder(debug: (msg: string) => void) {
+  try {
+    debug("Fetching a sample order for debugging...");
+    
+    const { data, error } = await supabase
+      .from('shopify_orders')
+      .select('*, shopify_order_items(*)')
+      .limit(1)
+      .single();
+    
+    if (error) {
+      debug(`Error fetching sample order: ${error.message}`);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    debug(`Error in getSampleOrder: ${error.message}`);
+    return null;
+  }
+}
+
 async function getShopifyOrderCounts(apiToken: string, debug: (msg: string) => void) {
   try {
     debug("Fetching Shopify order counts...");
@@ -172,11 +195,13 @@ serve(async (req) => {
       debug(`Current import status: ${status}`);
       
       const orderCounts = await getCurrentImportCounts(debug);
+      const sampleOrder = body.debug ? await getSampleOrder(debug) : null;
       
       return new Response(JSON.stringify({
         status,
         orderCounts,
-        success: true
+        success: true,
+        sampleOrderData: sampleOrder
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -374,6 +399,19 @@ serve(async (req) => {
     } catch (updateError: any) {
       debug(`Exception updating last sync time: ${updateError.message}`);
       // Not throwing here as this is not critical to the operation success
+    }
+    
+    // Get a sample order to return for debugging
+    if (body.debug) {
+      try {
+        const sampleOrder = await getSampleOrder(debug);
+        if (sampleOrder) {
+          responseData.sampleOrderData = sampleOrder;
+          debug("Retrieved sample order data for debugging");
+        }
+      } catch (err) {
+        debug(`Error getting sample order: ${err.message}`);
+      }
     }
     
     responseData.success = true;

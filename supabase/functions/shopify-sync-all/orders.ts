@@ -12,8 +12,17 @@ export async function importOrder(
   debug(`Importing order: ${orderId} (${orderNumber})`);
   
   try {
+    // Log the full order data for the first order to help with debugging
+    if (orderId.endsWith('1') || orderId.endsWith('01')) {
+      debug(`FULL RAW ORDER DATA: ${JSON.stringify(shopifyOrder)}`);
+    }
+    
     // Critical fields check - log clearly what we have to work with
     debug(`Order ${orderId} customer data: ${shopifyOrder.customer ? 'present' : 'missing'}`);
+    if (shopifyOrder.customer) {
+      debug(`Customer details: email=${shopifyOrder.customer.email}, phone=${shopifyOrder.customer.phone}`);
+    }
+    
     debug(`Order ${orderId} line_items: ${shopifyOrder.line_items ? (Array.isArray(shopifyOrder.line_items) ? shopifyOrder.line_items.length + ' items' : 'invalid format') : 'missing'}`);
     debug(`Order ${orderId} shipping_address: ${shopifyOrder.shipping_address ? 'present' : 'missing'}`);
     
@@ -63,7 +72,9 @@ export async function importOrder(
           customer_name: customerName,
           customer_email: customerEmail,
           customer_phone: customerPhone,
-          shipping_address: shopifyOrder.shipping_address || null
+          shipping_address: shopifyOrder.shipping_address || null,
+          note: shopifyOrder.note || null,
+          line_items: shopifyOrder.line_items || null
         })
         .eq("id", existingOrder.id);
 
@@ -99,8 +110,9 @@ export async function importOrder(
           status: shopifyOrder.fulfillment_status || "unfulfilled",
           items_count: shopifyOrder.line_items?.length || 0,
           imported_at: new Date().toISOString(),
-          note: shopifyOrder.note,
-          shipping_address: shopifyOrder.shipping_address || null
+          note: shopifyOrder.note || null,
+          shipping_address: shopifyOrder.shipping_address || null,
+          line_items: shopifyOrder.line_items || null
         })
         .select()
         .single();

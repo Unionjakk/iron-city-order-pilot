@@ -13,6 +13,7 @@ export interface SyncResponse {
     expected: number;
     imported?: number;
   };
+  sampleOrderData?: any; // Adding field to store sample order data for debugging
 }
 
 export const corsHeaders = {
@@ -28,6 +29,7 @@ export interface CompleteRefreshRequestBody {
     fulfillment_status?: string;
     [key: string]: string | undefined;
   };
+  debug?: boolean; // Add debug flag to return sample data
 }
 
 export function handleCorsPreflightRequest(req: Request) {
