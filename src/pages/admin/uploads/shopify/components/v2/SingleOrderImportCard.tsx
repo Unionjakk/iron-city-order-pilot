@@ -21,7 +21,10 @@ const SingleOrderImportCard = ({ onImportComplete }: SingleOrderImportCardProps)
   } | null>(null);
 
   const handleImport = async () => {
-    if (!orderNumber.trim()) {
+    // Trim and remove any leading '#' from the order number
+    const cleanOrderNumber = orderNumber.trim().replace(/^#/, '');
+    
+    if (!cleanOrderNumber) {
       setResult({
         success: false,
         message: 'Please enter a valid Shopify order number',
@@ -51,7 +54,7 @@ const SingleOrderImportCard = ({ onImportComplete }: SingleOrderImportCardProps)
       const { data, error } = await supabase.functions.invoke('shopify-import-single-order', {
         body: { 
           apiToken,
-          orderNumber: orderNumber.trim()
+          orderNumber: cleanOrderNumber
         }
       });
 
@@ -115,7 +118,7 @@ const SingleOrderImportCard = ({ onImportComplete }: SingleOrderImportCardProps)
           />
           <Button 
             onClick={handleImport} 
-            disabled={isLoading || !orderNumber.trim()}
+            disabled={isLoading || !orderNumber.trim().replace(/^#/, '')}
             className="bg-orange-500 hover:bg-orange-600"
           >
             {isLoading ? (
