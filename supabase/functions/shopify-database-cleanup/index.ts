@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
-import { corsHeaders, SyncResponse } from "../shopify-sync-all/types.ts";
-import { handleCorsPreflightRequest } from "../shopify-sync-all/corsUtils.ts";
+import { corsHeaders, SyncResponse, handleCorsPreflightRequest } from "./types.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Initialize Supabase client
