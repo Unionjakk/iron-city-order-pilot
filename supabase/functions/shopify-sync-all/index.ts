@@ -16,7 +16,6 @@ import {
   importOrder, 
   updateLastSyncTime,
   getShopifyApiEndpoint,
-  cleanDatabaseCompletely,
   setImportStatus
 } from "./database.ts";
 
@@ -29,7 +28,7 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   // Initialize response data
-  const responseData: SyncResponse & { cleaned?: boolean } = {
+  const responseData: SyncResponse = {
     success: false,
     error: null,
     imported: 0,
@@ -61,74 +60,12 @@ serve(async (req) => {
       throw new Error("No API token provided");
     }
     
-    // Check for operation type
-    const operation = body.operation || "import";
-    debug(`Operation type: ${operation}`);
-    
     // Get filters from request or use defaults
     const filters = body.filters || {
       status: "open", 
       fulfillment_status: "unfulfilled,partial"
     };
     debug(`Using filters: ${JSON.stringify(filters)}`);
-    
-    // Clean database operation
-    if (operation === "clean") {
-      debug("Starting CLEAN operation to delete all Shopify orders and items");
-      await setImportStatus('deleting', debug);
-      
-      try {
-        // Add proper error handling and retry logic for the database cleanup
-        let cleanupSuccess = false;
-        let retries = 0;
-        const maxRetries = 3;
-        
-        while (!cleanupSuccess && retries < maxRetries) {
-          try {
-            // Call our service function to clean the database
-            debug(`Cleanup attempt ${retries + 1} of ${maxRetries}`);
-            cleanupSuccess = await cleanDatabaseCompletely(debug);
-            
-            if (cleanupSuccess) {
-              debug("Database cleanup completed successfully on attempt " + (retries + 1));
-              break;
-            }
-          } catch (cleanupError) {
-            debug(`Error during database cleanup attempt ${retries + 1}: ${cleanupError.message}`);
-            
-            // Only throw on the last retry
-            if (retries >= maxRetries - 1) {
-              throw cleanupError;
-            }
-            
-            // Wait before retrying
-            const backoffMs = 2000 * Math.pow(2, retries);
-            debug(`Waiting ${backoffMs}ms before retry...`);
-            await new Promise(resolve => setTimeout(resolve, backoffMs));
-          }
-          retries++;
-        }
-        
-        responseData.success = true;
-        responseData.cleaned = cleanupSuccess;
-        await setImportStatus('idle', debug);
-        
-        return new Response(JSON.stringify(responseData), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
-      } catch (error) {
-        debug(`Error during database cleanup: ${error.message}`);
-        await setImportStatus('error', debug);
-        
-        // Return specific error response with 400 status
-        responseData.error = `Database cleanup failed: ${error.message}`;
-        return new Response(JSON.stringify(responseData), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400, // Changed from 500 to 400 for client errors
-        });
-      }
-    }
     
     // Standard import operation
     debug("Starting import of ACTIVE UNFULFILLED and PARTIALLY FULFILLED orders from Shopify");
@@ -190,7 +127,7 @@ serve(async (req) => {
     
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400, // Changed from 500 to 400 for client errors
+      status: 400, 
     });
   }
 });

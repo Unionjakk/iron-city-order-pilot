@@ -1,7 +1,7 @@
 
 import { UseRefreshStateReturn } from './types';
-import { deleteAllOrders } from '../services/cleanupService';
-import { importAllOrders, updateLastSyncTime } from '../services/importAllService';
+import { getTokenFromDatabase } from '../services/cleanupService';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useCompleteRefreshOperation = (refreshState: UseRefreshStateReturn) => {
   const {
@@ -28,73 +28,85 @@ export const useCompleteRefreshOperation = (refreshState: UseRefreshStateReturn)
     setIsSuccess(false);
     
     try {
-      addDebugMessage("Starting complete refresh operation");
+      addDebugMessage("Starting complete refresh operation via the orchestrator function");
       
-      // Step 1: Delete all orders from the orders table
-      addDebugMessage("Step 1: Deleting all existing orders...");
+      // Get API token
+      const token = await getTokenFromDatabase();
       
-      let retries = 0;
-      const maxRetries = 3;
-      let deleteSuccess = false;
-      
-      while (!deleteSuccess && retries < maxRetries) {
-        try {
-          addDebugMessage(`Deletion attempt ${retries + 1} of ${maxRetries}...`);
-          await deleteAllOrders(addDebugMessage);
-          deleteSuccess = true;
-          addDebugMessage("Deletion completed successfully!");
-          break;
-        } catch (deleteError: any) {
-          addDebugMessage(`Error during deletion attempt ${retries + 1}: ${deleteError.message}`);
-          
-          if (retries >= maxRetries - 1) {
-            throw deleteError; // Re-throw on last attempt
-          }
-          
-          // Add backoff before retry
-          const backoffMs = 2000 * Math.pow(2, retries);
-          addDebugMessage(`Waiting ${backoffMs/1000} seconds before retry...`);
-          await new Promise(resolve => setTimeout(resolve, backoffMs));
-          retries++;
-        }
+      if (!token) {
+        throw new Error("No API token found in database. Please add your Shopify API token first.");
       }
       
-      // Step 2: Import active unfulfilled/partially fulfilled orders from Shopify
-      setIsDeleting(false);
-      setIsImporting(true);
-      addDebugMessage("Step 2: Importing ONLY active unfulfilled and partially fulfilled orders from Shopify...");
+      // Call the complete refresh orchestrator function
+      addDebugMessage("Calling shopify-complete-refresh edge function...");
+      addDebugMessage("IMPORTANT: This will ONLY import ACTIVE UNFULFILLED and PARTIALLY FULFILLED orders");
       
-      // Set a 3-minute timeout for the import operation
-      const importPromise = importAllOrders(addDebugMessage);
+      // Set a timeout for the operation
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Import operation timed out after 3 minutes")), 180000);
+        setTimeout(() => reject(new Error("Operation timed out after 90 seconds")), 90000);
       });
       
-      // Use Promise.race to implement a timeout
-      const importResult = await Promise.race([importPromise, timeoutPromise]) as any;
-      
-      // Step 3: Update last sync time
-      addDebugMessage("Step 3: Updating last sync time...");
-      await updateLastSyncTime(addDebugMessage);
-      
-      toast({
-        title: "Refresh Complete",
-        description: `Successfully imported ${importResult.imported || 0} active unfulfilled orders from Shopify`,
-        variant: "default",
+      // Call the orchestrator function
+      const apiCallPromise = supabase.functions.invoke('shopify-complete-refresh', {
+        body: { 
+          apiToken: token,
+          filters: {
+            status: "open", // Only active orders
+            fulfillment_status: "unfulfilled,partial" // Only unfulfilled or partial
+          }
+        }
       });
       
-      addDebugMessage("Complete refresh operation finished successfully");
-      setIsSuccess(true);
+      // Use Promise.race to implement timeout
+      const response = await Promise.race([apiCallPromise, timeoutPromise]) as any;
       
-      // Refresh the orders list in the parent component
-      await onRefreshComplete();
+      if (response.error) {
+        throw new Error(`Failed to connect to service: ${response.error.message || 'Unknown error'}`);
+      }
+      
+      // Obtain response data
+      const responseData = response.data;
+      
+      // Handle background processing case
+      if (responseData.syncStarted && !responseData.syncComplete) {
+        setIsDeleting(false);
+        setIsImporting(true);
+        addDebugMessage("Deletion completed successfully, but import is taking longer than expected");
+        addDebugMessage("Import is continuing to run in the background");
+        
+        toast({
+          title: "Import Running in Background",
+          description: "The deletion completed but the import is taking longer than expected. It's continuing to run in the background.",
+          variant: "default",
+        });
+        
+        return;
+      }
+      
+      // Handle success case
+      if (responseData.success) {
+        setIsSuccess(true);
+        addDebugMessage(`Complete refresh operation finished successfully, imported ${responseData.imported || 0} orders`);
+        
+        toast({
+          title: "Refresh Complete",
+          description: `Successfully imported ${responseData.imported || 0} active unfulfilled orders from Shopify`,
+          variant: "default",
+        });
+        
+        // Refresh the orders list in the parent component
+        await onRefreshComplete();
+      } else {
+        // Handle explicit error from the function
+        throw new Error(responseData.error || "Unknown error occurred during refresh operation");
+      }
     } catch (error: any) {
       console.error("Error during complete refresh:", error);
       
       // Check for timeout errors specifically
       if (error.message && error.message.includes("timed out")) {
-        setError("The import operation timed out. The Shopify API may be slow or there may be too many orders to process at once. You can try 'Enter Recovery Mode' to import the orders without deleting first.");
-        addDebugMessage(`ERROR: Import operation timed out`);
+        setError("The operation timed out. The operation may still be running in the background.");
+        addDebugMessage(`ERROR: Operation timed out`);
       } else {
         setError(error.message || "An unknown error occurred");
         addDebugMessage(`ERROR: ${error.message || "Unknown error"}`);

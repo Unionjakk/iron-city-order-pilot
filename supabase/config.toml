@@ -8,7 +8,7 @@ project_id = "hbmismnzmocjazaiicdu"
 port = 54321
 # Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
 # endpoints. public and storage are always included.
-schemas = ["public", "storage", "graphql_public"]
+schemas = ["public", "storage"]
 # Extra schemas to add to the search_path of every request. public is always included.
 extra_search_path = ["public", "extensions"]
 # The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
@@ -44,14 +44,10 @@ file_size_limit = "50MiB"
 site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = ["https://localhost:3000"]
-# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (1
+# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (one
 # week).
 jwt_expiry = 3600
 # Allow/disallow new user signups to your project.
-enable_signup = true
-
-[auth.email]
-# Allow/disallow new user signups via email to your project.
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
@@ -59,39 +55,49 @@ double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = false
 
-# Use an external OAuth provider. The full list of providers are: "apple", "azure", "bitbucket",
-# "discord", "facebook", "github", "gitlab", "google", "keycloak", "linkedin", "notion", "twitch",
-# "twitter", "slack", "spotify", "workos", "zoom".
-[auth.external.apple]
-enabled = false
-client_id = ""
-secret = ""
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-
+# Configure Edge Functions
 [functions]
-# Port to use for Functions.
-port = 54328
-
-# Disable JWT verification for all edge functions
-[functions.shopify-sync]
-verify_jwt = false
-
-[functions.shopify-restore-archived]
-verify_jwt = false
-
-[functions.pinnacle-upload]
-verify_jwt = false
+# Port to use for Edge Functions emulator.
+port = 54321
+serve_port = 54900
 
 [functions.shopify-sync-all]
 verify_jwt = false
+import_map = "./import_map.json"
+
+[functions.shopify-sync]
+verify_jwt = false
+import_map = "./import_map.json"
 
 [functions.shopify-locations-sync]
 verify_jwt = false
+import_map = "./import_map.json"
 
-# Enable realtime functionality
+[functions.shopify-database-cleanup]
+verify_jwt = false
+import_map = "./import_map.json"
+
+[functions.shopify-complete-refresh]
+verify_jwt = false
+import_map = "./import_map.json"
+
+[functions.shopify-restore-archived]
+verify_jwt = false
+import_map = "./import_map.json"
+
+[functions.pinnacle-upload]
+verify_jwt = false
+import_map = "./import_map.json"
+
+# Configure realtime
 [realtime]
-enabled = true
+enabled = false
+
+# Enable one of the providers to start automatically sending emails.
+[email]
+# Configure SMTP.
+# smtp_host = "smtp.example.com"
+# smtp_port = 587
+# smtp_user = "username"
+# smtp_pass = "password"
+# sender_email = "admin@example.com"
