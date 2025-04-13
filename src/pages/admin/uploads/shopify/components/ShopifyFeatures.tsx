@@ -31,7 +31,7 @@ const ShopifyFeatures = ({
 }: ShopifyFeaturesProps) => {
   // Add state to track if a refresh operation is in progress
   const [isRefreshInProgress, setIsRefreshInProgress] = useState(false);
-  // Track if standalone imports are in progress
+  // Add a separate state for the standalone import
   const [isStandaloneImportInProgress, setIsStandaloneImportInProgress] = useState(false);
 
   // Handle completion of the standalone All Open Orders import
