@@ -1,30 +1,16 @@
+
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, CheckCircle2, AlertTriangle, AlertCircle, Clock, Database } from "lucide-react";
+import { RefreshCw, Trash2, CheckCircle2, AlertTriangle, AlertCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface RefreshButtonProps {
   isDeleting: boolean;
   isImporting: boolean;
   isSuccess: boolean;
-  expectedTotal?: number;
-  actualTotal?: number;
-  unfulfilled?: number;
-  partialFulfilled?: number;
-  isMismatch?: boolean;
   onClick: () => void;
 }
 
-const RefreshButton = ({ 
-  isDeleting, 
-  isImporting, 
-  isSuccess, 
-  expectedTotal, 
-  actualTotal, 
-  unfulfilled, 
-  partialFulfilled,
-  isMismatch,
-  onClick 
-}: RefreshButtonProps) => {
+const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshButtonProps) => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
   const [lastClickTime, setLastClickTime] = useState<Date | null>(null);
@@ -52,13 +38,9 @@ const RefreshButton = ({
       }, 60000);
       
       // Auto-enable after 5 minutes to prevent being permanently stuck
-      // Only if there's no data mismatch
       timeout = setTimeout(() => {
-        // Only auto-enable if there's no mismatch between expected and actual counts
-        if (!isMismatch) {
-          setIsButtonDisabled(false);
-          setTimeoutActive(false);
-        }
+        setIsButtonDisabled(false);
+        setTimeoutActive(false);
       }, 300000);
       setTimeoutActive(true);
       
@@ -67,13 +49,6 @@ const RefreshButton = ({
         clearTimeout(extendedTimeoutWarning);
       };
     } else {
-      // If operation is not running but there's a data mismatch, keep button disabled
-      if (isMismatch) {
-        setIsButtonDisabled(true);
-        setTimeoutActive(true);
-        return;
-      }
-      
       // Small delay before re-enabling button after operation completes
       timeout = setTimeout(() => {
         setIsButtonDisabled(false);
@@ -90,7 +65,7 @@ const RefreshButton = ({
         clearTimeout(timeout);
       };
     }
-  }, [isDeleting, isImporting, isSuccess, operationStartTime, isMismatch]);
+  }, [isDeleting, isImporting, isSuccess, operationStartTime]);
 
   // Update elapsed time every second when an operation is in progress
   useEffect(() => {
@@ -123,7 +98,6 @@ const RefreshButton = ({
   const getButtonText = () => {
     if (isDeleting) return "Deleting All Data...";
     if (isImporting) return "Importing ONLY Active Unfulfilled & Partial Orders...";
-    if (isSuccess && isMismatch) return "Import Incomplete - Data Verification Failed";
     if (isSuccess) return "Import Completed Successfully";
     if (errorCount > 0) return "Error Occurred - Click to Try Again";
     return "Delete All & Import ONLY Active Unfulfilled Orders";
@@ -132,14 +106,12 @@ const RefreshButton = ({
   const getIcon = () => {
     if (isDeleting) return <Trash2 className="mr-2 h-4 w-4 animate-spin" />;
     if (isImporting) return <RefreshCw className="mr-2 h-4 w-4 animate-spin" />;
-    if (isSuccess && isMismatch) return <AlertTriangle className="mr-2 h-4 w-4 text-yellow-400" />;
     if (isSuccess) return <CheckCircle2 className="mr-2 h-4 w-4 text-green-400" />;
     if (errorCount > 0) return <AlertCircle className="mr-2 h-4 w-4 text-red-400" />;
     return <RefreshCw className="mr-2 h-4 w-4" />;
   };
 
   const getButtonClass = () => {
-    if (isSuccess && isMismatch) return "w-full bg-yellow-700 hover:bg-yellow-800 text-white";
     if (isSuccess) return "w-full bg-green-700 hover:bg-green-800 text-white";
     if (errorCount > 0) return "w-full bg-red-600 hover:bg-red-700 text-white";
     return "w-full bg-red-600 hover:bg-red-700 text-white";
@@ -182,20 +154,6 @@ const RefreshButton = ({
         )}
       </Button>
       
-      {/* Data verification status */}
-      {(expectedTotal !== undefined && actualTotal !== undefined) && (
-        <div className={`text-xs ${isMismatch ? 'text-yellow-400' : 'text-green-400'} flex items-center`}>
-          <Database className="mr-1 h-3 w-3" />
-          Order counts: {actualTotal} of {expectedTotal} expected 
-          {unfulfilled !== undefined && partialFulfilled !== undefined && (
-            <span className="ml-1">
-              ({unfulfilled} unfulfilled, {partialFulfilled} partial)
-            </span>
-          )}
-          {isMismatch && <span className="font-bold ml-1">- MISMATCH DETECTED!</span>}
-        </div>
-      )}
-      
       {errorCount > 0 && (
         <p className="text-xs text-red-400">
           Error detected. Check the debug info section below for details.
@@ -205,8 +163,7 @@ const RefreshButton = ({
       
       {timeoutActive && (
         <p className="text-xs text-amber-400">
-          Operation in progress. Button will auto-enable in 5 minutes if the operation doesn't complete 
-          {isMismatch && " and data verification passes"}.
+          Operation in progress. Button will auto-enable in 5 minutes if the operation doesn't complete.
         </p>
       )}
       
@@ -214,13 +171,6 @@ const RefreshButton = ({
         <p className="text-xs text-amber-400 font-semibold">
           This operation is taking longer than expected but is still running in the background. 
           Do not close this page or start another operation.
-        </p>
-      )}
-      
-      {isMismatch && (
-        <p className="text-xs text-yellow-500 font-semibold">
-          Data verification failed: Expected {expectedTotal} orders but found {actualTotal}. 
-          The import may be incomplete or still processing in the background.
         </p>
       )}
       

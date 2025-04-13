@@ -22,13 +22,7 @@ const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteR
     debugInfo,
     error,
     isBackgroundProcessing,
-    expectedOrderCount,
-    actualOrderCount,
-    unfulfilledCount,
-    partialFulfilledCount,
-    isDataMismatch,
     handleCompleteRefresh,
-    verifyImportCompletion,
     resetState
   } = useCompleteRefresh({ onRefreshComplete });
 
@@ -39,23 +33,6 @@ const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteR
       onRefreshStatusChange(isRefreshing);
     }
   }, [isDeleting, isImporting, isBackgroundProcessing, onRefreshStatusChange]);
-  
-  // Poll for data verification when in background processing mode
-  useEffect(() => {
-    let verificationInterval: NodeJS.Timeout | null = null;
-    
-    if (isBackgroundProcessing) {
-      verificationInterval = setInterval(() => {
-        verifyImportCompletion();
-      }, 10000); // Check every 10 seconds
-    }
-    
-    return () => {
-      if (verificationInterval) {
-        clearInterval(verificationInterval);
-      }
-    };
-  }, [isBackgroundProcessing, verifyImportCompletion]);
   
   return (
     <Card className="bg-zinc-900">
@@ -74,27 +51,6 @@ const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteR
             <AlertDescription>
               The import operation is taking longer than expected and is continuing to run in the background.
               You can leave this page and check back later. Do not start another import until this completes.
-              {isDataMismatch && (
-                <p className="mt-2 font-bold">
-                  Data verification shows a mismatch: Found {actualOrderCount} of {expectedOrderCount} expected orders.
-                  This may indicate the import is still in progress.
-                </p>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {isDataMismatch && isSuccess && (
-          <Alert variant="warning" className="bg-yellow-800/20 border-yellow-500/50">
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            <AlertTitle>Data Verification Failed</AlertTitle>
-            <AlertDescription>
-              <p>Expected {expectedOrderCount} total orders but found {actualOrderCount} orders in the database.</p>
-              <p>Unfulfilled: {unfulfilledCount}, Partially Fulfilled: {partialFulfilledCount}</p>
-              <p className="mt-2">
-                This usually indicates the import is still running in the background or encountered issues.
-                Wait a few minutes and try refreshing the page, or click the button to retry the operation.
-              </p>
             </AlertDescription>
           </Alert>
         )}
@@ -140,11 +96,6 @@ const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteR
           isDeleting={isDeleting} 
           isImporting={isImporting || isBackgroundProcessing}
           isSuccess={isSuccess} 
-          expectedTotal={expectedOrderCount}
-          actualTotal={actualOrderCount}
-          unfulfilled={unfulfilledCount}
-          partialFulfilled={partialFulfilledCount}
-          isMismatch={isDataMismatch}
           onClick={handleCompleteRefresh} 
         />
       </CardFooter>
