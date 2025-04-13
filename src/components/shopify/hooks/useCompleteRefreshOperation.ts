@@ -34,6 +34,18 @@ export function useCompleteRefreshOperation(refreshState: UseRefreshStateReturn)
       
       addDebugMessage("Calling complete refresh function...");
       
+      // First check if the database is already empty
+      addDebugMessage("Checking if database already has existing orders...");
+      const { count: existingOrdersCount, error: countError } = await supabase
+        .from('shopify_orders')
+        .select('*', { count: 'exact', head: true });
+        
+      if (countError) {
+        addDebugMessage(`Error checking for existing orders: ${countError.message}`);
+      } else {
+        addDebugMessage(`Found ${existingOrdersCount || 0} existing orders in database`);
+      }
+      
       const response = await supabase.functions.invoke('shopify-complete-refresh', {
         body: { 
           apiToken: apiToken,

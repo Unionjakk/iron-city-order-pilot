@@ -1,60 +1,41 @@
+import { debug } from "./debugUtils.ts";
 
 /**
- * Filters orders to ensure we only process active unfulfilled or partially fulfilled orders
+ * Filter orders to ensure they match our criteria:
+ * 1. Must be unfulfilled or partially fulfilled
+ * 2. Must not be cancelled or archived
  */
 export function filterActiveUnfulfilledOrders(orders: any[], debug: (message: string) => void): any[] {
-  debug(`Filtering ${orders.length} orders from Shopify API`);
+  debug(`Filtering ${orders.length} orders to only include active unfulfilled/partial orders`);
   
-  // Initialize counter for excluded orders
-  let excludedCount = 0;
-  
-  // Filter the orders based on criteria
-  const filteredOrders = orders.filter(order => {
-    // Skip if order doesn't have required fields
-    if (!order || !order.id) {
-      debug(`Excluding order: Missing ID`);
-      excludedCount++;
-      return false;
-    }
-    
-    // Check if order is cancelled
-    if (order.cancelled_at || order.cancel_reason) {
-      debug(`Excluding order ${order.name || order.id}: Cancelled`);
-      excludedCount++;
-      return false;
-    }
-    
-    // Check if order is archived
-    if (order.status === 'archived' || order.archived) {
-      debug(`Excluding order ${order.name || order.id}: Archived`);
-      excludedCount++;
-      return false;
-    }
-    
-    // Check if order has a valid fulfillment status
-    // We only want unfulfilled or partially_fulfilled
-    const fulfillmentStatus = order.fulfillment_status || 'unfulfilled';
-    
-    if (fulfillmentStatus !== 'unfulfilled' && fulfillmentStatus !== 'partial') {
-      debug(`Excluding order ${order.name || order.id}: Invalid fulfillment status ${fulfillmentStatus}`);
-      excludedCount++;
-      return false;
-    }
-    
-    // Check that the order has line items
-    if (!order.line_items || !Array.isArray(order.line_items) || order.line_items.length === 0) {
-      debug(`Excluding order ${order.name || order.id}: No line items`);
-      excludedCount++;
-      return false;
-    }
-    
-    // This order meets our criteria
-    return true;
+  // Count by fulfillment status before filtering
+  const countByStatus: Record<string, number> = {};
+  orders.forEach(order => {
+    const status = order.fulfillment_status || 'null';
+    countByStatus[status] = (countByStatus[status] || 0) + 1;
   });
   
-  // Log results
-  debug(`Filtered out ${excludedCount} orders that didn't meet criteria`);
-  debug(`Returning ${filteredOrders.length} filtered orders for processing`);
+  debug(`Orders by fulfillment status before filtering: ${JSON.stringify(countByStatus)}`);
   
+  // Only keep orders that are unfulfilled or partially fulfilled 
+  const filteredOrders = orders.filter(order => {
+    // Skip cancelled or archived orders
+    if (order.cancelled_at || order.closed_at) {
+      return false;
+    }
+    
+    // Must be open/active status
+    if (order.status !== 'open') {
+      return false;
+    }
+    
+    // Must be unfulfilled or partially fulfilled
+    const fulfillmentStatus = order.fulfillment_status;
+    return fulfillmentStatus === null || 
+           fulfillmentStatus === 'unfulfilled' || 
+           fulfillmentStatus === 'partial';
+  });
+  
+  debug(`After filtering: ${filteredOrders.length} orders match criteria`);
   return filteredOrders;
 }

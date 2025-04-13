@@ -74,6 +74,34 @@ serve(async (req) => {
         try {
           debug(`Cleanup attempt ${retries + 1} of ${maxRetries}`);
           
+          // Check if the database is already empty
+          const { count: orderItemsCount, error: itemsCountError } = await supabase
+            .from('shopify_order_items')
+            .select('*', { count: 'exact', head: true });
+            
+          if (itemsCountError) {
+            debug(`Error checking order items: ${itemsCountError.message}`);
+            throw new Error(`Could not check if order items exist: ${itemsCountError.message}`);
+          }
+          
+          const { count: ordersCount, error: ordersCountError } = await supabase
+            .from('shopify_orders')
+            .select('*', { count: 'exact', head: true });
+            
+          if (ordersCountError) {
+            debug(`Error checking orders: ${ordersCountError.message}`);
+            throw new Error(`Could not check if orders exist: ${ordersCountError.message}`);
+          }
+          
+          // If database is already empty, skip deletion
+          if ((orderItemsCount === 0 || orderItemsCount === null) && 
+              (ordersCount === 0 || ordersCount === null)) {
+            debug("Database is already empty - skipping deletion step");
+            cleanupSuccess = true;
+            responseData.cleaned = true;
+            break;
+          }
+          
           // CRITICAL FIX: STEP 1 - Delete all order items first
           debug("STEP 1: Deleting all order items with service role...");
           
@@ -101,12 +129,12 @@ serve(async (req) => {
           }
           
           // Verify all order items are deleted
-          const { count: itemsCount, error: itemsCountError } = await supabase
+          const { count: itemsCount, error: itemsCountError2 } = await supabase
             .from('shopify_order_items')
             .select('*', { count: 'exact', head: true });
           
-          if (itemsCountError) {
-            debug(`Error verifying order items deletion: ${itemsCountError.message}`);
+          if (itemsCountError2) {
+            debug(`Error verifying order items deletion: ${itemsCountError2.message}`);
           } else {
             debug(`Order items count after deletion: ${itemsCount}`);
             if (itemsCount && itemsCount > 0) {
