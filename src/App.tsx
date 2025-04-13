@@ -32,6 +32,7 @@ import ShopifyOldAPIPage from "./pages/admin/uploads/shopify/oldAPI/ShopifyOldAP
 import ShopifyAPIRedirect from "./pages/admin/uploads/ShopifyAPIRedirect";
 import ActionsIndex from "./pages/actions/ActionsIndex";
 import PicklistPage from "./pages/actions/PicklistPage";
+import OldPicklistPage from "./pages/actions/OldPicklistPage";
 import ToOrderPage from "./pages/actions/ToOrderPage";
 import OrderedPage from "./pages/actions/OrderedPage";
 import PickedPage from "./pages/actions/PickedPage";
@@ -86,6 +87,7 @@ function App() {
                 {/* Actions Routes */}
                 <Route path="/actions" element={<ActionsIndex />} />
                 <Route path="/actions/picklist" element={<PicklistPage />} />
+                <Route path="/actions/oldpicklist" element={<OldPicklistPage />} />
                 <Route path="/actions/to-order" element={<ToOrderPage />} />
                 <Route path="/actions/ordered" element={<OrderedPage />} />
                 <Route path="/actions/picked" element={<PickedPage />} />
