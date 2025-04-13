@@ -1,43 +1,42 @@
 
+import { MAX_API_RETRIES, calculateBackoffDelay } from "./shopifyApi.ts";
+
 /**
- * Handle Shopify API response, including error checking and rate limiting
+ * Handle API response with retries and error handling
  */
 export async function handleApiResponse(
   response: Response, 
-  apiToken: string, 
+  apiToken: string,
   apiEndpoint: string,
-  retryFn: (apiToken: string, apiEndpoint: string) => Promise<any>
+  retryFn: Function
 ): Promise<void> {
-  // Check if the response is in the rate limiting range
+  // Check for rate limiting
   if (response.status === 429) {
-    const retryAfter = response.headers.get('Retry-After') || '5';
-    console.log(`Rate limited by Shopify API. Retrying after ${retryAfter} seconds`);
+    console.log("Rate limited by Shopify API, retrying with backoff");
     
-    // Wait for the specified time and retry
-    await new Promise(resolve => setTimeout(resolve, parseInt(retryAfter) * 1000));
-    return await retryFn(apiToken, apiEndpoint);
+    // Get retry delay from headers if available
+    const retryAfter = response.headers.get("Retry-After");
+    const delayMs = retryAfter ? parseInt(retryAfter) * 1000 : calculateBackoffDelay(1);
+    
+    // Wait for the specified time
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    
+    // Retry the request
+    return retryFn(apiToken, apiEndpoint);
   }
   
-  // Handle other error responses
+  // Check for other errors
   if (!response.ok) {
-    const body = await response.text();
-    console.error(`Shopify API error: Status ${response.status}`);
-    console.error(`Response body: ${body}`);
-    
-    // Create a more helpful error message
-    let errorMessage = `Shopify API error: ${response.status} ${response.statusText}`;
+    console.error(`Shopify API error: ${response.status} ${response.statusText}`);
     
     try {
-      // Try to extract specific error messages from the body
-      const errorData = JSON.parse(body);
-      if (errorData.errors) {
-        errorMessage += ` - ${JSON.stringify(errorData.errors)}`;
-      }
+      const errorData = await response.json();
+      console.error("Error details:", errorData);
     } catch (e) {
-      // If the body isn't JSON, just append it to the error
-      errorMessage += ` - ${body}`;
+      // If can't parse the error response, just log the status
+      console.error("Could not parse error response");
     }
     
-    throw new Error(errorMessage);
+    throw new Error(`Shopify API returned error: ${response.status} ${response.statusText}`);
   }
 }

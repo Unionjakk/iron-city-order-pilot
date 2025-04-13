@@ -291,12 +291,18 @@ serve(async (req) => {
     try {
       debug(`Invoking import function with token length: ${apiToken.length} chars`);
       
+      // Add detailed logging of the request body
+      const importRequestBody = { 
+        apiToken: apiToken,
+        operation: "import",
+        filters: filters,
+        debug: true // Add debug flag to get more info
+      };
+      
+      debug(`Import request body: ${JSON.stringify(importRequestBody)}`);
+      
       const importPromise = supabase.functions.invoke('shopify-sync-all', {
-        body: { 
-          apiToken: apiToken,
-          operation: "import",
-          filters: filters
-        }
+        body: importRequestBody
       });
       
       // Set a timeout promise that will complete after 60 seconds
