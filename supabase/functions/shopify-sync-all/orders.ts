@@ -12,6 +12,31 @@ export async function importOrder(
   debug(`Importing order: ${orderId} (${orderNumber})`);
   
   try {
+    // Critical fields check - log clearly what we have to work with
+    debug(`Order ${orderId} customer data: ${shopifyOrder.customer ? 'present' : 'missing'}`);
+    debug(`Order ${orderId} line_items: ${shopifyOrder.line_items ? (Array.isArray(shopifyOrder.line_items) ? shopifyOrder.line_items.length + ' items' : 'invalid format') : 'missing'}`);
+    debug(`Order ${orderId} shipping_address: ${shopifyOrder.shipping_address ? 'present' : 'missing'}`);
+    
+    // Prepare customer data - use safe defaults if missing
+    const customerName = shopifyOrder.customer 
+      ? `${shopifyOrder.customer.first_name || ''} ${shopifyOrder.customer.last_name || ''}`.trim() 
+      : (shopifyOrder.customer_name || 'Unknown Customer');
+      
+    const customerEmail = shopifyOrder.customer 
+      ? shopifyOrder.customer.email || null
+      : (shopifyOrder.customer_email || null);
+      
+    const customerPhone = shopifyOrder.customer 
+      ? shopifyOrder.customer.phone || null
+      : (shopifyOrder.customer_phone || null);
+    
+    // Debug addresses
+    if (shopifyOrder.shipping_address) {
+      debug(`Order ${orderId} has shipping address: ${JSON.stringify(shopifyOrder.shipping_address)}`);
+    } else {
+      debug(`Order ${orderId} has no shipping address data`);
+    }
+    
     // Check if order already exists
     const { data: existingOrder, error: checkError } = await supabase
       .from("shopify_orders")
@@ -29,17 +54,22 @@ export async function importOrder(
     if (existingOrder) {
       debug(`Order ${orderId} (${orderNumber}) already exists - updating`);
       
-      // Update existing order
+      // Update existing order WITH ALL CUSTOMER DATA
       const { error: updateError } = await supabase
         .from("shopify_orders")
         .update({
           status: shopifyOrder.fulfillment_status || "unfulfilled",
-          imported_at: new Date().toISOString()
+          imported_at: new Date().toISOString(),
+          customer_name: customerName,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
+          shipping_address: shopifyOrder.shipping_address || null
         })
         .eq("id", existingOrder.id);
 
       if (updateError) {
         debug(`Error updating order ${orderId}: ${updateError.message}`);
+        debug(`Error details: ${JSON.stringify(updateError)}`);
         return false;
       }
       
@@ -53,30 +83,31 @@ export async function importOrder(
 
       if (deleteLineItemsError) {
         debug(`Error deleting existing line items for order ${orderId}: ${deleteLineItemsError.message}`);
-        // Continue anyway as we'll try to insert new line items
+        debug(`Error details: ${JSON.stringify(deleteLineItemsError)}`);
       }
     } else {
-      // Insert new order
+      // Insert new order WITH ALL CUSTOMER DATA
       const { data: insertedOrder, error: insertError } = await supabase
         .from("shopify_orders")
         .insert({
           shopify_order_id: orderId,
           shopify_order_number: orderNumber,
           created_at: shopifyOrder.created_at,
-          customer_name: `${shopifyOrder.customer?.first_name || ''} ${shopifyOrder.customer?.last_name || ''}`.trim(),
-          customer_email: shopifyOrder.customer?.email,
-          customer_phone: shopifyOrder.customer?.phone,
+          customer_name: customerName,
+          customer_email: customerEmail, 
+          customer_phone: customerPhone,
           status: shopifyOrder.fulfillment_status || "unfulfilled",
           items_count: shopifyOrder.line_items?.length || 0,
           imported_at: new Date().toISOString(),
           note: shopifyOrder.note,
-          shipping_address: shopifyOrder.shipping_address
+          shipping_address: shopifyOrder.shipping_address || null
         })
         .select()
         .single();
 
       if (insertError) {
         debug(`Error inserting order ${orderId}: ${insertError.message}`);
+        debug(`Error details: ${JSON.stringify(insertError)}`);
         return false;
       }
 
@@ -95,6 +126,9 @@ export async function importOrder(
       debug(`Inserting ${shopifyOrder.line_items.length} line items for order ${orderId}`);
       
       const lineItemsToInsert = shopifyOrder.line_items.map(item => {
+        // Log each line item for debugging
+        debug(`Processing line item: ${item.id} - ${item.title} (${item.sku || 'no SKU'})`);
+        
         // Ensure IDs are stored as strings
         const shopifyLineItemId = String(item.id || `default-${Math.random().toString(36).substring(2, 15)}`);
         
@@ -114,7 +148,7 @@ export async function importOrder(
       });
 
       // Insert in smaller batches to avoid potential size limits
-      const batchSize = 10; // Reduce batch size to avoid timeouts
+      const batchSize = 5; // Reduce batch size further to avoid timeouts
       for (let i = 0; i < lineItemsToInsert.length; i += batchSize) {
         const batch = lineItemsToInsert.slice(i, i + batchSize);
         
@@ -134,6 +168,9 @@ export async function importOrder(
               
             if (singleInsertError) {
               debug(`Error inserting single line item for order ${orderId}: ${singleInsertError.message}`);
+              debug(`Error details: ${JSON.stringify(singleInsertError)}`);
+            } else {
+              debug(`Successfully inserted single line item ${lineItem.shopify_line_item_id} for order ${orderId}`);
             }
           }
         } else {
@@ -175,6 +212,7 @@ export async function importOrder(
           
         if (finalAttemptError) {
           debug(`Final attempt to insert default line item failed: ${finalAttemptError.message}`);
+          debug(`Error details: ${JSON.stringify(finalAttemptError)}`);
         } else {
           debug(`Successfully inserted emergency default line item for order ${orderId}`);
         }
@@ -214,8 +252,11 @@ export async function importOrder(
     }
     
     return true;
-  } catch (error) {
+  } catch (error: any) {
     debug(`Exception importing order ${orderId}: ${error.message}`);
+    if (error.stack) {
+      debug(`Error stack: ${error.stack}`);
+    }
     return false;
   }
 }

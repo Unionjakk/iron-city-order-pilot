@@ -74,57 +74,73 @@ serve(async (req) => {
         try {
           debug(`Cleanup attempt ${retries + 1} of ${maxRetries}`);
           
-          // STEP 1: Delete all order items first
-          debug("Deleting all order items with service role...");
+          // CRITICAL FIX: STEP 1 - Delete all order items first
+          debug("STEP 1: Deleting all order items with service role...");
           
-          // First try the RPC function with the WHERE clause
-          const { data: itemsDeleteData, error: itemsDeleteError } = await supabase.rpc('delete_all_shopify_order_items');
-          
-          if (itemsDeleteError) {
-            debug(`Error deleting order items via RPC: ${itemsDeleteError.message}`);
-            debug(`Error details: ${JSON.stringify(itemsDeleteError)}`);
+          // First try direct delete
+          const { error: directDeleteError } = await supabase
+            .from('shopify_order_items')
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000');
             
-            // Try a direct delete as fallback
-            debug("Trying direct delete for order items as fallback...");
-            const { error: directDeleteError } = await supabase
-              .from('shopify_order_items')
-              .delete()
-              .gt('order_id', '00000000-0000-0000-0000-000000000000');
-              
-            if (directDeleteError) {
-              debug(`Direct delete for order items failed: ${directDeleteError.message}`);
-              throw new Error(`Could not delete order items: ${directDeleteError.message}`);
+          if (directDeleteError) {
+            debug(`Direct delete for order items failed: ${directDeleteError.message}`);
+            
+            // Try the RPC function as fallback
+            debug("Trying RPC function for order items deletion...");
+            const { error: itemsDeleteError } = await supabase.rpc('delete_all_shopify_order_items');
+            
+            if (itemsDeleteError) {
+              debug(`RPC delete for order items also failed: ${itemsDeleteError.message}`);
+              throw new Error(`Could not delete order items: ${itemsDeleteError.message}`);
             } else {
-              debug("Successfully deleted order items via direct query");
+              debug("Successfully deleted order items via RPC");
             }
           } else {
-            debug("Successfully deleted all order items via RPC");
+            debug("Successfully deleted all order items via direct query");
           }
           
-          // STEP 2: Then delete all orders
-          debug("Deleting all orders with service role...");
+          // Verify all order items are deleted
+          const { count: itemsCount, error: itemsCountError } = await supabase
+            .from('shopify_order_items')
+            .select('*', { count: 'exact', head: true });
           
-          const { data: ordersDeleteData, error: ordersDeleteError } = await supabase.rpc('delete_all_shopify_orders');
-          
-          if (ordersDeleteError) {
-            debug(`Error deleting orders via RPC: ${ordersDeleteError.message}`);
-            debug(`Error details: ${JSON.stringify(ordersDeleteError)}`);
-            
-            // Try a direct delete as fallback
-            debug("Trying direct delete for orders as fallback...");
-            const { error: directOrdersDeleteError } = await supabase
-              .from('shopify_orders')
-              .delete()
-              .gt('id', '00000000-0000-0000-0000-000000000000');
-              
-            if (directOrdersDeleteError) {
-              debug(`Direct delete for orders failed: ${directOrdersDeleteError.message}`);
-              throw new Error(`Could not delete orders: ${directOrdersDeleteError.message}`);
+          if (itemsCountError) {
+            debug(`Error verifying order items deletion: ${itemsCountError.message}`);
+          } else {
+            debug(`Order items count after deletion: ${itemsCount}`);
+            if (itemsCount && itemsCount > 0) {
+              debug(`WARNING: ${itemsCount} order items still remain after deletion attempt`);
+              throw new Error(`Failed to delete all order items, ${itemsCount} order items remain`);
             } else {
-              debug("Successfully deleted orders via direct query");
+              debug("Verified all order items have been deleted successfully");
+            }
+          }
+          
+          // STEP 2: Only after items are deleted, now delete all orders
+          debug("STEP 2: Deleting all orders with service role...");
+          
+          // First try direct delete
+          const { error: directOrdersDeleteError } = await supabase
+            .from('shopify_orders')
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+            
+          if (directOrdersDeleteError) {
+            debug(`Direct delete for orders failed: ${directOrdersDeleteError.message}`);
+            
+            // Try the RPC function as fallback
+            debug("Trying RPC function for orders deletion...");
+            const { error: ordersDeleteError } = await supabase.rpc('delete_all_shopify_orders');
+            
+            if (ordersDeleteError) {
+              debug(`RPC delete for orders also failed: ${ordersDeleteError.message}`);
+              throw new Error(`Could not delete orders: ${ordersDeleteError.message}`);
+            } else {
+              debug("Successfully deleted orders via RPC");
             }
           } else {
-            debug("Successfully deleted all orders via RPC");
+            debug("Successfully deleted all orders via direct query");
           }
           
           // STEP 3: Verify both tables are empty
@@ -134,7 +150,6 @@ serve(async (req) => {
           
           if (orderCountError) {
             debug(`Error verifying orders deletion: ${orderCountError.message}`);
-            debug(`Error details: ${JSON.stringify(orderCountError)}`);
           } else {
             debug(`Order count after deletion: ${orderCount}`);
             if (orderCount && orderCount > 0) {
@@ -145,32 +160,12 @@ serve(async (req) => {
             }
           }
           
-          const { count: itemCount, error: itemCountError } = await supabase
-            .from('shopify_order_items')
-            .select('*', { count: 'exact', head: true });
-          
-          if (itemCountError) {
-            debug(`Error verifying order items deletion: ${itemCountError.message}`);
-            debug(`Error details: ${JSON.stringify(itemCountError)}`);
-          } else {
-            debug(`Order items count after deletion: ${itemCount}`);
-            if (itemCount && itemCount > 0) {
-              debug(`WARNING: ${itemCount} order items still remain after deletion attempt`);
-              throw new Error(`Failed to delete all order items, ${itemCount} order items remain`);
-            } else {
-              debug("Verified all order items have been deleted successfully");
-            }
-          }
-          
           cleanupSuccess = true;
           responseData.cleaned = true;
           debug("Database cleanup completed successfully on attempt " + (retries + 1));
           break;
         } catch (cleanupError: any) {
           debug(`Error during database cleanup attempt ${retries + 1}: ${cleanupError.message}`);
-          if (cleanupError.stack) {
-            debug(`Error stack: ${cleanupError.stack}`);
-          }
           
           // Only throw on the last retry
           if (retries >= maxRetries - 1) {
@@ -193,66 +188,76 @@ serve(async (req) => {
         status: 200,
       });
     } catch (error: any) {
-      debug(`Error during database cleanup: ${error.message || 'Unknown error'}`);
+      debug(`Error during database cleanup: ${error.message}`);
       if (error.stack) {
         debug(`Error stack: ${error.stack}`);
       }
-      
+      responseData.error = error.message;
       await setImportStatus('error', debug);
       
-      // Return specific error response with 400 status
-      responseData.error = `Database cleanup failed: ${error.message}`;
       return new Response(JSON.stringify(responseData), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
+        status: 500,
       });
     }
   } catch (error: any) {
-    debug(`Error in database cleanup: ${error.message || 'Unknown error'}`);
+    console.error("=== CLEANUP OPERATION FAILED ===");
+    console.error(`Error message: ${error.message}`);
+    
     if (error.stack) {
-      debug(`Error stack: ${error.stack}`);
+      console.error(`Stack trace: ${error.stack}`);
     }
     
-    responseData.error = error.message || 'Unknown error occurred';
+    // For client debugging, create a detailed error response
+    const errorResponse: SyncResponse = {
+      success: false,
+      error: error.message || 'Unknown error occurred',
+      debugMessages: [
+        `Error in cleanup operation: ${error.message || 'Unknown error'}`,
+        `Time of error: ${new Date().toISOString()}`,
+        `Request method: ${req.method}`,
+        `Request URL: ${req.url}`
+      ],
+      imported: 0,
+      cleaned: false
+    };
     
     // Make sure status is set to error in database
     try {
-      await setImportStatus('error', debug);
-    } catch (statusError) {
-      debug("Failed to update status to error");
+      await setImportStatus('error', (msg) => console.log(msg));
+    } catch (settingError) {
+      console.error("Failed to update status to error");
     }
     
-    return new Response(JSON.stringify(responseData), {
+    // Return a proper error response with CORS headers
+    return new Response(JSON.stringify(errorResponse), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
     });
   }
 });
 
-// Helper function to set import status in database
+/**
+ * Set the import status in the database
+ */
 async function setImportStatus(status: string, debug: (message: string) => void): Promise<boolean> {
   try {
     debug(`Updating import status to: ${status}`);
     
-    const { data, error: statusError } = await supabase.rpc("upsert_shopify_setting", {
+    const { error: statusError } = await supabase.rpc("upsert_shopify_setting", {
       setting_name_param: "shopify_import_status",
       setting_value_param: status
     });
 
     if (statusError) {
       debug(`Failed to update import status: ${statusError.message}`);
-      debug(`Error details: ${JSON.stringify(statusError)}`);
       return false;
     }
     
     debug(`Successfully updated import status to: ${status}`);
-    debug(`Update result: ${JSON.stringify(data)}`);
     return true;
   } catch (error: any) {
-    debug(`Exception updating import status: ${error.message || 'Unknown error'}`);
-    if (error.stack) {
-      debug(`Error stack: ${error.stack}`);
-    }
+    debug(`Error updating import status: ${error.message}`);
     return false;
   }
 }

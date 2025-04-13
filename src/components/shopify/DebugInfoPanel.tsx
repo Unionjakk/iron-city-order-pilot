@@ -1,7 +1,7 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, ArrowDownCircle, X } from "lucide-react";
+import { Copy, Check, ArrowDownCircle, X, FileDown } from "lucide-react";
 import { useState } from "react";
 
 interface DebugInfoPanelProps {
@@ -11,39 +11,45 @@ interface DebugInfoPanelProps {
 const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
   const [copied, setCopied] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const [downloadReady, setDownloadReady] = useState(false);
   
   // Filter for different message types to highlight them
   const errorMessages = debugInfo.filter(msg => 
-    msg.includes("ERROR") || 
-    msg.includes("error") || 
-    msg.includes("failed") || 
-    msg.includes("Failed") ||
-    msg.includes("Exception") ||
+    msg.toLowerCase().includes("error") || 
+    msg.toLowerCase().includes("failed") || 
+    msg.toLowerCase().includes("exception") ||
     msg.toLowerCase().includes("could not delete")
   );
   
   const warningMessages = debugInfo.filter(msg => 
-    msg.includes("WARNING") || 
-    msg.includes("warning") ||
-    msg.includes("timeout") ||
-    msg.includes("Timeout")
+    msg.toLowerCase().includes("warning") || 
+    msg.toLowerCase().includes("timeout") ||
+    msg.toLowerCase().includes("taking longer")
   );
   
   const successMessages = debugInfo.filter(msg => 
-    msg.includes("SUCCESS") || 
-    msg.includes("success") || 
-    msg.includes("completed successfully")
+    msg.toLowerCase().includes("success") || 
+    msg.toLowerCase().includes("completed successfully")
   );
   
   // Filter for database operation messages
   const databaseMessages = debugInfo.filter(msg =>
-    msg.includes("database") ||
-    msg.includes("Database") ||
-    msg.includes("DELETE") ||
-    msg.includes("delete") ||
-    msg.includes("orders remain") ||
-    msg.includes("Verified") ||
-    msg.toLowerCase().includes("order items")
+    msg.toLowerCase().includes("database") ||
+    msg.toLowerCase().includes("delete") ||
+    msg.toLowerCase().includes("orders remain") ||
+    msg.toLowerCase().includes("verified") ||
+    msg.toLowerCase().includes("order items") ||
+    msg.toLowerCase().includes("line items") ||
+    msg.toLowerCase().includes("inserting")
+  );
+  
+  // Filter for customer and shipping data messages
+  const customerDataMessages = debugInfo.filter(msg =>
+    msg.toLowerCase().includes("customer") ||
+    msg.toLowerCase().includes("shipping") ||
+    msg.toLowerCase().includes("address") ||
+    msg.toLowerCase().includes("email") ||
+    msg.toLowerCase().includes("phone")
   );
   
   // Handle copy all debug info to clipboard
@@ -55,24 +61,43 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
       });
   };
   
+  // Handle download debug log as text file
+  const handleDownloadLog = () => {
+    const blob = new Blob([debugInfo.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `shopify-import-log-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setDownloadReady(true);
+    setTimeout(() => setDownloadReady(false), 2000);
+  };
+  
   // Helper function to render a message with appropriate styling
   const renderMessage = (message: string, index: number, type: string) => {
     let className = "text-xs font-mono whitespace-pre-wrap ";
     
-    if (message.includes("ERROR") || message.includes("error") || message.includes("failed") || message.includes("Failed")) {
+    if (message.toLowerCase().includes("error") || message.toLowerCase().includes("failed") || message.toLowerCase().includes("exception")) {
       className += "text-red-400";
-    } else if (message.includes("WARNING") || message.includes("warning") || message.includes("timeout") || message.includes("Timeout")) {
+    } else if (message.toLowerCase().includes("warning") || message.toLowerCase().includes("timeout")) {
       className += "text-yellow-400";
-    } else if (message.includes("SUCCESS") || message.includes("success") || message.includes("completed successfully")) {
+    } else if (message.toLowerCase().includes("success") || message.toLowerCase().includes("completed successfully")) {
       className += "text-green-400";
-    } else if (message.includes("delete") || message.includes("DELETE") || message.includes("Deleting")) {
+    } else if (message.toLowerCase().includes("delete") || message.toLowerCase().includes("deleting")) {
       className += "text-blue-400";
+    } else if (message.toLowerCase().includes("insert") || message.toLowerCase().includes("importing")) {
+      className += "text-purple-400";
+    } else if (message.toLowerCase().includes("customer") || message.toLowerCase().includes("shipping")) {
+      className += "text-cyan-400";
     } else {
       className += "text-zinc-400";
     }
     
     // Add timestamp to the message
-    const timestamp = message.match(/\[\d{2}:\d{2}:\d{2}\]/);
+    const timestamp = message.match(/\[[\d:]+\]/);
     if (timestamp) {
       return (
         <p key={`${type}-${index}`} className={className}>
@@ -107,6 +132,15 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
             {copied ? <Check className="h-3.5 w-3.5 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
             {copied ? 'Copied!' : 'Copy All'}
           </Button>
+          <Button 
+            onClick={handleDownloadLog} 
+            variant="outline" 
+            size="sm" 
+            className="h-7 text-xs"
+          >
+            {downloadReady ? <Check className="h-3.5 w-3.5 mr-1" /> : <FileDown className="h-3.5 w-3.5 mr-1" />}
+            {downloadReady ? 'Downloaded!' : 'Download Log'}
+          </Button>
         </div>
       </div>
       
@@ -117,6 +151,18 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
           <ScrollArea className="h-[120px] rounded-md border border-red-900/30 bg-red-950/20 p-2">
             <div className="space-y-1">
               {errorMessages.map((message, index) => renderMessage(message, index, 'error'))}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+      
+      {/* Show customer data messages if any exist */}
+      {customerDataMessages.length > 0 && (
+        <div className="mb-4">
+          <h4 className="text-xs font-medium mb-1 text-cyan-400">Customer Data ({customerDataMessages.length}):</h4>
+          <ScrollArea className="h-[120px] rounded-md border border-cyan-900/30 bg-cyan-950/20 p-2">
+            <div className="space-y-1">
+              {customerDataMessages.map((message, index) => renderMessage(message, index, 'customer'))}
             </div>
           </ScrollArea>
         </div>

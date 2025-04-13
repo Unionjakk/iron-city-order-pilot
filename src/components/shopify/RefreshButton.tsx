@@ -17,8 +17,9 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
   const [timeoutActive, setTimeoutActive] = useState(false);
   const [operationStartTime, setOperationStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState<string>('0s');
+  const [showExtendedTimeoutWarning, setShowExtendedTimeoutWarning] = useState(false);
 
-  // Reset the disabled state after 2 minutes to prevent permanent disabling on error
+  // Reset the disabled state after a period to prevent permanent disabling on error
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     
@@ -28,28 +29,42 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
       }
       
       setIsButtonDisabled(true);
-      // Auto-enable after 2 minutes to prevent being permanently stuck
+      
+      // Show extended timeout warning after 60 seconds
+      const extendedTimeoutWarning = setTimeout(() => {
+        if (isDeleting || isImporting) {
+          setShowExtendedTimeoutWarning(true);
+        }
+      }, 60000);
+      
+      // Auto-enable after 5 minutes to prevent being permanently stuck
       timeout = setTimeout(() => {
         setIsButtonDisabled(false);
         setTimeoutActive(false);
-      }, 120000);
+      }, 300000);
       setTimeoutActive(true);
+      
+      return () => {
+        clearTimeout(timeout);
+        clearTimeout(extendedTimeoutWarning);
+      };
     } else {
       // Small delay before re-enabling button after operation completes
       timeout = setTimeout(() => {
         setIsButtonDisabled(false);
         setTimeoutActive(false);
+        setShowExtendedTimeoutWarning(false);
       }, 2000);
       
       // Reset operation start time if operation completed
       if (!isDeleting && !isImporting && operationStartTime) {
         setOperationStartTime(null);
       }
+      
+      return () => {
+        clearTimeout(timeout);
+      };
     }
-    
-    return () => {
-      if (timeout) clearTimeout(timeout);
-    };
   }, [isDeleting, isImporting, isSuccess, operationStartTime]);
 
   // Update elapsed time every second when an operation is in progress
@@ -70,10 +85,15 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
         const seconds = elapsed % 60;
         setElapsedTime(`${minutes}m ${seconds}s`);
       }
+      
+      // If it's taking longer than 2 minutes, show extended time warning
+      if (elapsed > 120 && !showExtendedTimeoutWarning) {
+        setShowExtendedTimeoutWarning(true);
+      }
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [operationStartTime]);
+  }, [operationStartTime, showExtendedTimeoutWarning]);
 
   const getButtonText = () => {
     if (isDeleting) return "Deleting All Data...";
@@ -102,6 +122,7 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
       const now = new Date();
       setLastClickTime(now);
       setOperationStartTime(now);
+      setShowExtendedTimeoutWarning(false);
       
       // Reset error count if this is a new operation (not a retry within 10 seconds)
       if (!lastClickTime || (now.getTime() - lastClickTime.getTime() > 10000)) {
@@ -142,13 +163,20 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
       
       {timeoutActive && (
         <p className="text-xs text-amber-400">
-          Operation in progress. Button will auto-enable in 2 minutes if the operation doesn't complete.
+          Operation in progress. Button will auto-enable in 5 minutes if the operation doesn't complete.
+        </p>
+      )}
+      
+      {showExtendedTimeoutWarning && (isDeleting || isImporting) && (
+        <p className="text-xs text-amber-400 font-semibold">
+          This operation is taking longer than expected but is still running in the background. 
+          Do not close this page or start another operation.
         </p>
       )}
       
       {isDeleting && (
         <p className="text-xs text-zinc-400">
-          Deleting all orders via specialized RPC functions. If this takes more than 30 seconds, check debug info.
+          Deleting all orders via specialized RPC functions. This operation MUST delete order items first, then orders.
         </p>
       )}
       
