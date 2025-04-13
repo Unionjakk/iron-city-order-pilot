@@ -7,6 +7,7 @@ import LocationInfoImport from '@/components/shopify/LocationInfoImport';
 import SingleLineItemLocationUpdate from '@/components/shopify/SingleLineItemLocationUpdate';
 import LocationsExplorer from '@/components/shopify/LocationsExplorer';
 import BatchLocationUpdate from '@/components/shopify/BatchLocationUpdate';
+import SingleOrderImport from '@/components/shopify/SingleOrderImport';
 import { ShopifyOrder } from '@/components/shopify/OrdersTable';
 import { useState } from 'react';
 
@@ -39,6 +40,11 @@ const ShopifyFeatures = ({
         ordersLoading={ordersLoading}
         handleRefresh={handleRefresh}
         apiError={apiConnectionError}
+      />
+      
+      {/* Single Order Import */}
+      <SingleOrderImport
+        onImportComplete={fetchRecentOrders}
       />
       
       {/* Complete Refresh Card */}
