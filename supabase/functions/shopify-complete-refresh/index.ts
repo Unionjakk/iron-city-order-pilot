@@ -1,21 +1,11 @@
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
-import { corsHeaders, SyncResponse } from "../shopify-sync-all/types.ts";
-import { handleCorsPreflightRequest } from "../shopify-sync-all/corsUtils.ts";
+import { corsHeaders, SyncResponse, CompleteRefreshRequestBody, handleCorsPreflightRequest } from "./types.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
-
-interface CompleteRefreshRequestBody {
-  apiToken?: string;
-  filters?: {
-    status?: string;
-    fulfillment_status?: string;
-    [key: string]: string | undefined;
-  };
-}
 
 serve(async (req) => {
   console.log("=== Shopify Complete Refresh Function Started ===");
@@ -26,11 +16,7 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   // Initialize response data
-  const responseData: SyncResponse & { 
-    cleaned?: boolean,
-    syncStarted?: boolean,
-    syncComplete?: boolean 
-  } = {
+  const responseData: SyncResponse = {
     success: false,
     error: null,
     imported: 0,
