@@ -82,7 +82,32 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       
       // Step 1: Delete all orders from the orders table
       addDebugMessage("Step 1: Deleting all existing orders...");
-      await deleteAllOrders(addDebugMessage);
+      
+      let retries = 0;
+      const maxRetries = 3;
+      let deleteSuccess = false;
+      
+      while (!deleteSuccess && retries < maxRetries) {
+        try {
+          addDebugMessage(`Deletion attempt ${retries + 1} of ${maxRetries}...`);
+          await deleteAllOrders(addDebugMessage);
+          deleteSuccess = true;
+          addDebugMessage("Deletion completed successfully!");
+          break;
+        } catch (deleteError: any) {
+          addDebugMessage(`Error during deletion attempt ${retries + 1}: ${deleteError.message}`);
+          
+          if (retries >= maxRetries - 1) {
+            throw deleteError; // Re-throw on last attempt
+          }
+          
+          // Add backoff before retry
+          const backoffMs = 2000 * Math.pow(2, retries);
+          addDebugMessage(`Waiting ${backoffMs/1000} seconds before retry...`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          retries++;
+        }
+      }
       
       // Step 2: Import active unfulfilled/partially fulfilled orders from Shopify
       setIsDeleting(false);

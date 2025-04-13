@@ -78,12 +78,39 @@ serve(async (req) => {
     if (operation === "clean") {
       debug("Starting CLEAN operation to delete all Shopify orders and items");
       try {
-        // Call our service function to clean the database
-        const success = await cleanDatabaseCompletely(debug);
+        // Add proper error handling and retry logic for the database cleanup
+        let cleanupSuccess = false;
+        let retries = 0;
+        const maxRetries = 3;
+        
+        while (!cleanupSuccess && retries < maxRetries) {
+          try {
+            // Call our service function to clean the database
+            debug(`Cleanup attempt ${retries + 1} of ${maxRetries}`);
+            cleanupSuccess = await cleanDatabaseCompletely(debug);
+            
+            if (cleanupSuccess) {
+              debug("Database cleanup completed successfully on attempt " + (retries + 1));
+              break;
+            }
+          } catch (cleanupError) {
+            debug(`Error during database cleanup attempt ${retries + 1}: ${cleanupError.message}`);
+            
+            // Only throw on the last retry
+            if (retries >= maxRetries - 1) {
+              throw cleanupError;
+            }
+            
+            // Wait before retrying
+            const backoffMs = 2000 * Math.pow(2, retries);
+            debug(`Waiting ${backoffMs}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+          }
+          retries++;
+        }
         
         responseData.success = true;
-        responseData.cleaned = success;
-        debug("Database cleanup completed successfully");
+        responseData.cleaned = cleanupSuccess;
         
         return new Response(JSON.stringify(responseData), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -17,13 +17,22 @@ export const deleteAllOrders = async (addDebugMessage: (message: string) => void
     
     // Call the edge function with clean operation
     addDebugMessage("Calling shopify-sync-all edge function for database cleaning...");
-    const response = await supabase.functions.invoke('shopify-sync-all', {
+    
+    // Add timeout handling for the API call
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Cleanup request timed out after 45 seconds")), 45000);
+    });
+    
+    const apiCallPromise = supabase.functions.invoke('shopify-sync-all', {
       body: { 
         apiToken: token,
         operation: "clean" // Special operation to clean the database
       }
     });
-
+    
+    // Use Promise.race to implement timeout
+    const response = await Promise.race([apiCallPromise, timeoutPromise]) as any;
+    
     // Check for invocation error
     if (response.error) {
       console.error('Error invoking edge function for deletion:', response.error);

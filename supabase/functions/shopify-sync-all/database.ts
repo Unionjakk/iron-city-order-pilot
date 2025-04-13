@@ -260,28 +260,65 @@ export async function cleanDatabaseCompletely(debug: (message: string) => void) 
     // Use service role client to bypass RLS
     const serviceClient = supabase;
     
-    // Step 1: Delete all order items first
+    // Step 1: Delete all order items first - Using a more reliable approach
     debug("Deleting all order items with service role...");
-    const { error: itemsDeleteError } = await serviceClient
-      .from('shopify_order_items')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
     
-    if (itemsDeleteError) {
-      debug(`Error deleting order items: ${itemsDeleteError.message}`);
-      throw new Error(`Failed to delete order items: ${itemsDeleteError.message}`);
+    try {
+      // First attempt - standard delete
+      const { error: itemsDeleteError } = await serviceClient
+        .from('shopify_order_items')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (itemsDeleteError) {
+        debug(`Initial delete attempt failed: ${itemsDeleteError.message}`);
+        
+        // Fallback - Try with a direct SQL deletion if the first method fails
+        // This helps bypass potential RLS or other constraints
+        debug("Trying alternate deletion method for order items...");
+        const { error: sqlDeleteError } = await serviceClient.rpc('delete_all_shopify_order_items');
+        
+        if (sqlDeleteError) {
+          debug(`SQL delete method also failed: ${sqlDeleteError.message}`);
+          throw new Error(`Could not delete order items: ${sqlDeleteError.message}`);
+        }
+        debug("Successfully deleted order items using SQL method");
+      } else {
+        debug("Successfully deleted order items");
+      }
+    } catch (deleteError) {
+      debug(`Error during order items deletion: ${deleteError.message}`);
+      throw deleteError;
     }
     
-    // Step 2: Delete all orders
+    // Step 2: Delete all orders - with similar fallback approach
     debug("Deleting all orders with service role...");
-    const { error: ordersDeleteError } = await serviceClient
-      .from('shopify_orders')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
     
-    if (ordersDeleteError) {
-      debug(`Error deleting orders: ${ordersDeleteError.message}`);
-      throw new Error(`Failed to delete orders: ${ordersDeleteError.message}`);
+    try {
+      // First attempt - standard delete
+      const { error: ordersDeleteError } = await serviceClient
+        .from('shopify_orders')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (ordersDeleteError) {
+        debug(`Initial orders delete attempt failed: ${ordersDeleteError.message}`);
+        
+        // Fallback - Try with a direct SQL deletion
+        debug("Trying alternate deletion method for orders...");
+        const { error: sqlOrdersDeleteError } = await serviceClient.rpc('delete_all_shopify_orders');
+        
+        if (sqlOrdersDeleteError) {
+          debug(`SQL delete method for orders also failed: ${sqlOrdersDeleteError.message}`);
+          throw new Error(`Could not delete orders: ${sqlOrdersDeleteError.message}`);
+        }
+        debug("Successfully deleted orders using SQL method");
+      } else {
+        debug("Successfully deleted orders");
+      }
+    } catch (deleteOrdersError) {
+      debug(`Error during orders deletion: ${deleteOrdersError.message}`);
+      throw deleteOrdersError;
     }
     
     // Step 3: Verify both tables are empty
