@@ -21,11 +21,12 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   // Initialize response data
-  const responseData: SyncResponse & { cleaned?: boolean } = {
+  const responseData: SyncResponse = {
     success: false,
     error: null,
     imported: 0,
-    debugMessages: []
+    debugMessages: [],
+    cleaned: false
   };
 
   // Helper function to add debug messages
@@ -68,7 +69,7 @@ serve(async (req) => {
         try {
           debug(`Cleanup attempt ${retries + 1} of ${maxRetries}`);
           
-          // STEP 1: Delete all order items first - explicitly use SQL for more reliable deletion
+          // STEP 1: Delete all order items first
           debug("Deleting all order items with service role...");
           const { error: itemsDeleteError } = await supabase.rpc('delete_all_shopify_order_items');
           
@@ -78,7 +79,7 @@ serve(async (req) => {
           }
           debug("Successfully deleted all order items");
           
-          // STEP 2: Then delete all orders - explicitly use SQL for more reliable deletion
+          // STEP 2: Then delete all orders
           debug("Deleting all orders with service role...");
           const { error: ordersDeleteError } = await supabase.rpc('delete_all_shopify_orders');
           
@@ -116,6 +117,7 @@ serve(async (req) => {
           }
           
           cleanupSuccess = true;
+          responseData.cleaned = true;
           debug("Database cleanup completed successfully on attempt " + (retries + 1));
           break;
         } catch (cleanupError) {
@@ -135,7 +137,6 @@ serve(async (req) => {
       }
       
       responseData.success = true;
-      responseData.cleaned = cleanupSuccess;
       await setImportStatus('idle', debug);
       
       return new Response(JSON.stringify(responseData), {
