@@ -1,9 +1,9 @@
 
-export interface UseRefreshStateProps {
+export type UseRefreshStateProps = {
   onRefreshComplete: () => Promise<void>;
 }
 
-export interface UseRefreshStateReturn {
+export type UseRefreshStateReturn = {
   isDeleting: boolean;
   setIsDeleting: (value: boolean) => void;
   isImporting: boolean;
@@ -22,11 +22,11 @@ export interface UseRefreshStateReturn {
   onRefreshComplete: () => Promise<void>;
 }
 
-export interface UseCompleteRefreshProps {
+export type UseCompleteRefreshProps = {
   onRefreshComplete: () => Promise<void>;
 }
 
-export interface UseCompleteRefreshReturn {
+export type UseCompleteRefreshReturn = {
   isDeleting: boolean;
   isImporting: boolean; 
   isSuccess: boolean;

@@ -2,9 +2,9 @@
 import { useRefreshState } from './useRefreshState';
 import { useImportOperation } from './useImportOperation';
 import { useCompleteRefreshOperation } from './useCompleteRefreshOperation';
-import { UseCompleteRefreshProps, UseCompleteRefreshReturn } from './types';
+import type { UseCompleteRefreshProps, UseCompleteRefreshReturn } from './types';
 
-export { UseCompleteRefreshProps };
+export type { UseCompleteRefreshProps };
 
 export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProps): UseCompleteRefreshReturn => {
   // Use state management hook
