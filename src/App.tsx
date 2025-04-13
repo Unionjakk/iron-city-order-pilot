@@ -4,8 +4,6 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Link,
-  Outlet,
   Navigate
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
@@ -28,7 +26,9 @@ import OrderLinesUpload from "./pages/admin/uploads/harley/OrderLinesUpload";
 import OpenLinesCheckIn from "./pages/admin/uploads/harley/OpenLinesCheckIn";
 import BackordersUpload from "./pages/admin/uploads/harley/BackordersUpload";
 import LineItemsExclude from "./pages/admin/uploads/harley/LineItemsExclude";
-import ShopifyAPI from "./pages/admin/uploads/shopify/ShopifyAPIPage";
+import ShopifyV2Page from "./pages/admin/uploads/shopify/ShopifyV2Page";
+import ShopifyOldAPIPage from "./pages/admin/uploads/shopify/oldAPI/ShopifyOldAPIPage";
+import ShopifyAPIRedirect from "./pages/admin/uploads/ShopifyAPIRedirect";
 import ActionsIndex from "./pages/actions/ActionsIndex";
 import PicklistPage from "./pages/actions/PicklistPage";
 import ToOrderPage from "./pages/actions/ToOrderPage";
@@ -112,7 +112,12 @@ function App() {
                 <Route path="/admin/uploads/harley/open-lines-check-in" element={<OpenLinesCheckIn />} />
                 <Route path="/admin/uploads/harley/backorders" element={<BackordersUpload />} />
                 <Route path="/admin/uploads/harley/line-items-exclude" element={<LineItemsExclude />} />
-                <Route path="/admin/uploads/shopify" element={<ShopifyAPI />} />
+                
+                {/* Shopify API Routes */}
+                <Route path="/admin/uploads/shopify" element={<ShopifyV2Page />} />
+                <Route path="/admin/uploads/shopify/oldAPI" element={<ShopifyOldAPIPage />} />
+                <Route path="/admin/uploads/ShopifyAPI" element={<ShopifyAPIRedirect />} />
+                
                 <Route path="/users" element={<UsersPage />} />
               </Route>
             </Route>

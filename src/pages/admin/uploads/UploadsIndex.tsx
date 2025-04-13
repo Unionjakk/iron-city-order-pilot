@@ -40,14 +40,21 @@ const UploadsIndex = () => {
         
         <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-orange-500">Shopify API</CardTitle>
-            <CardDescription className="text-zinc-400">Configure Shopify integration settings</CardDescription>
+            <CardTitle className="text-orange-500">Shopify Integration</CardTitle>
+            <CardDescription className="text-zinc-400">Manage Shopify order imports</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-zinc-300">Coming soon: Configure API settings for automatic Shopify order imports and updates.</p>
-            <Link to="/admin/uploads/shopify" className="inline-flex items-center text-orange-500 hover:text-orange-400">
-              Go to Shopify API <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
+            <p className="mb-4 text-zinc-300">Configure API settings and import orders from your Shopify store.</p>
+            <div className="space-y-2">
+              <Link to="/admin/uploads/shopify" className="inline-flex items-center text-orange-500 hover:text-orange-400">
+                Go to Shopify Integration v2 <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+              <div>
+                <Link to="/admin/uploads/shopify/oldAPI" className="inline-flex items-center text-zinc-400 hover:text-zinc-300 text-sm">
+                  Go to Legacy Shopify API <ArrowRight className="ml-2 h-3 w-3" />
+                </Link>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
