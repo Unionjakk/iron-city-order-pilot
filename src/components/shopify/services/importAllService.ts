@@ -18,7 +18,7 @@ export const importAllOrders = async (addDebugMessage: (message: string) => void
     
     // Add a timeout to the API call to prevent hanging indefinitely
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("API call timed out after 90 seconds")), 90000); // Increased timeout
+      setTimeout(() => reject(new Error("API call timed out after 90 seconds")), 90000); // 90 second timeout
     });
     
     // Implement manual retry logic
