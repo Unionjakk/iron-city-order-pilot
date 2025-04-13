@@ -140,7 +140,7 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
       // Show toast notification that import has started
       toast({
         title: "Import Started",
-        description: "Importing all open unfulfilled and partially fulfilled orders. This may take several minutes.",
+        description: "Importing open unfulfilled and partially fulfilled orders. This may take several minutes.",
         duration: 5000,
       });
       
@@ -223,8 +223,8 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
       </CardContent>
       <CardFooter className="text-sm text-muted-foreground">
         <div className="space-y-1">
-          <p>This will import all unfulfilled and partially fulfilled orders from your Shopify store.</p>
-          <p>Progress will be tracked and updated in real-time.</p>
+          <p>This will import all open unfulfilled and partially fulfilled orders from your Shopify store.</p>
+          <p><strong>Note: Archived orders will not be imported.</strong></p>
         </div>
       </CardFooter>
     </Card>

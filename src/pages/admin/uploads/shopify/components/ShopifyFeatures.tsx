@@ -31,6 +31,14 @@ const ShopifyFeatures = ({
 }: ShopifyFeaturesProps) => {
   // Add state to track if a refresh operation is in progress
   const [isRefreshInProgress, setIsRefreshInProgress] = useState(false);
+  // Track if standalone imports are in progress
+  const [isStandaloneImportInProgress, setIsStandaloneImportInProgress] = useState(false);
+
+  // Handle completion of the standalone All Open Orders import
+  const handleStandaloneImportComplete = async () => {
+    setIsStandaloneImportInProgress(false);
+    await fetchRecentOrders();
+  };
 
   return (
     <>
@@ -48,9 +56,9 @@ const ShopifyFeatures = ({
         onImportComplete={fetchRecentOrders}
       />
       
-      {/* All Open Orders Import - NEW COMPONENT */}
+      {/* All Open Orders Import - Standalone Component */}
       <AllOpenOrdersImport
-        onImportComplete={fetchRecentOrders}
+        onImportComplete={handleStandaloneImportComplete}
       />
       
       {/* Complete Refresh Card */}
@@ -61,7 +69,7 @@ const ShopifyFeatures = ({
       
       {/* Batch Location Update */}
       <BatchLocationUpdate 
-        disabled={isRefreshInProgress}
+        disabled={isRefreshInProgress || isStandaloneImportInProgress}
       />
       
       {/* Location Info Import */}

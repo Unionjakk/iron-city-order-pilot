@@ -52,7 +52,7 @@ serve(async (req) => {
   };
 
   try {
-    debug("=== Starting Import of ALL Open Unfulfilled and Partially Fulfilled Orders ===");
+    debug("=== Starting Import of OPEN (Not Archived) Unfulfilled and Partially Fulfilled Orders ===");
     
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -97,8 +97,9 @@ serve(async (req) => {
       throw new Error("Failed to retrieve Shopify API endpoint");
     }
 
-    // Build the filtered API endpoint for unfulfilled and partially fulfilled orders
-    const filters = "status=any&fulfillment_status=unfulfilled,partial&limit=50";
+    // Build the filtered API endpoint for OPEN unfulfilled and partially fulfilled orders
+    // Important: Add status=open to filter out archived orders
+    const filters = "status=open&fulfillment_status=unfulfilled,partial&limit=50";
     const filteredApiEndpoint = apiEndpoint.includes('?') 
       ? `${apiEndpoint}&${filters}`
       : `${apiEndpoint}?${filters}`;
@@ -175,14 +176,21 @@ serve(async (req) => {
       // Log the number of orders received
       debug(`Received ${data.orders.length} orders from Shopify API`);
       
-      // Process orders in batches to avoid overwhelming the database
+      // Double check to ensure we only process OPEN unfulfilled or partially fulfilled orders
       const ordersToProcess = data.orders.filter(order => {
-        // Additional check to ensure we only process unfulfilled or partially fulfilled orders
+        // Check if order is cancelled or closed (should be filtered by API, but double check)
+        const isCancelled = order.cancelled_at !== null && order.cancelled_at !== undefined;
+        const isClosed = order.closed_at !== null && order.closed_at !== undefined;
+        const isArchived = order.status === 'archived';
+        
+        // Only include orders that are not cancelled/closed/archived AND (unfulfilled OR partially fulfilled)
         const fulfillmentStatus = order.fulfillment_status || 'unfulfilled';
-        return fulfillmentStatus === 'unfulfilled' || fulfillmentStatus === 'partial';
+        const isValidStatus = fulfillmentStatus === 'unfulfilled' || fulfillmentStatus === 'partial';
+        
+        return !isCancelled && !isClosed && !isArchived && isValidStatus;
       });
       
-      debug(`After filtering, ${ordersToProcess.length} orders match criteria`);
+      debug(`After filtering, ${ordersToProcess.length} open orders match criteria`);
       
       // Process orders in batches
       for (let i = 0; i < ordersToProcess.length; i += BATCH_SIZE) {
@@ -395,7 +403,7 @@ serve(async (req) => {
     responseData.success = true;
     responseData.imported.orders = totalOrdersImported;
     responseData.imported.lineItems = totalLineItemsImported;
-    responseData.message = `Successfully imported ${totalOrdersImported} orders with ${totalLineItemsImported} line items`;
+    responseData.message = `Successfully imported ${totalOrdersImported} open orders with ${totalLineItemsImported} line items`;
     
     debug("=== Import Complete ===");
     debug(responseData.message);
