@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { RefreshCw, Trash2, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface RefreshButtonProps {
@@ -14,6 +14,7 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
   const [lastClickTime, setLastClickTime] = useState<Date | null>(null);
+  const [timeoutActive, setTimeoutActive] = useState(false);
 
   // Reset the disabled state after 2 minutes to prevent permanent disabling on error
   useEffect(() => {
@@ -24,11 +25,14 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
       // Auto-enable after 2 minutes to prevent being permanently stuck
       timeout = setTimeout(() => {
         setIsButtonDisabled(false);
+        setTimeoutActive(false);
       }, 120000);
+      setTimeoutActive(true);
     } else {
       // Small delay before re-enabling button after operation completes
       timeout = setTimeout(() => {
         setIsButtonDisabled(false);
+        setTimeoutActive(false);
       }, 2000);
     }
     
@@ -49,13 +53,13 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
     if (isDeleting) return <Trash2 className="mr-2 h-4 w-4 animate-spin" />;
     if (isImporting) return <RefreshCw className="mr-2 h-4 w-4 animate-spin" />;
     if (isSuccess) return <CheckCircle2 className="mr-2 h-4 w-4 text-green-400" />;
-    if (errorCount > 0) return <AlertTriangle className="mr-2 h-4 w-4 text-amber-400" />;
+    if (errorCount > 0) return <AlertCircle className="mr-2 h-4 w-4 text-red-400" />;
     return <RefreshCw className="mr-2 h-4 w-4" />;
   };
 
   const getButtonClass = () => {
     if (isSuccess) return "w-full bg-green-700 hover:bg-green-800 text-white";
-    if (errorCount > 0) return "w-full bg-amber-700 hover:bg-amber-800 text-white";
+    if (errorCount > 0) return "w-full bg-red-600 hover:bg-red-700 text-white";
     return "w-full bg-red-600 hover:bg-red-700 text-white";
   };
 
@@ -88,9 +92,16 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
         {getButtonText()}
       </Button>
       
-      {errorCount > 1 && (
-        <p className="text-xs text-amber-500">
-          Multiple errors detected. Check the debug info section below for details.
+      {errorCount > 0 && (
+        <p className="text-xs text-red-400">
+          Error detected. Check the debug info section below for details.
+          {errorCount > 1 && " Multiple attempts failed."}
+        </p>
+      )}
+      
+      {timeoutActive && (
+        <p className="text-xs text-amber-400">
+          Operation in progress. Button will auto-enable in 2 minutes if the operation doesn't complete.
         </p>
       )}
       

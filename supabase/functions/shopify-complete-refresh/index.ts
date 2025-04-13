@@ -11,29 +11,29 @@ serve(async (req) => {
   console.log("=== Shopify Complete Refresh Function Started ===");
   console.log(`Request method: ${req.method}`);
   
-  // Handle CORS preflight requests
-  const corsResponse = handleCorsPreflightRequest(req);
-  if (corsResponse) return corsResponse;
-
-  // Initialize response data
-  const responseData: SyncResponse = {
-    success: false,
-    error: null,
-    imported: 0,
-    debugMessages: []
-  };
-
-  // Helper function to add debug messages
-  const debug = (message: string) => {
-    console.log(message);
-    responseData.debugMessages.push(message);
-  };
-
   try {
+    // Handle CORS preflight requests
+    const corsResponse = handleCorsPreflightRequest(req);
+    if (corsResponse) return corsResponse;
+
+    // Initialize response data
+    const responseData: SyncResponse = {
+      success: false,
+      error: null,
+      imported: 0,
+      debugMessages: []
+    };
+
+    // Helper function to add debug messages
+    const debug = (message: string) => {
+      console.log(message);
+      responseData.debugMessages.push(message);
+    };
+
     let body: CompleteRefreshRequestBody = {};
     try {
       body = await req.json();
-      debug(`Request body parsed successfully: ${JSON.stringify(body)}`);
+      debug(`Request body received: ${JSON.stringify(body)}`);
     } catch (err) {
       debug("Empty or invalid request body");
       throw new Error("Invalid request body");
@@ -44,7 +44,7 @@ serve(async (req) => {
     
     // Validate the API token
     if (!apiToken) {
-      debug("No API token provided");
+      debug("No API token provided in request");
       throw new Error("No API token provided");
     }
     
@@ -55,10 +55,13 @@ serve(async (req) => {
     };
     
     debug("Starting complete refresh operation (cleanup + import)");
+    debug(`Using filters: ${JSON.stringify(filters)}`);
     
     // STEP 1: First call the cleanup function
     debug("STEP 1: Calling database cleanup function...");
     try {
+      debug(`Invoking cleanup function with token length: ${apiToken.length} chars`);
+      
       const cleanupResponse = await supabase.functions.invoke('shopify-database-cleanup', {
         body: { 
           apiToken: apiToken
@@ -68,7 +71,7 @@ serve(async (req) => {
       debug(`Cleanup response status: ${cleanupResponse.status}`);
       
       if (cleanupResponse.error) {
-        debug(`Error invoking cleanup function: ${cleanupResponse.error.message || 'Unknown error'}`);
+        debug(`Error invoking cleanup function: ${JSON.stringify(cleanupResponse.error)}`);
         throw new Error(`Cleanup operation failed: ${cleanupResponse.error.message || 'Unknown error'}`);
       }
       
@@ -76,16 +79,20 @@ serve(async (req) => {
       debug(`Cleanup data received: ${JSON.stringify(cleanupData)}`);
       
       // Check if the cleanup was successful
-      if (!cleanupData.success) {
-        debug(`Cleanup operation returned success=false: ${cleanupData.error || 'No error message provided'}`);
-        throw new Error(`Cleanup operation failed: ${cleanupData.error || 'Unknown error'}`);
+      if (!cleanupData || !cleanupData.success) {
+        const errorMsg = cleanupData?.error || 'No error message provided';
+        debug(`Cleanup operation returned success=false: ${errorMsg}`);
+        throw new Error(`Cleanup operation failed: ${errorMsg}`);
       }
       
       debug("Database cleanup completed successfully");
       responseData.cleaned = true;
       
     } catch (cleanupError: any) {
-      debug(`Exception during cleanup: ${cleanupError.message || 'Unknown error'}`);
+      debug(`Exception during cleanup: ${cleanupError.message}`);
+      if (cleanupError.stack) {
+        debug(`Cleanup error stack: ${cleanupError.stack}`);
+      }
       throw new Error(`Cleanup operation failed unexpectedly: ${cleanupError.message || 'Unknown error'}`);
     }
     
@@ -94,6 +101,8 @@ serve(async (req) => {
     // Use a timeout to implement a 30-second limit for the import function
     let importTimedOut = false;
     try {
+      debug(`Invoking import function with token length: ${apiToken.length} chars`);
+      
       const importPromise = supabase.functions.invoke('shopify-sync-all', {
         body: { 
           apiToken: apiToken,
@@ -116,7 +125,7 @@ serve(async (req) => {
       debug(`Import response status: ${importResponse.status}`);
       
       if (importResponse.error) {
-        debug(`Error invoking import function: ${importResponse.error.message || 'Unknown error'}`);
+        debug(`Error invoking import function: ${JSON.stringify(importResponse.error)}`);
         throw new Error(`Import operation failed: ${importResponse.error.message || 'Unknown error'}`);
       }
       
@@ -124,9 +133,10 @@ serve(async (req) => {
       debug(`Import data received: ${JSON.stringify(importData)}`);
       
       // Check if the import was successful
-      if (!importData.success) {
-        debug(`Import operation returned success=false: ${importData.error || 'No error message provided'}`);
-        throw new Error(`Import operation failed: ${importData.error || 'Unknown error'}`);
+      if (!importData || !importData.success) {
+        const errorMsg = importData?.error || 'No error message provided';
+        debug(`Import operation returned success=false: ${errorMsg}`);
+        throw new Error(`Import operation failed: ${errorMsg}`);
       }
       
       debug(`Import completed successfully with ${importData.imported || 0} orders imported`);
@@ -140,13 +150,26 @@ serve(async (req) => {
         responseData.syncComplete = false;
         
         // Update the last sync time with a background operation indicator
-        await supabase.rpc("upsert_shopify_setting", {
-          setting_name_param: "shopify_import_status",
-          setting_value_param: "background"
-        });
+        try {
+          const upsertResult = await supabase.rpc("upsert_shopify_setting", {
+            setting_name_param: "shopify_import_status",
+            setting_value_param: "background"
+          });
+          
+          if (upsertResult.error) {
+            debug(`Error updating import status: ${upsertResult.error.message}`);
+          } else {
+            debug("Successfully updated import status to background");
+          }
+        } catch (err: any) {
+          debug(`Exception updating import status: ${err.message}`);
+        }
       } else {
         // Otherwise, it's a real error
-        debug(`Error during import: ${importError.message || 'Unknown error'}`);
+        debug(`Error during import: ${importError.message}`);
+        if (importError.stack) {
+          debug(`Import error stack: ${importError.stack}`);
+        }
         throw importError;
       }
     }
@@ -154,18 +177,18 @@ serve(async (req) => {
     // STEP 3: Update last sync time
     debug("STEP 3: Updating last sync time...");
     try {
-      const { error: updateError } = await supabase.rpc("upsert_shopify_setting", {
+      const upsertResult = await supabase.rpc("upsert_shopify_setting", {
         setting_name_param: "last_sync_time",
         setting_value_param: new Date().toISOString()
       });
 
-      if (updateError) {
-        debug(`Failed to update last sync time: ${updateError.message}`);
+      if (upsertResult.error) {
+        debug(`Failed to update last sync time: ${upsertResult.error.message}`);
       } else {
         debug("Successfully updated last sync time");
       }
     } catch (updateError: any) {
-      debug(`Exception updating last sync time: ${updateError.message || 'Unknown error'}`);
+      debug(`Exception updating last sync time: ${updateError.message}`);
       // Not throwing here as this is not critical to the operation success
     }
     
@@ -177,13 +200,25 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error: any) {
-    debug(`Error in complete refresh operation: ${error.message || 'Unknown error'}`);
+    console.error("=== COMPLETE REFRESH OPERATION FAILED ===");
+    console.error(`Error message: ${error.message}`);
+    
     if (error.stack) {
-      debug(`Error stack: ${error.stack}`);
+      console.error(`Stack trace: ${error.stack}`);
     }
     
-    responseData.error = error.message || 'Unknown error occurred';
-    responseData.success = false;
+    // For client debugging, create a detailed error response
+    const errorResponse: SyncResponse = {
+      success: false,
+      error: error.message || 'Unknown error occurred',
+      debugMessages: [
+        `Error in complete refresh operation: ${error.message || 'Unknown error'}`,
+        `Time of error: ${new Date().toISOString()}`,
+        `Request method: ${req.method}`,
+        `Request URL: ${req.url}`
+      ],
+      imported: 0
+    };
     
     // Make sure status is set to error in database
     try {
@@ -192,12 +227,13 @@ serve(async (req) => {
         setting_value_param: "error"
       });
     } catch (settingError) {
-      debug("Failed to update status to error");
+      console.error("Failed to update status to error");
     }
     
-    return new Response(JSON.stringify(responseData), {
+    // Return a proper error response with CORS headers
+    return new Response(JSON.stringify(errorResponse), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+      status: 400,  // Bad Request status for client errors
     });
   }
 });
