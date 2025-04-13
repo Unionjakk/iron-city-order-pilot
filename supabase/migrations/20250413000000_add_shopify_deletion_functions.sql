@@ -6,7 +6,7 @@
 CREATE OR REPLACE FUNCTION delete_all_shopify_order_items()
 RETURNS void AS $$
 BEGIN
-  DELETE FROM shopify_order_items;
+  DELETE FROM shopify_order_items WHERE order_id IS NOT NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -14,7 +14,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION delete_all_shopify_orders()
 RETURNS void AS $$
 BEGIN
-  DELETE FROM shopify_orders;
+  DELETE FROM shopify_orders WHERE id IS NOT NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
+import { RefreshCw, Trash2, CheckCircle2, AlertTriangle, AlertCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface RefreshButtonProps {
@@ -15,12 +15,18 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
   const [errorCount, setErrorCount] = useState(0);
   const [lastClickTime, setLastClickTime] = useState<Date | null>(null);
   const [timeoutActive, setTimeoutActive] = useState(false);
+  const [operationStartTime, setOperationStartTime] = useState<Date | null>(null);
+  const [elapsedTime, setElapsedTime] = useState<string>('0s');
 
   // Reset the disabled state after 2 minutes to prevent permanent disabling on error
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     
     if (isDeleting || isImporting) {
+      if (!operationStartTime) {
+        setOperationStartTime(new Date());
+      }
+      
       setIsButtonDisabled(true);
       // Auto-enable after 2 minutes to prevent being permanently stuck
       timeout = setTimeout(() => {
@@ -34,12 +40,40 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
         setIsButtonDisabled(false);
         setTimeoutActive(false);
       }, 2000);
+      
+      // Reset operation start time if operation completed
+      if (!isDeleting && !isImporting && operationStartTime) {
+        setOperationStartTime(null);
+      }
     }
     
     return () => {
       if (timeout) clearTimeout(timeout);
     };
-  }, [isDeleting, isImporting, isSuccess]);
+  }, [isDeleting, isImporting, isSuccess, operationStartTime]);
+
+  // Update elapsed time every second when an operation is in progress
+  useEffect(() => {
+    if (!operationStartTime) {
+      setElapsedTime('0s');
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      const now = new Date();
+      const elapsed = Math.floor((now.getTime() - operationStartTime.getTime()) / 1000);
+      
+      if (elapsed < 60) {
+        setElapsedTime(`${elapsed}s`);
+      } else {
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        setElapsedTime(`${minutes}m ${seconds}s`);
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [operationStartTime]);
 
   const getButtonText = () => {
     if (isDeleting) return "Deleting All Data...";
@@ -67,6 +101,7 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
     if (!isButtonDisabled) {
       const now = new Date();
       setLastClickTime(now);
+      setOperationStartTime(now);
       
       // Reset error count if this is a new operation (not a retry within 10 seconds)
       if (!lastClickTime || (now.getTime() - lastClickTime.getTime() > 10000)) {
@@ -90,6 +125,12 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
       >
         {getIcon()}
         {getButtonText()}
+        {(isDeleting || isImporting) && (
+          <span className="ml-2 text-xs bg-black/20 px-2 py-1 rounded-full flex items-center">
+            <Clock className="mr-1 h-3 w-3" />
+            {elapsedTime}
+          </span>
+        )}
       </Button>
       
       {errorCount > 0 && (

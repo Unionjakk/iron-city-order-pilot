@@ -76,29 +76,56 @@ serve(async (req) => {
           
           // STEP 1: Delete all order items first
           debug("Deleting all order items with service role...");
+          
+          // First try the RPC function with the WHERE clause
           const { data: itemsDeleteData, error: itemsDeleteError } = await supabase.rpc('delete_all_shopify_order_items');
           
           if (itemsDeleteError) {
-            debug(`Error deleting order items: ${itemsDeleteError.message}`);
+            debug(`Error deleting order items via RPC: ${itemsDeleteError.message}`);
             debug(`Error details: ${JSON.stringify(itemsDeleteError)}`);
-            throw new Error(`Could not delete order items: ${itemsDeleteError.message}`);
+            
+            // Try a direct delete as fallback
+            debug("Trying direct delete for order items as fallback...");
+            const { error: directDeleteError } = await supabase
+              .from('shopify_order_items')
+              .delete()
+              .gt('order_id', '00000000-0000-0000-0000-000000000000');
+              
+            if (directDeleteError) {
+              debug(`Direct delete for order items failed: ${directDeleteError.message}`);
+              throw new Error(`Could not delete order items: ${directDeleteError.message}`);
+            } else {
+              debug("Successfully deleted order items via direct query");
+            }
+          } else {
+            debug("Successfully deleted all order items via RPC");
           }
-          
-          debug(`Delete order items result: ${JSON.stringify(itemsDeleteData)}`);
-          debug("Successfully deleted all order items");
           
           // STEP 2: Then delete all orders
           debug("Deleting all orders with service role...");
+          
           const { data: ordersDeleteData, error: ordersDeleteError } = await supabase.rpc('delete_all_shopify_orders');
           
           if (ordersDeleteError) {
-            debug(`Error deleting orders: ${ordersDeleteError.message}`);
+            debug(`Error deleting orders via RPC: ${ordersDeleteError.message}`);
             debug(`Error details: ${JSON.stringify(ordersDeleteError)}`);
-            throw new Error(`Could not delete orders: ${ordersDeleteError.message}`);
+            
+            // Try a direct delete as fallback
+            debug("Trying direct delete for orders as fallback...");
+            const { error: directOrdersDeleteError } = await supabase
+              .from('shopify_orders')
+              .delete()
+              .gt('id', '00000000-0000-0000-0000-000000000000');
+              
+            if (directOrdersDeleteError) {
+              debug(`Direct delete for orders failed: ${directOrdersDeleteError.message}`);
+              throw new Error(`Could not delete orders: ${directOrdersDeleteError.message}`);
+            } else {
+              debug("Successfully deleted orders via direct query");
+            }
+          } else {
+            debug("Successfully deleted all orders via RPC");
           }
-          
-          debug(`Delete orders result: ${JSON.stringify(ordersDeleteData)}`);
-          debug("Successfully deleted all orders");
           
           // STEP 3: Verify both tables are empty
           const { count: orderCount, error: orderCountError } = await supabase

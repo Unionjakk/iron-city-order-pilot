@@ -1,7 +1,7 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, ArrowDownCircle, X } from "lucide-react";
 import { useState } from "react";
 
 interface DebugInfoPanelProps {
@@ -10,6 +10,7 @@ interface DebugInfoPanelProps {
 
 const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
   const [copied, setCopied] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
   
   // Filter for different message types to highlight them
   const errorMessages = debugInfo.filter(msg => 
@@ -17,7 +18,8 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
     msg.includes("error") || 
     msg.includes("failed") || 
     msg.includes("Failed") ||
-    msg.includes("Exception")
+    msg.includes("Exception") ||
+    msg.toLowerCase().includes("could not delete")
   );
   
   const warningMessages = debugInfo.filter(msg => 
@@ -33,6 +35,17 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
     msg.includes("completed successfully")
   );
   
+  // Filter for database operation messages
+  const databaseMessages = debugInfo.filter(msg =>
+    msg.includes("database") ||
+    msg.includes("Database") ||
+    msg.includes("DELETE") ||
+    msg.includes("delete") ||
+    msg.includes("orders remain") ||
+    msg.includes("Verified") ||
+    msg.toLowerCase().includes("order items")
+  );
+  
   // Handle copy all debug info to clipboard
   const handleCopyAll = () => {
     navigator.clipboard.writeText(debugInfo.join('\n'))
@@ -40,27 +53,6 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       });
-  };
-  
-  // Group messages by operation for better readability
-  const operationMessages = {
-    cleanup: debugInfo.filter(msg => 
-      msg.includes("cleanup") || 
-      msg.includes("Cleanup") || 
-      msg.includes("STEP 1")
-    ),
-    import: debugInfo.filter(msg => 
-      msg.includes("import") || 
-      msg.includes("Import") || 
-      msg.includes("STEP 2")
-    ),
-    other: debugInfo.filter(msg => 
-      !msg.includes("cleanup") && 
-      !msg.includes("Cleanup") && 
-      !msg.includes("import") && 
-      !msg.includes("Import") &&
-      !msg.includes("STEP")
-    )
   };
   
   // Helper function to render a message with appropriate styling
@@ -73,6 +65,8 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
       className += "text-yellow-400";
     } else if (message.includes("SUCCESS") || message.includes("success") || message.includes("completed successfully")) {
       className += "text-green-400";
+    } else if (message.includes("delete") || message.includes("DELETE") || message.includes("Deleting")) {
+      className += "text-blue-400";
     } else {
       className += "text-zinc-400";
     }
@@ -90,29 +84,51 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
     return <p key={`${type}-${index}`} className={className}>{message}</p>;
   };
   
-  // Show the most recent messages first (they're already in reverse chronological order)
   return (
     <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-md p-4">
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-sm font-medium text-zinc-300">Debug Information</h3>
-        <Button 
-          onClick={handleCopyAll} 
-          variant="outline" 
-          size="sm" 
-          className="h-7 text-xs"
-        >
-          {copied ? <Check className="h-3.5 w-3.5 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
-          {copied ? 'Copied!' : 'Copy All'}
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            onClick={() => setShowRaw(!showRaw)} 
+            variant="outline" 
+            size="sm" 
+            className="h-7 text-xs"
+          >
+            {showRaw ? <X className="h-3.5 w-3.5 mr-1" /> : <ArrowDownCircle className="h-3.5 w-3.5 mr-1" />}
+            {showRaw ? 'Hide Raw Logs' : 'Show Raw Logs'}
+          </Button>
+          <Button 
+            onClick={handleCopyAll} 
+            variant="outline" 
+            size="sm" 
+            className="h-7 text-xs"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+            {copied ? 'Copied!' : 'Copy All'}
+          </Button>
+        </div>
       </div>
       
       {/* Show error messages at the top if any exist */}
       {errorMessages.length > 0 && (
         <div className="mb-4">
           <h4 className="text-xs font-medium mb-1 text-red-400">Errors ({errorMessages.length}):</h4>
-          <ScrollArea className="h-[100px] rounded-md border border-red-900/30 bg-red-950/20 p-2">
+          <ScrollArea className="h-[120px] rounded-md border border-red-900/30 bg-red-950/20 p-2">
             <div className="space-y-1">
               {errorMessages.map((message, index) => renderMessage(message, index, 'error'))}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+      
+      {/* Show database messages if any exist */}
+      {databaseMessages.length > 0 && (
+        <div className="mb-4">
+          <h4 className="text-xs font-medium mb-1 text-blue-400">Database Operations ({databaseMessages.length}):</h4>
+          <ScrollArea className="h-[120px] rounded-md border border-blue-900/30 bg-blue-950/20 p-2">
+            <div className="space-y-1">
+              {databaseMessages.map((message, index) => renderMessage(message, index, 'database'))}
             </div>
           </ScrollArea>
         </div>
@@ -142,13 +158,29 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
         </div>
       )}
       
-      {/* Show all messages */}
-      <h4 className="text-xs font-medium mb-1 text-zinc-300">All Logs ({debugInfo.length}):</h4>
-      <ScrollArea className="h-[200px] rounded-md border border-zinc-700/50 bg-zinc-900/50 p-2">
-        <div className="space-y-1">
-          {debugInfo.map((message, index) => renderMessage(message, index, 'all'))}
+      {/* Show raw logs if toggled */}
+      {showRaw && (
+        <div className="mt-4">
+          <h4 className="text-xs font-medium mb-1 text-zinc-300">Raw Logs ({debugInfo.length}):</h4>
+          <ScrollArea className="h-[300px] rounded-md border border-zinc-700/50 bg-zinc-900/50 p-2 font-mono">
+            <pre className="text-xs text-zinc-400 whitespace-pre-wrap">
+              {debugInfo.join('\n')}
+            </pre>
+          </ScrollArea>
         </div>
-      </ScrollArea>
+      )}
+      
+      {/* Show filtered logs if not showing raw */}
+      {!showRaw && (
+        <div>
+          <h4 className="text-xs font-medium mb-1 text-zinc-300">All Logs ({debugInfo.length}):</h4>
+          <ScrollArea className="h-[200px] rounded-md border border-zinc-700/50 bg-zinc-900/50 p-2">
+            <div className="space-y-1">
+              {debugInfo.map((message, index) => renderMessage(message, index, 'all'))}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
     </div>
   );
 };
