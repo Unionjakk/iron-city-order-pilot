@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 import { ShopifyOrder, ShopifyLineItem } from "./types.ts";
 
@@ -252,7 +251,9 @@ export async function getShopifyApiEndpoint(debug: (message: string) => void) {
   return endpointData || "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json";
 }
 
-// Function to clean database completely - bypasses RLS with service role
+/**
+ * Clean database completely - bypasses RLS with service role
+ */
 export async function cleanDatabaseCompletely(debug: (message: string) => void) {
   try {
     debug("Performing complete database cleanup with service role privileges...");

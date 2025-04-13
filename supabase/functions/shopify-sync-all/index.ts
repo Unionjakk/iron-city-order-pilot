@@ -1,4 +1,3 @@
-
 // Supabase Edge Function
 // This function handles importing ONLY ACTIVE unfulfilled and partially fulfilled orders from Shopify
 // It does not import archived orders or fulfilled orders
@@ -249,7 +248,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: any) {
     debug(`Error in Shopify sync: ${error.message}`);
     responseData.error = error.message;
     
