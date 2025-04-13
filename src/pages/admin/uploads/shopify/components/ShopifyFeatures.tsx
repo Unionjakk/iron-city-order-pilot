@@ -8,6 +8,7 @@ import SingleLineItemLocationUpdate from '@/components/shopify/SingleLineItemLoc
 import LocationsExplorer from '@/components/shopify/LocationsExplorer';
 import BatchLocationUpdate from '@/components/shopify/BatchLocationUpdate';
 import { ShopifyOrder } from '@/components/shopify/OrdersTable';
+import { useState } from 'react';
 
 interface ShopifyFeaturesProps {
   lastImport: string | null;
@@ -26,6 +27,9 @@ const ShopifyFeatures = ({
   apiConnectionError,
   importedOrders
 }: ShopifyFeaturesProps) => {
+  // Add state to track if a refresh operation is in progress
+  const [isRefreshInProgress, setIsRefreshInProgress] = useState(false);
+
   return (
     <>
       {/* Import Controls */}
@@ -40,10 +44,13 @@ const ShopifyFeatures = ({
       {/* Complete Refresh Card */}
       <CompleteRefresh
         onRefreshComplete={fetchRecentOrders}
+        onRefreshStatusChange={setIsRefreshInProgress}
       />
       
       {/* Batch Location Update */}
-      <BatchLocationUpdate />
+      <BatchLocationUpdate 
+        disabled={isRefreshInProgress}
+      />
       
       {/* Location Info Import */}
       <LocationInfoImport

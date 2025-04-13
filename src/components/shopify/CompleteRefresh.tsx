@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -9,12 +8,14 @@ import DebugInfoPanel from './DebugInfoPanel';
 import { useCompleteRefresh } from './hooks/useCompleteRefresh';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { useEffect } from 'react';
 
 interface CompleteRefreshProps {
   onRefreshComplete: () => Promise<void>;
+  onRefreshStatusChange?: (isInProgress: boolean) => void;
 }
 
-const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
+const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteRefreshProps) => {
   const {
     isDeleting,
     isImporting,
@@ -25,8 +26,15 @@ const CompleteRefresh = ({ onRefreshComplete }: CompleteRefreshProps) => {
     handleCompleteRefresh,
     handleRecoveryImport,
     setError,
-    setIsRecoveryMode
+    setIsRecoveryMode,
+    resetState
   } = useCompleteRefresh({ onRefreshComplete });
+
+  useEffect(() => {
+    if (onRefreshStatusChange) {
+      onRefreshStatusChange(isDeleting || isImporting);
+    }
+  }, [isDeleting, isImporting, onRefreshStatusChange]);
 
   return (
     <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
