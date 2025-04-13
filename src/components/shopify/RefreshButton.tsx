@@ -1,16 +1,26 @@
 
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, CheckCircle2, AlertTriangle, AlertCircle, Clock } from "lucide-react";
+import { RefreshCw, Trash2, CheckCircle2, AlertTriangle, AlertCircle, Clock, BarChart3 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { OrderCounts } from "./hooks/useRefreshState";
 
 interface RefreshButtonProps {
   isDeleting: boolean;
   isImporting: boolean;
+  isBackgroundProcessing: boolean;
   isSuccess: boolean;
+  orderCounts?: OrderCounts;
   onClick: () => void;
 }
 
-const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshButtonProps) => {
+const RefreshButton = ({ 
+  isDeleting, 
+  isImporting, 
+  isBackgroundProcessing,
+  isSuccess, 
+  orderCounts,
+  onClick 
+}: RefreshButtonProps) => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
   const [lastClickTime, setLastClickTime] = useState<Date | null>(null);
@@ -23,7 +33,7 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     
-    if (isDeleting || isImporting) {
+    if (isDeleting || isImporting || isBackgroundProcessing) {
       if (!operationStartTime) {
         setOperationStartTime(new Date());
       }
@@ -32,16 +42,16 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
       
       // Show extended timeout warning after 60 seconds
       const extendedTimeoutWarning = setTimeout(() => {
-        if (isDeleting || isImporting) {
+        if (isDeleting || isImporting || isBackgroundProcessing) {
           setShowExtendedTimeoutWarning(true);
         }
       }, 60000);
       
-      // Auto-enable after 5 minutes to prevent being permanently stuck
+      // Auto-enable after 10 minutes to prevent being permanently stuck
       timeout = setTimeout(() => {
         setIsButtonDisabled(false);
         setTimeoutActive(false);
-      }, 300000);
+      }, 600000); // 10 minutes
       setTimeoutActive(true);
       
       return () => {
@@ -57,7 +67,7 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
       }, 2000);
       
       // Reset operation start time if operation completed
-      if (!isDeleting && !isImporting && operationStartTime) {
+      if (!isDeleting && !isImporting && !isBackgroundProcessing && operationStartTime) {
         setOperationStartTime(null);
       }
       
@@ -65,7 +75,7 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
         clearTimeout(timeout);
       };
     }
-  }, [isDeleting, isImporting, isSuccess, operationStartTime]);
+  }, [isDeleting, isImporting, isBackgroundProcessing, isSuccess, operationStartTime]);
 
   // Update elapsed time every second when an operation is in progress
   useEffect(() => {
@@ -98,6 +108,7 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
   const getButtonText = () => {
     if (isDeleting) return "Deleting All Data...";
     if (isImporting) return "Importing ONLY Active Unfulfilled & Partial Orders...";
+    if (isBackgroundProcessing) return "Import Processing in Background...";
     if (isSuccess) return "Import Completed Successfully";
     if (errorCount > 0) return "Error Occurred - Click to Try Again";
     return "Delete All & Import ONLY Active Unfulfilled Orders";
@@ -105,7 +116,7 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
 
   const getIcon = () => {
     if (isDeleting) return <Trash2 className="mr-2 h-4 w-4 animate-spin" />;
-    if (isImporting) return <RefreshCw className="mr-2 h-4 w-4 animate-spin" />;
+    if (isImporting || isBackgroundProcessing) return <RefreshCw className="mr-2 h-4 w-4 animate-spin" />;
     if (isSuccess) return <CheckCircle2 className="mr-2 h-4 w-4 text-green-400" />;
     if (errorCount > 0) return <AlertCircle className="mr-2 h-4 w-4 text-red-400" />;
     return <RefreshCw className="mr-2 h-4 w-4" />;
@@ -136,6 +147,12 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
     }
   };
 
+  // Check if we have a count mismatch
+  const hasCountMismatch = orderCounts && 
+                          orderCounts.expected > 0 && 
+                          orderCounts.imported > 0 && 
+                          orderCounts.expected !== orderCounts.imported;
+
   return (
     <div className="w-full space-y-2">
       <Button
@@ -146,7 +163,7 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
       >
         {getIcon()}
         {getButtonText()}
-        {(isDeleting || isImporting) && (
+        {(isDeleting || isImporting || isBackgroundProcessing) && (
           <span className="ml-2 text-xs bg-black/20 px-2 py-1 rounded-full flex items-center">
             <Clock className="mr-1 h-3 w-3" />
             {elapsedTime}
@@ -161,13 +178,20 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
         </p>
       )}
       
-      {timeoutActive && (
-        <p className="text-xs text-amber-400">
-          Operation in progress. Button will auto-enable in 5 minutes if the operation doesn't complete.
+      {hasCountMismatch && (
+        <p className="text-xs text-amber-400 flex items-center">
+          <BarChart3 className="mr-1 h-3 w-3" />
+          Import count mismatch: Expected {orderCounts.expected}, imported {orderCounts.imported}
         </p>
       )}
       
-      {showExtendedTimeoutWarning && (isDeleting || isImporting) && (
+      {timeoutActive && (
+        <p className="text-xs text-amber-400">
+          Operation in progress. Button will auto-enable in 10 minutes if the operation doesn't complete.
+        </p>
+      )}
+      
+      {showExtendedTimeoutWarning && (isDeleting || isImporting || isBackgroundProcessing) && (
         <p className="text-xs text-amber-400 font-semibold">
           This operation is taking longer than expected but is still running in the background. 
           Do not close this page or start another operation.
@@ -180,9 +204,14 @@ const RefreshButton = ({ isDeleting, isImporting, isSuccess, onClick }: RefreshB
         </p>
       )}
       
-      {isImporting && (
+      {(isImporting || isBackgroundProcessing) && (
         <p className="text-xs text-zinc-400">
           Importing orders may take several minutes for large datasets. Import continues in the background even if this page is closed.
+          {orderCounts && orderCounts.expected > 0 && (
+            <span className="ml-1">
+              Importing {orderCounts.expected} orders ({orderCounts.unfulfilled} unfulfilled, {orderCounts.partiallyFulfilled} partially fulfilled).
+            </span>
+          )}
         </p>
       )}
     </div>

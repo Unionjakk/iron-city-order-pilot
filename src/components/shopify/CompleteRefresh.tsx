@@ -19,9 +19,10 @@ const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteR
     isDeleting,
     isImporting,
     isSuccess,
+    isBackgroundProcessing,
     debugInfo,
     error,
-    isBackgroundProcessing,
+    orderCounts,
     handleCompleteRefresh,
     resetState
   } = useCompleteRefresh({ onRefreshComplete });
@@ -33,6 +34,11 @@ const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteR
       onRefreshStatusChange(isRefreshing);
     }
   }, [isDeleting, isImporting, isBackgroundProcessing, onRefreshStatusChange]);
+
+  // Show count mismatch warning if appropriate
+  const hasCountMismatch = orderCounts.expected > 0 && 
+                          orderCounts.imported > 0 && 
+                          orderCounts.expected !== orderCounts.imported;
   
   return (
     <Card className="bg-zinc-900">
@@ -51,6 +57,24 @@ const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteR
             <AlertDescription>
               The import operation is taking longer than expected and is continuing to run in the background.
               You can leave this page and check back later. Do not start another import until this completes.
+              {orderCounts.expected > 0 && (
+                <div className="mt-2 text-sm">
+                  <span className="font-medium">Expected to import:</span> {orderCounts.expected} orders 
+                  ({orderCounts.unfulfilled} unfulfilled, {orderCounts.partiallyFulfilled} partially fulfilled)
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {hasCountMismatch && (
+          <Alert variant="warning" className="bg-amber-800/20 border-amber-500/50">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTitle>Import Count Mismatch</AlertTitle>
+            <AlertDescription>
+              Expected to import {orderCounts.expected} orders but only imported {orderCounts.imported}.
+              There may be {orderCounts.expected - orderCounts.imported} orders missing.
+              Check the debug info for more details.
             </AlertDescription>
           </Alert>
         )}
@@ -78,6 +102,31 @@ const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteR
           </AlertDescription>
         </Alert>
         
+        {/* Order Count Information */}
+        {(isSuccess || isBackgroundProcessing) && orderCounts.expected > 0 && (
+          <div className="bg-zinc-800/50 rounded p-3 text-sm">
+            <h4 className="font-medium text-zinc-300 mb-1">Import Statistics</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-zinc-400">Expected Total:</span>
+                <span className="ml-2 text-zinc-200">{orderCounts.expected}</span>
+              </div>
+              <div>
+                <span className="text-zinc-400">Imported:</span>
+                <span className="ml-2 text-zinc-200">{orderCounts.imported}</span>
+              </div>
+              <div>
+                <span className="text-zinc-400">Unfulfilled Orders:</span>
+                <span className="ml-2 text-zinc-200">{orderCounts.unfulfilled}</span>
+              </div>
+              <div>
+                <span className="text-zinc-400">Partially Fulfilled:</span>
+                <span className="ml-2 text-zinc-200">{orderCounts.partiallyFulfilled}</span>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Toggle Debug Info Button */}
         <button 
           onClick={() => setShowDebugInfo(!showDebugInfo)}
@@ -94,8 +143,10 @@ const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteR
       <CardFooter>
         <RefreshButton 
           isDeleting={isDeleting} 
-          isImporting={isImporting || isBackgroundProcessing}
-          isSuccess={isSuccess} 
+          isImporting={isImporting} 
+          isBackgroundProcessing={isBackgroundProcessing}
+          isSuccess={isSuccess}
+          orderCounts={orderCounts}
           onClick={handleCompleteRefresh} 
         />
       </CardFooter>

@@ -21,6 +21,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
     isSuccess, 
     debugInfo,
     error,
+    orderCounts,
     addDebugMessage,
     setError,
     resetState
@@ -34,6 +35,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
     debugInfo,
     error,
     isBackgroundProcessing,
+    orderCounts,
     handleCompleteRefresh,
     addDebugMessage,
     setError,

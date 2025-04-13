@@ -7,6 +7,12 @@ export interface SyncResponse {
   cleaned?: boolean;
   syncStarted?: boolean;
   syncComplete?: boolean;
+  orderCounts?: {
+    unfulfilled: number;
+    partiallyFulfilled: number;
+    expected: number;
+    imported?: number;
+  };
 }
 
 export const corsHeaders = {
@@ -16,6 +22,7 @@ export const corsHeaders = {
 
 export interface CompleteRefreshRequestBody {
   apiToken?: string;
+  operation?: string; 
   filters?: {
     status?: string;
     fulfillment_status?: string;
