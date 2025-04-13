@@ -18,6 +18,7 @@ import NotFound from "./pages/NotFound";
 import UsersPage from "./pages/users/UsersPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminFlowChart from "./pages/admin/settings/AdminFlowChart";
 import UploadsIndex from "./pages/admin/uploads/UploadsIndex";
 import PinnacleUpload from "./pages/admin/uploads/PinnacleUpload";
 import HarleyUpload from "./pages/admin/uploads/HarleyUpload";
@@ -100,6 +101,7 @@ function App() {
                 {/* Admin Routes */}
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
+                <Route path="/admin/settings/adminflowchart" element={<AdminFlowChart />} />
                 <Route path="/admin/uploads" element={<UploadsIndex />} />
                 <Route path="/admin/uploads/pinnacle" element={<PinnacleUpload />} />
                 

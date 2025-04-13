@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Settings, Edit, Trash2, RefreshCw, Check, Plus, AlertCircle, FileText } from 'lucide-react';
+import { Settings, Edit, Trash2, RefreshCw, Check, Plus, AlertCircle, FileText, ActivitySquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Link } from 'react-router-dom';
 
 // Define types for our form and data
 type SkuCorrection = {
@@ -245,6 +246,32 @@ const AdminSettings = () => {
         <h1 className="text-2xl font-bold text-orange-500">Admin Settings</h1>
       </div>
       <p className="text-orange-400/80">Configure system preferences and application settings</p>
+      
+      {/* Admin Tools */}
+      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-orange-500">Admin Tools</CardTitle>
+          <CardDescription className="text-zinc-400">
+            Special administrative tools and utilities
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link to="/admin/settings/adminflowchart">
+              <Button 
+                variant="outline" 
+                className="w-full h-auto p-4 border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 text-orange-400"
+              >
+                <div className="flex flex-col items-center gap-2 py-2">
+                  <ActivitySquare className="h-10 w-10" />
+                  <span className="text-base font-medium">Action Flow Chart</span>
+                  <span className="text-xs text-zinc-400">View order processing workflow</span>
+                </div>
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
       
       {/* SKU Corrections Card */}
       <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
