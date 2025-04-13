@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 import { ShopifyOrder, ShopifyLineItem } from "./types.ts";
 
@@ -117,8 +118,8 @@ export async function importOrder(
         };
       });
 
-      // Insert in small batches to avoid potential size limits
-      const batchSize = 20;
+      // Insert in smaller batches to avoid potential size limits
+      const batchSize = 10; // Reduce batch size to avoid timeouts
       for (let i = 0; i < lineItemsToInsert.length; i += batchSize) {
         const batch = lineItemsToInsert.slice(i, i + batchSize);
         
@@ -143,6 +144,9 @@ export async function importOrder(
         } else {
           debug(`Successfully inserted ${batch.length} line items for order ${orderId} (batch ${i/batchSize + 1})`);
         }
+        
+        // Add a small delay between batches to avoid database contention
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     } else {
       debug(`Warning: Order ${orderId} (${orderNumber}) has no line items or invalid line_items format`);

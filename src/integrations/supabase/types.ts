@@ -367,15 +367,7 @@ export type Database = {
           status?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "fk_iron_city_order_progress_shopify_order"
-            columns: ["shopify_order_id"]
-            isOneToOne: false
-            referencedRelation: "shopify_orders"
-            referencedColumns: ["shopify_order_id"]
-          },
-        ]
+        Relationships: []
       }
       pinnacle_sku_corrections: {
         Row: {

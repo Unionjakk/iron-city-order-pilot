@@ -32,7 +32,15 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       
       // Import active unfulfilled/partially fulfilled orders from Shopify
       addDebugMessage("Importing ONLY active unfulfilled and partially fulfilled orders from Shopify...");
-      const importResult = await importAllOrders(addDebugMessage);
+      
+      // Set a longer timeout for recovery mode imports (5 minutes)
+      const importPromise = importAllOrders(addDebugMessage);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Import operation timed out after 5 minutes")), 300000);
+      });
+      
+      // Use Promise.race to implement a timeout
+      const importResult = await Promise.race([importPromise, timeoutPromise]) as any;
       
       // Update last sync time
       addDebugMessage("Updating last sync time...");
@@ -52,8 +60,15 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       await onRefreshComplete();
     } catch (error: any) {
       console.error("Error during recovery import:", error);
-      setError(error.message || "An unknown error occurred during recovery import");
-      addDebugMessage(`ERROR: ${error.message || "Unknown error"}`);
+      
+      // Check for timeout errors specifically
+      if (error.message && error.message.includes("timed out")) {
+        setError("The import operation timed out. The Shopify API may be slow or there may be too many orders to process at once. Please try again later or contact support.");
+        addDebugMessage(`ERROR: Import operation timed out`);
+      } else {
+        setError(error.message || "An unknown error occurred during recovery import");
+        addDebugMessage(`ERROR: ${error.message || "Unknown error"}`);
+      }
       
       toast({
         title: "Recovery Import Failed",
@@ -113,7 +128,15 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       setIsDeleting(false);
       setIsImporting(true);
       addDebugMessage("Step 2: Importing ONLY active unfulfilled and partially fulfilled orders from Shopify...");
-      const importResult = await importAllOrders(addDebugMessage);
+      
+      // Set a 3-minute timeout for the import operation
+      const importPromise = importAllOrders(addDebugMessage);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Import operation timed out after 3 minutes")), 180000);
+      });
+      
+      // Use Promise.race to implement a timeout
+      const importResult = await Promise.race([importPromise, timeoutPromise]) as any;
       
       // Step 3: Update last sync time
       addDebugMessage("Step 3: Updating last sync time...");
@@ -132,8 +155,15 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
       await onRefreshComplete();
     } catch (error: any) {
       console.error("Error during complete refresh:", error);
-      setError(error.message || "An unknown error occurred");
-      addDebugMessage(`ERROR: ${error.message || "Unknown error"}`);
+      
+      // Check for timeout errors specifically
+      if (error.message && error.message.includes("timed out")) {
+        setError("The import operation timed out. The Shopify API may be slow or there may be too many orders to process at once. You can try 'Enter Recovery Mode' to import the orders without deleting first.");
+        addDebugMessage(`ERROR: Import operation timed out`);
+      } else {
+        setError(error.message || "An unknown error occurred");
+        addDebugMessage(`ERROR: ${error.message || "Unknown error"}`);
+      }
       
       toast({
         title: "Refresh Failed",
