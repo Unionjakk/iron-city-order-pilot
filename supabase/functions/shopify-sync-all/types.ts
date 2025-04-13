@@ -1,54 +1,70 @@
 
-// CORS headers for browser requests
+/**
+ * Type definitions for Shopify sync functions
+ */
+
+// CORS headers for API responses
 export const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// API request body for Shopify sync
+// Request body for API calls
 export interface RequestBody {
   apiToken?: string;
-  autoImport?: boolean;
-  timestamp?: number;
 }
 
-// API response body for Shopify sync
+// Extended request body with operation type
+export interface ExtendedRequestBody extends RequestBody {
+  operation?: "import" | "clean";
+}
+
+// Response for sync operations
 export interface SyncResponse {
   success: boolean;
   error: string | null;
   imported: number;
   debugMessages: string[];
+  cleaned?: boolean;
 }
 
-// Shopify API order interface
+// Shopify order structure
 export interface ShopifyOrder {
   id: string;
-  name: string;
-  order_number: string;
-  created_at: string;
+  name?: string;
+  order_number?: string;
+  created_at?: string;
+  updated_at?: string;
+  cancelled_at?: string | null;
+  closed_at?: string | null;
+  processed_at?: string | null;
   customer?: {
+    id?: string;
+    email?: string;
     first_name?: string;
     last_name?: string;
-    email?: string;
     phone?: string;
   };
   line_items?: ShopifyLineItem[];
   shipping_address?: any;
+  billing_address?: any;
+  financial_status?: string;
   fulfillment_status?: string | null;
-  note?: string | null;
-  line_item_count?: number;
+  note?: string;
+  [key: string]: any;
 }
 
-// Shopify API line item interface with location data
+// Shopify line item structure
 export interface ShopifyLineItem {
-  id?: string;
+  id: string;
   title?: string;
+  variant_id?: string;
+  product_id?: string;
+  sku?: string;
   quantity?: number;
   price?: string;
-  sku?: string;
-  product_id?: string;
-  variant_id?: string;
-  properties?: any;
-  location_id?: string;
-  location_name?: string;
+  location_id?: string | null;
+  location_name?: string | null;
+  properties?: any[];
+  [key: string]: any;
 }
