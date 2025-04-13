@@ -1,96 +1,104 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, RefreshCw, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import ImportErrorAlert from './ImportErrorAlert';
-import RefreshButton from './RefreshButton';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle, Info } from "lucide-react";
+import { useState, useEffect } from 'react';
 import DebugInfoPanel from './DebugInfoPanel';
+import RefreshButton from './RefreshButton';
 import { useCompleteRefresh } from './hooks/useCompleteRefresh';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { useEffect } from 'react';
 
 interface CompleteRefreshProps {
   onRefreshComplete: () => Promise<void>;
-  onRefreshStatusChange?: (isInProgress: boolean) => void;
+  onRefreshStatusChange?: (isRefreshing: boolean) => void;
 }
 
 const CompleteRefresh = ({ onRefreshComplete, onRefreshStatusChange }: CompleteRefreshProps) => {
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
+  
   const {
     isDeleting,
     isImporting,
     isSuccess,
     debugInfo,
     error,
+    isBackgroundProcessing,
     handleCompleteRefresh,
-    resetState,
-    setError
+    resetState
   } = useCompleteRefresh({ onRefreshComplete });
 
+  // Notify parent when refresh status changes
   useEffect(() => {
+    const isRefreshing = isDeleting || isImporting || isBackgroundProcessing;
     if (onRefreshStatusChange) {
-      onRefreshStatusChange(isDeleting || isImporting);
+      onRefreshStatusChange(isRefreshing);
     }
-  }, [isDeleting, isImporting, onRefreshStatusChange]);
-
+  }, [isDeleting, isImporting, isBackgroundProcessing, onRefreshStatusChange]);
+  
   return (
-    <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
+    <Card className="bg-zinc-900">
       <CardHeader>
-        <CardTitle className="text-red-500">Complete Data Refresh</CardTitle>
-        <CardDescription className="text-zinc-400">
-          Delete all existing orders and import unfulfilled/partial orders from Shopify
+        <CardTitle className="text-xl">Complete Data Refresh</CardTitle>
+        <CardDescription>
+          Complete data refresh will delete ALL existing Shopify orders and import 
+          ONLY <span className="text-yellow-500">ACTIVE UNFULFILLED and PARTIALLY FULFILLED</span> orders.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Alert className="bg-red-900/20 border-red-500/50">
-          <AlertTriangle className="h-5 w-5 text-red-500" />
-          <AlertTitle className="text-red-400">Warning: Destructive Operation</AlertTitle>
-          <AlertDescription className="text-zinc-300">
-            This will delete ALL current orders and import unfulfilled and partially fulfilled orders from Shopify. 
-            This is useful if your local data is out of sync with Shopify. 
-            This operation cannot be undone.
-          </AlertDescription>
-        </Alert>
-        
-        <RefreshButton 
-          isDeleting={isDeleting}
-          isImporting={isImporting}
-          isSuccess={isSuccess}
-          onClick={handleCompleteRefresh}
-        />
-        
-        {(isDeleting || isImporting) && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-zinc-400">
-                {isDeleting ? "Deleting data..." : "Importing unfulfilled orders..."}
-              </span>
-            </div>
-            <Progress className="h-2" value={isDeleting ? 25 : (isSuccess ? 100 : 75)} />
-          </div>
+        {isBackgroundProcessing && (
+          <Alert variant="warning" className="bg-amber-800/20 border-amber-500/50">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTitle>Import Processing in Background</AlertTitle>
+            <AlertDescription>
+              The import operation is taking longer than expected and is continuing to run in the background.
+              You can leave this page and check back later. Do not start another import until this completes.
+            </AlertDescription>
+          </Alert>
         )}
         
         {error && (
-          <ImportErrorAlert 
-            error={error} 
-            onDismiss={() => setError(null)}
-          />
+          <Alert variant="destructive" className="bg-red-800/20 border-red-500/50">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Import Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
         
-        <Tabs defaultValue="live" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="live">Live Log</TabsTrigger>
-            <TabsTrigger value="debug">Debug Details</TabsTrigger>
-          </TabsList>
-          <TabsContent value="live" className="pt-2">
-            <DebugInfoPanel debugInfo={debugInfo.slice(0, 10)} />
-          </TabsContent>
-          <TabsContent value="debug" className="pt-2">
-            <DebugInfoPanel debugInfo={debugInfo} />
-          </TabsContent>
-        </Tabs>
+        <Alert className="bg-zinc-800/50 border-zinc-700/50">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <p className="text-sm text-zinc-300">
+              This operation will <span className="text-red-400 font-bold">delete ALL existing Shopify orders</span> from the database 
+              and import <span className="text-yellow-500 font-bold">ONLY ACTIVE UNFULFILLED and PARTIALLY FULFILLED</span> orders.
+              This is a complete refresh and should only be used when needed.
+            </p>
+            <p className="text-xs text-zinc-400 mt-1">
+              Note: Only unfulfilled and partially fulfilled orders that are not cancelled 
+              or archived will be imported. This helps maintain a clean database.
+            </p>
+          </AlertDescription>
+        </Alert>
+        
+        {/* Toggle Debug Info Button */}
+        <button 
+          onClick={() => setShowDebugInfo(!showDebugInfo)}
+          className="text-xs text-zinc-500 hover:text-zinc-300 underline"
+        >
+          {showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
+        </button>
+        
+        {/* Debug Info Panel - only shown when toggled */}
+        {showDebugInfo && debugInfo.length > 0 && (
+          <DebugInfoPanel debugInfo={debugInfo} />
+        )}
       </CardContent>
+      <CardFooter>
+        <RefreshButton 
+          isDeleting={isDeleting} 
+          isImporting={isImporting || isBackgroundProcessing}
+          isSuccess={isSuccess} 
+          onClick={handleCompleteRefresh} 
+        />
+      </CardFooter>
     </Card>
   );
 };

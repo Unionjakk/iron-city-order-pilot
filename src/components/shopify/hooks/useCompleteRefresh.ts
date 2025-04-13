@@ -12,6 +12,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
   
   // Use specialized operation hooks
   const { handleCompleteRefresh } = useCompleteRefreshOperation(refreshState);
+  const { isBackgroundProcessing } = useImportOperation(refreshState);
 
   // Extract needed state values
   const {
@@ -32,6 +33,7 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
     isSuccess,
     debugInfo,
     error,
+    isBackgroundProcessing,
     handleCompleteRefresh,
     addDebugMessage,
     setError,

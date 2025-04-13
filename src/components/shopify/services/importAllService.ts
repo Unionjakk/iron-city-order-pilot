@@ -15,6 +15,7 @@ export const importAllOrders = async (addDebugMessage: (message: string) => void
     }
     
     addDebugMessage("Calling shopify-sync-all edge function...");
+    addDebugMessage("IMPORTANT: This will ONLY import ACTIVE UNFULFILLED and PARTIALLY FULFILLED orders");
     
     // Add a timeout to the API call to prevent hanging indefinitely
     const timeoutPromise = new Promise((_, reject) => {
@@ -29,11 +30,15 @@ export const importAllOrders = async (addDebugMessage: (message: string) => void
     
     while (attempt < maxRetries) {
       try {
-        // Actual API call
+        // Actual API call - explicitly specify we want only active unfulfilled and partially fulfilled orders
         const apiCallPromise = supabase.functions.invoke('shopify-sync-all', {
           body: { 
             apiToken: token,
-            operation: "import" // Specify operation type
+            operation: "import", // Specify operation type
+            filters: {
+              status: "open", // Only active orders
+              fulfillment_status: "unfulfilled,partial" // Only unfulfilled or partial
+            }
           }
         });
         
@@ -48,7 +53,7 @@ export const importAllOrders = async (addDebugMessage: (message: string) => void
         if (!response.success) {
           addDebugMessage(`Warning: API returned success=false, message: ${response.error || 'No error message provided'}`);
         } else {
-          addDebugMessage(`Successfully imported ${response.imported || 0} active unfulfilled orders`);
+          addDebugMessage(`Successfully imported ${response.imported || 0} active unfulfilled and partially fulfilled orders`);
         }
         
         return response;

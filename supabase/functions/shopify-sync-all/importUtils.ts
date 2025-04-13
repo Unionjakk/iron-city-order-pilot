@@ -1,4 +1,3 @@
-
 import { ShopifyOrder } from "./types.ts";
 import { fetchAllShopifyOrdersWithPagination, fetchNextPage } from "./shopifyApi.ts";
 import { withTimeout, IMPORT_TIMEOUT_MS, MAX_RETRIES, calculateBackoffDelay } from "./timeoutUtils.ts";
@@ -183,15 +182,19 @@ export async function processOrdersInBatches(
 /**
  * Build filtered API endpoint URL for Shopify
  */
-export function buildFilteredShopifyEndpoint(baseEndpoint: string, debug: (message: string) => void): string {
+export function buildFilteredShopifyEndpoint(
+  baseEndpoint: string, 
+  filters: Record<string, string>,
+  debug: (message: string) => void
+): string {
   debug(`Base Shopify API endpoint: ${baseEndpoint}`);
   
   // Modify the endpoint URL to specifically filter for open orders with unfulfilled or partial status
   const url = new URL(baseEndpoint);
   
-  // Add specific filters for status and fulfillment_status
-  url.searchParams.set('status', 'open'); // Only get open (active) orders
-  url.searchParams.set('fulfillment_status', 'partial,unfulfilled'); // Only unfulfilled or partially fulfilled
+  // Add specific filters from request or use defaults
+  url.searchParams.set('status', filters.status || 'open'); // Only get open (active) orders
+  url.searchParams.set('fulfillment_status', filters.fulfillment_status || 'unfulfilled,partial'); // Only unfulfilled or partially fulfilled
   url.searchParams.set('limit', '50'); // Reduce page size to avoid timeouts
   
   const filteredApiEndpoint = url.toString();

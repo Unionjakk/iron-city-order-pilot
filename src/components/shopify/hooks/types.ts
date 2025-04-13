@@ -30,6 +30,7 @@ export type UseCompleteRefreshReturn = {
   isSuccess: boolean;
   debugInfo: string[];
   error: string | null;
+  isBackgroundProcessing?: boolean;
   handleCompleteRefresh: () => Promise<void>;
   addDebugMessage: (message: string) => void;
   setError: (error: string | null) => void;

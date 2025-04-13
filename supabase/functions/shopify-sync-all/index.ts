@@ -16,7 +16,8 @@ import {
   importOrder, 
   updateLastSyncTime,
   getShopifyApiEndpoint,
-  cleanDatabaseCompletely
+  cleanDatabaseCompletely,
+  setImportStatus
 } from "./database.ts";
 
 serve(async (req) => {
@@ -64,9 +65,18 @@ serve(async (req) => {
     const operation = body.operation || "import";
     debug(`Operation type: ${operation}`);
     
+    // Get filters from request or use defaults
+    const filters = body.filters || {
+      status: "open", 
+      fulfillment_status: "unfulfilled,partial"
+    };
+    debug(`Using filters: ${JSON.stringify(filters)}`);
+    
     // Clean database operation
     if (operation === "clean") {
       debug("Starting CLEAN operation to delete all Shopify orders and items");
+      await setImportStatus('deleting', debug);
+      
       try {
         // Add proper error handling and retry logic for the database cleanup
         let cleanupSuccess = false;
@@ -101,6 +111,7 @@ serve(async (req) => {
         
         responseData.success = true;
         responseData.cleaned = cleanupSuccess;
+        await setImportStatus('idle', debug);
         
         return new Response(JSON.stringify(responseData), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -108,6 +119,7 @@ serve(async (req) => {
         });
       } catch (error) {
         debug(`Error during database cleanup: ${error.message}`);
+        await setImportStatus('error', debug);
         
         // Return specific error response with 400 status
         responseData.error = `Database cleanup failed: ${error.message}`;
@@ -121,14 +133,16 @@ serve(async (req) => {
     // Standard import operation
     debug("Starting import of ACTIVE UNFULFILLED and PARTIALLY FULFILLED orders from Shopify");
     debug("NOTE: This function does NOT import archived orders or fulfilled orders");
+    
+    await setImportStatus('importing', debug);
 
     try {
       // Get API endpoint from database
       const apiEndpoint = await getShopifyApiEndpoint(debug);
-      const filteredApiEndpoint = buildFilteredShopifyEndpoint(apiEndpoint, debug);
+      const filteredApiEndpoint = buildFilteredShopifyEndpoint(apiEndpoint, filters, debug);
 
       // STEP 1: Fetch orders from Shopify with proper pagination and filtering
-      debug("Fetching orders from Shopify with status=open and fulfillment_status=partial,unfulfilled");
+      debug(`Fetching orders from Shopify with status=${filters.status} and fulfillment_status=${filters.fulfillment_status}`);
       const shopifyOrders = await importOrdersFromShopify(apiToken, filteredApiEndpoint, debug);
       
       // Double-check orders to ensure they match our criteria
@@ -151,11 +165,13 @@ serve(async (req) => {
       );
     } catch (error) {
       debug(`Error in Shopify API operations: ${error.message}`);
+      await setImportStatus('error', debug);
       throw error;
     }
 
     // STEP 3: Update last sync time in settings
     await updateLastSyncTime(debug);
+    await setImportStatus('idle', debug);
     
     responseData.success = true;
     debug("Shopify sync completed successfully");
@@ -168,6 +184,9 @@ serve(async (req) => {
   } catch (error: any) {
     debug(`Error in Shopify sync: ${error.message}`);
     responseData.error = error.message;
+    
+    // Make sure status is set to error in database
+    await setImportStatus('error', debug);
     
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
