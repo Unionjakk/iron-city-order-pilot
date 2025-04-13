@@ -21,6 +21,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import UploadsIndex from "./pages/admin/uploads/UploadsIndex";
 import PinnacleUpload from "./pages/admin/uploads/PinnacleUpload";
 import HarleyUpload from "./pages/admin/uploads/HarleyUpload";
+import HarleyUploadDashboard from "./pages/admin/uploads/harley/HarleyUploadDashboard";
 import OpenOrdersUpload from "./pages/admin/uploads/harley/OpenOrdersUpload";
 import OrderLinesUpload from "./pages/admin/uploads/harley/OrderLinesUpload";
 import OpenLinesCheckIn from "./pages/admin/uploads/harley/OpenLinesCheckIn";
@@ -62,6 +63,9 @@ function App() {
             <Route path="/visualiser" element={<Navigate to="/actions/visualiser" replace />} />
             <Route path="/actions/toorder" element={<Navigate to="/actions/to-order" replace />} />
             
+            {/* Redirect /admin/uploads/harley to the dashboard */}
+            <Route path="/admin/uploads/harley" element={<Navigate to="/admin/uploads/harley/dashboard" replace />} />
+            
             {/* Add ProtectedRoute wrapper for all pages needing authentication */}
             <Route element={<ProtectedRoute />}>
               {/* Layout with NavBar for all authenticated routes */}
@@ -98,7 +102,9 @@ function App() {
                 <Route path="/admin/settings" element={<AdminSettings />} />
                 <Route path="/admin/uploads" element={<UploadsIndex />} />
                 <Route path="/admin/uploads/pinnacle" element={<PinnacleUpload />} />
-                <Route path="/admin/uploads/harley" element={<HarleyUpload />} />
+                
+                {/* Harley Davidson Upload Routes */}
+                <Route path="/admin/uploads/harley/dashboard" element={<HarleyUploadDashboard />} />
                 <Route path="/admin/uploads/harley/open-orders" element={<OpenOrdersUpload />} />
                 <Route path="/admin/uploads/harley/order-lines" element={<OrderLinesUpload />} />
                 <Route path="/admin/uploads/harley/open-lines-check-in" element={<OpenLinesCheckIn />} />
