@@ -8,6 +8,7 @@ import SingleLineItemLocationUpdate from '@/components/shopify/SingleLineItemLoc
 import LocationsExplorer from '@/components/shopify/LocationsExplorer';
 import BatchLocationUpdate from '@/components/shopify/BatchLocationUpdate';
 import SingleOrderImport from '@/components/shopify/SingleOrderImport';
+import AllOpenOrdersImport from '@/components/shopify/AllOpenOrdersImport';
 import { ShopifyOrder } from '@/components/shopify/OrdersTable';
 import { useState } from 'react';
 
@@ -44,6 +45,11 @@ const ShopifyFeatures = ({
       
       {/* Single Order Import */}
       <SingleOrderImport
+        onImportComplete={fetchRecentOrders}
+      />
+      
+      {/* All Open Orders Import - NEW COMPONENT */}
+      <AllOpenOrdersImport
         onImportComplete={fetchRecentOrders}
       />
       
