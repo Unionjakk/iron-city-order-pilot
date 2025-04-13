@@ -11,6 +11,7 @@ export interface ExtendedRequestBody {
   operation?: string;
   filters?: Record<string, string>;
   debug?: boolean;
+  trackProgress?: boolean;
 }
 
 export interface ShopifyOrder {
@@ -29,9 +30,19 @@ export interface ShopifyOrder {
   created_at?: string;
 }
 
+export interface ImportProgress {
+  ordersTotal: number;
+  ordersImported: number;
+  orderItemsTotal: number;
+  orderItemsImported: number;
+  status: 'idle' | 'importing' | 'complete' | 'error';
+  lastUpdated: string;
+}
+
 export interface SyncResponse {
   success: boolean;
   error: string | null;
   imported: number;
   debugMessages: string[];
+  importProgress?: ImportProgress;
 }

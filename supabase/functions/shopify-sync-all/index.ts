@@ -4,7 +4,7 @@
 // It does not import archived orders or fulfilled orders
 
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
-import { ExtendedRequestBody, SyncResponse, corsHeaders } from "./types.ts";
+import { ExtendedRequestBody, SyncResponse, corsHeaders, ImportProgress } from "./types.ts";
 import { handleCorsPreflightRequest } from "./corsUtils.ts";
 import { 
   importOrdersFromShopify, 
@@ -16,12 +16,17 @@ import {
   importOrder, 
   updateLastSyncTime,
   getShopifyApiEndpoint,
-  setImportStatus
+  setImportStatus,
+  updateImportProgress
 } from "./database.ts";
+import { debug, debugObject, logError } from "./debugUtils.ts";
+
+// Create a flag to track if another operation is already in progress
+let isImportInProgress = false;
 
 serve(async (req) => {
-  console.log("=== Shopify Sync ALL Function Started ===");
-  console.log(`Request method: ${req.method}`);
+  debug("=== Shopify Sync ALL Function Started ===");
+  debug(`Request method: ${req.method}`);
   
   // Handle CORS preflight requests
   const corsResponse = handleCorsPreflightRequest(req);
@@ -35,13 +40,20 @@ serve(async (req) => {
     debugMessages: []
   };
 
-  // Helper function to add debug messages
-  const debug = (message: string) => {
-    console.log(message);
-    responseData.debugMessages.push(message);
-  };
+  // Check if import is already in progress
+  if (isImportInProgress) {
+    debug("Another import operation is already in progress");
+    responseData.error = "Another import operation is already in progress";
+    return new Response(JSON.stringify(responseData), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 409, // Conflict
+    });
+  }
 
   try {
+    // Set flag to indicate import is in progress
+    isImportInProgress = true;
+    
     let body: ExtendedRequestBody = {};
     try {
       body = await req.json();
@@ -67,11 +79,28 @@ serve(async (req) => {
     };
     debug(`Using filters: ${JSON.stringify(filters)}`);
     
+    // Track progress if requested
+    const trackProgress = body.trackProgress !== false;
+    
     // Standard import operation
     debug("Starting import of ACTIVE UNFULFILLED and PARTIALLY FULFILLED orders from Shopify");
     debug("NOTE: This function does NOT import archived orders or fulfilled orders");
     
     await setImportStatus('importing', debug);
+
+    // Initialize import progress
+    if (trackProgress) {
+      const initialProgress: ImportProgress = {
+        ordersTotal: 0,
+        ordersImported: 0,
+        orderItemsTotal: 0,
+        orderItemsImported: 0,
+        status: 'importing',
+        lastUpdated: new Date().toISOString()
+      };
+      await updateImportProgress(initialProgress, debug);
+      responseData.importProgress = initialProgress;
+    }
 
     try {
       // Get API endpoint from database
@@ -94,6 +123,24 @@ serve(async (req) => {
       // Log the number of orders returned from the API for debugging
       debug(`Received ${shopifyOrders.length} orders from Shopify API`);
       
+      // Update progress with total expected orders
+      if (trackProgress) {
+        const orderItemsCount = shopifyOrders.reduce((count, order) => {
+          return count + (order.line_items?.length || 0);
+        }, 0);
+        
+        const updatedProgress: ImportProgress = {
+          ordersTotal: shopifyOrders.length,
+          ordersImported: 0,
+          orderItemsTotal: orderItemsCount,
+          orderItemsImported: 0,
+          status: 'importing',
+          lastUpdated: new Date().toISOString()
+        };
+        await updateImportProgress(updatedProgress, debug);
+        responseData.importProgress = updatedProgress;
+      }
+      
       // Double-check orders to ensure they match our criteria
       const filteredOrders = filterActiveUnfulfilledOrders(shopifyOrders, debug);
       
@@ -104,6 +151,9 @@ serve(async (req) => {
       if (filteredOrders.length > 0) {
         debug(`Sample order ID: ${filteredOrders[0].id}, order number: ${filteredOrders[0].order_number}`);
         debug(`Sample order status: ${filteredOrders[0].status}, fulfillment status: ${filteredOrders[0].fulfillment_status}`);
+        
+        // Log full details of first order for debugging
+        debugObject("Sample order details", filteredOrders[0]);
       } else {
         debug("No orders matched our filter criteria. Check if there are any unfulfilled/partially fulfilled orders in Shopify");
       }
@@ -117,10 +167,29 @@ serve(async (req) => {
       });
       debug(`Total line items to import: ${totalLineItems}`);
 
+      // Custom import function that updates progress
+      const importWithProgress = async (order: any, orderId: string, orderNumber: string, debug: (message: string) => void): Promise<boolean> => {
+        const result = await importOrder(order, orderId, orderNumber, debug);
+        
+        // Update progress after each order import
+        if (trackProgress && result) {
+          const lineItemsCount = order.line_items?.length || 0;
+          responseData.importProgress = {
+            ...responseData.importProgress!,
+            ordersImported: responseData.importProgress!.ordersImported + 1,
+            orderItemsImported: responseData.importProgress!.orderItemsImported + lineItemsCount,
+            lastUpdated: new Date().toISOString()
+          };
+          await updateImportProgress(responseData.importProgress, debug);
+        }
+        
+        return result;
+      };
+
       // STEP 2: Import filtered orders in batches
       responseData.imported = await processOrdersInBatches(
         filteredOrders,
-        importOrder,
+        trackProgress ? importWithProgress : importOrder,
         debug
       );
       
@@ -128,10 +197,7 @@ serve(async (req) => {
       debug(`Successfully imported ${responseData.imported} of ${filteredOrders.length} orders`);
       
     } catch (error) {
-      debug(`Error in Shopify API operations: ${error.message}`);
-      if (error.stack) {
-        debug(`Error stack trace: ${error.stack}`);
-      }
+      logError("Error in Shopify API operations", error);
       await setImportStatus('error', debug);
       throw error;
     }
@@ -139,6 +205,13 @@ serve(async (req) => {
     // STEP 3: Update last sync time in settings
     await updateLastSyncTime(debug);
     await setImportStatus('idle', debug);
+    
+    // Finalize import progress
+    if (trackProgress && responseData.importProgress) {
+      responseData.importProgress.status = 'complete';
+      responseData.importProgress.lastUpdated = new Date().toISOString();
+      await updateImportProgress(responseData.importProgress, debug);
+    }
     
     responseData.success = true;
     debug("Shopify sync completed successfully");
@@ -149,18 +222,25 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error: any) {
-    debug(`Error in Shopify sync: ${error.message}`);
-    if (error.stack) {
-      debug(`Error stack trace: ${error.stack}`);
-    }
+    logError("Error in Shopify sync", error);
     responseData.error = error.message;
     
     // Make sure status is set to error in database
     await setImportStatus('error', debug);
     
+    // Update progress status if tracking is enabled
+    if (responseData.importProgress) {
+      responseData.importProgress.status = 'error';
+      responseData.importProgress.lastUpdated = new Date().toISOString();
+      await updateImportProgress(responseData.importProgress, debug);
+    }
+    
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400, 
     });
+  } finally {
+    // Reset the import progress flag
+    isImportInProgress = false;
   }
 });

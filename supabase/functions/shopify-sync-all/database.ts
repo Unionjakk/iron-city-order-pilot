@@ -1,4 +1,7 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { ImportProgress } from './types.ts';
+import { debugObject } from './debugUtils.ts';
 
 /**
  * Get the Shopify API endpoint from the database
@@ -174,55 +177,6 @@ export async function updateLastSyncTime(debug: (message: string) => void): Prom
 }
 
 /**
- * Clean the database completely by deleting all Shopify orders and items
- */
-export async function cleanDatabaseCompletely(debug: (message: string) => void): Promise<boolean> {
-  try {
-    debug("Cleaning database completely...");
-    
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      debug("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
-      return false;
-    }
-    
-    const client = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Delete all order items first
-    const { error: deleteItemsError } = await client
-      .from('shopify_order_items')
-      .delete()
-      .neq('order_id', null); // Delete all items
-
-    if (deleteItemsError) {
-      debug(`Failed to delete order items: ${deleteItemsError.message}`);
-      return false;
-    }
-    debug("Deleted all order items");
-
-    // Then delete all orders
-    const { error: deleteOrdersError } = await client
-      .from('shopify_orders')
-      .delete()
-      .neq('id', null); // Delete all orders
-
-    if (deleteOrdersError) {
-      debug(`Failed to delete orders: ${deleteOrdersError.message}`);
-      return false;
-    }
-    debug("Deleted all orders");
-    
-    debug("Database cleaned successfully");
-    return true;
-  } catch (error: any) {
-    debug(`Error cleaning database: ${error.message}`);
-    return false;
-  }
-}
-
-/**
  * Set the import status in the database
  */
 export async function setImportStatus(status: string, debug: (message: string) => void): Promise<boolean> {
@@ -254,5 +208,102 @@ export async function setImportStatus(status: string, debug: (message: string) =
   } catch (error) {
     debug(`Error updating import status: ${error.message}`);
     return false;
+  }
+}
+
+/**
+ * Update import progress in the database
+ */
+export async function updateImportProgress(progress: ImportProgress, debug: (message: string) => void): Promise<boolean> {
+  try {
+    debug(`Updating import progress: ${progress.ordersImported}/${progress.ordersTotal} orders`);
+    
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      debug("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
+      return false;
+    }
+    
+    const client = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Store progress as JSON string
+    const progressJson = JSON.stringify(progress);
+    
+    const { error: progressError } = await client.rpc("upsert_shopify_setting", {
+      setting_name_param: "shopify_import_progress",
+      setting_value_param: progressJson
+    });
+
+    if (progressError) {
+      debug(`Failed to update import progress: ${progressError.message}`);
+      return false;
+    }
+    
+    // Also update item counts for frontend tracking
+    await client.rpc("upsert_shopify_setting", {
+      setting_name_param: "shopify_orders_count",
+      setting_value_param: String(progress.ordersImported)
+    });
+    
+    await client.rpc("upsert_shopify_setting", {
+      setting_name_param: "shopify_order_items_count",
+      setting_value_param: String(progress.orderItemsImported)
+    });
+    
+    debugObject("Updated import progress", progress);
+    return true;
+  } catch (error) {
+    debug(`Error updating import progress: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Get current order and item counts from database
+ */
+export async function getCurrentCounts(debug: (message: string) => void): Promise<{orders: number, items: number}> {
+  try {
+    debug("Getting current order and item counts from database");
+    
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      debug("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
+      return { orders: 0, items: 0 };
+    }
+    
+    const client = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Get order count
+    const { count: orderCount, error: orderError } = await client
+      .from('shopify_orders')
+      .select('*', { count: 'exact', head: true });
+      
+    if (orderError) {
+      debug(`Failed to get order count: ${orderError.message}`);
+      return { orders: 0, items: 0 };
+    }
+    
+    // Get item count
+    const { count: itemCount, error: itemError } = await client
+      .from('shopify_order_items')
+      .select('*', { count: 'exact', head: true });
+      
+    if (itemError) {
+      debug(`Failed to get item count: ${itemError.message}`);
+      return { orders: orderCount || 0, items: 0 };
+    }
+    
+    debug(`Current counts from database: ${orderCount || 0} orders, ${itemCount || 0} items`);
+    return { 
+      orders: orderCount || 0, 
+      items: itemCount || 0 
+    };
+  } catch (error) {
+    debug(`Error getting current counts: ${error.message}`);
+    return { orders: 0, items: 0 };
   }
 }

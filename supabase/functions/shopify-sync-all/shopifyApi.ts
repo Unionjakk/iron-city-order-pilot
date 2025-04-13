@@ -1,17 +1,27 @@
 
-import { fetchAllShopifyOrdersWithPagination } from "./shopifyOrdersApi.ts";
-import { fetchNextPage } from "./shopifyPaginationApi.ts";
+/**
+ * Constants and utilities for Shopify API
+ */
 
-// Constants for API retries
-export const MAX_API_RETRIES = 5;
-export const BASE_RETRY_DELAY_MS = 1000;
+// Maximum number of retries for API requests
+export const MAX_API_RETRIES = 3;
 
-// Helper function for exponential backoff
-export const calculateBackoffDelay = (attempt: number): number => {
-  return BASE_RETRY_DELAY_MS * Math.pow(2, attempt);
-};
+/**
+ * Calculate delay for exponential backoff based on retry number
+ */
+export function calculateBackoffDelay(retryCount: number): number {
+  // Base delay of 1000ms with exponential increase
+  return Math.min(1000 * Math.pow(2, retryCount), 30000);
+}
 
-export {
-  fetchAllShopifyOrdersWithPagination,
-  fetchNextPage
-};
+/**
+ * Normalize a Shopify API endpoint URL
+ */
+export function normalizeApiEndpoint(endpoint: string): string {
+  // Ensure endpoint ends with .json
+  if (!endpoint.endsWith('.json')) {
+    endpoint = `${endpoint}.json`;
+  }
+  
+  return endpoint;
+}
