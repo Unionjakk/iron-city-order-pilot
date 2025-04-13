@@ -7,15 +7,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 interface ImportErrorAlertProps {
   error: string;
   onDismiss?: () => void;
-  enableRecovery?: boolean;
-  onEnableRecovery?: () => void;
 }
 
 const ImportErrorAlert: React.FC<ImportErrorAlertProps> = ({ 
   error, 
-  onDismiss,
-  enableRecovery,
-  onEnableRecovery
+  onDismiss
 }) => {
   if (!error) return null;
   
@@ -37,17 +33,6 @@ const ImportErrorAlert: React.FC<ImportErrorAlertProps> = ({
           )}
         </div>
         <AlertDescription className="text-zinc-300 text-sm mt-1">{error}</AlertDescription>
-        
-        {enableRecovery && onEnableRecovery && (
-          <Button 
-            onClick={onEnableRecovery}
-            variant="outline" 
-            size="sm"
-            className="mt-3 border-amber-500/50 text-amber-400 hover:bg-amber-900/20 hover:text-amber-300"
-          >
-            Enter Recovery Mode (Import Only)
-          </Button>
-        )}
       </div>
     </Alert>
   );

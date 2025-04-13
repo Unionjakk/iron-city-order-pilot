@@ -11,7 +11,6 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
   const refreshState = useRefreshState({ onRefreshComplete });
   
   // Use specialized operation hooks
-  const { handleImportOnly } = useImportOperation(refreshState);
   const { handleCompleteRefresh } = useCompleteRefreshOperation(refreshState);
 
   // Extract needed state values
@@ -21,10 +20,8 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
     isSuccess, 
     debugInfo,
     error,
-    isRecoveryMode,
     addDebugMessage,
     setError,
-    setIsRecoveryMode,
     resetState
   } = refreshState;
 
@@ -35,12 +32,9 @@ export const useCompleteRefresh = ({ onRefreshComplete }: UseCompleteRefreshProp
     isSuccess,
     debugInfo,
     error,
-    isRecoveryMode,
     handleCompleteRefresh,
-    handleRecoveryImport: handleImportOnly,
     addDebugMessage,
     setError,
-    setIsRecoveryMode,
     resetState
   };
 };

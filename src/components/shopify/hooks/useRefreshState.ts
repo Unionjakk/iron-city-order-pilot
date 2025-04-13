@@ -12,7 +12,6 @@ export const useRefreshState = ({ onRefreshComplete }: UseRefreshStateProps) => 
   const [isSuccess, setIsSuccess] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const { toast } = useToast();
 
   const addDebugMessage = (message: string) => {
@@ -38,8 +37,6 @@ export const useRefreshState = ({ onRefreshComplete }: UseRefreshStateProps) => 
     setDebugInfo,
     error,
     setError,
-    isRecoveryMode,
-    setIsRecoveryMode,
     addDebugMessage,
     resetState,
     toast,

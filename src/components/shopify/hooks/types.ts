@@ -14,8 +14,6 @@ export type UseRefreshStateReturn = {
   setDebugInfo: (value: React.SetStateAction<string[]>) => void;
   error: string | null;
   setError: (value: string | null) => void;
-  isRecoveryMode: boolean;
-  setIsRecoveryMode: (value: boolean) => void;
   addDebugMessage: (message: string) => void;
   resetState: () => void;
   toast: any;
@@ -32,11 +30,8 @@ export type UseCompleteRefreshReturn = {
   isSuccess: boolean;
   debugInfo: string[];
   error: string | null;
-  isRecoveryMode: boolean;
   handleCompleteRefresh: () => Promise<void>;
-  handleRecoveryImport: () => Promise<void>;
   addDebugMessage: (message: string) => void;
   setError: (error: string | null) => void;
-  setIsRecoveryMode: (value: boolean) => void;
   resetState: () => void;
 }
