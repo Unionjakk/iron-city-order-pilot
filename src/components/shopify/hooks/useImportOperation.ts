@@ -9,7 +9,6 @@ export const useImportOperation = (refreshState: UseRefreshStateReturn) => {
     setIsImporting,
     setIsSuccess,
     setError,
-    setIsRecoveryMode,
     addDebugMessage,
     toast,
     onRefreshComplete
@@ -79,7 +78,6 @@ export const useImportOperation = (refreshState: UseRefreshStateReturn) => {
       });
       
       addDebugMessage("Import operation finished successfully");
-      setIsRecoveryMode(false);
       setIsSuccess(true);
       
       // Refresh the orders list in the parent component
