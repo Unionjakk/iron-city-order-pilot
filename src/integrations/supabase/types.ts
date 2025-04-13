@@ -835,6 +835,14 @@ export type Database = {
         Args: { table_name: string; column_name: string }
         Returns: boolean
       }
+      delete_all_shopify_order_items: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      delete_all_shopify_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       execute_sql: {
         Args: { sql: string }
         Returns: Json[]
