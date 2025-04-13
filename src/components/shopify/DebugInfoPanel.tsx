@@ -1,7 +1,7 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, ArrowDownCircle, X, FileDown } from "lucide-react";
+import { Copy, Check, ArrowDownCircle, X, FileDown, Database } from "lucide-react";
 import { useState } from "react";
 
 interface DebugInfoPanelProps {
@@ -52,6 +52,16 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
     msg.toLowerCase().includes("phone")
   );
   
+  // Filter for verification and counts messages
+  const verificationMessages = debugInfo.filter(msg =>
+    msg.toLowerCase().includes("count") ||
+    msg.toLowerCase().includes("mismatch") ||
+    msg.toLowerCase().includes("verified") ||
+    msg.toLowerCase().includes("expected") ||
+    msg.toLowerCase().includes("unfulfilled") ||
+    msg.toLowerCase().includes("partial")
+  );
+  
   // Handle copy all debug info to clipboard
   const handleCopyAll = () => {
     navigator.clipboard.writeText(debugInfo.join('\n'))
@@ -86,6 +96,12 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
       className += "text-yellow-400";
     } else if (message.toLowerCase().includes("success") || message.toLowerCase().includes("completed successfully")) {
       className += "text-green-400";
+    } else if (message.toLowerCase().includes("mismatch")) {
+      className += "text-orange-400 font-semibold";
+    } else if (message.toLowerCase().includes("verified") || message.toLowerCase().includes("data verified")) {
+      className += "text-emerald-400 font-semibold";
+    } else if (message.toLowerCase().includes("count") || message.toLowerCase().includes("expected")) {
+      className += "text-cyan-400";
     } else if (message.toLowerCase().includes("delete") || message.toLowerCase().includes("deleting")) {
       className += "text-blue-400";
     } else if (message.toLowerCase().includes("insert") || message.toLowerCase().includes("importing")) {
@@ -151,6 +167,20 @@ const DebugInfoPanel = ({ debugInfo }: DebugInfoPanelProps) => {
           <ScrollArea className="h-[120px] rounded-md border border-red-900/30 bg-red-950/20 p-2">
             <div className="space-y-1">
               {errorMessages.map((message, index) => renderMessage(message, index, 'error'))}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+      
+      {/* Show verification messages if any exist */}
+      {verificationMessages.length > 0 && (
+        <div className="mb-4">
+          <h4 className="text-xs font-medium mb-1 text-cyan-400 flex items-center">
+            <Database className="h-3.5 w-3.5 mr-1" /> Data Verification ({verificationMessages.length}):
+          </h4>
+          <ScrollArea className="h-[120px] rounded-md border border-cyan-900/30 bg-cyan-950/20 p-2">
+            <div className="space-y-1">
+              {verificationMessages.map((message, index) => renderMessage(message, index, 'verification'))}
             </div>
           </ScrollArea>
         </div>
