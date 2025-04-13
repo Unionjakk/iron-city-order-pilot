@@ -1,41 +1,43 @@
 
 /**
- * Handle Shopify API response
+ * Handle Shopify API response, including error checking and rate limiting
  */
 export async function handleApiResponse(
   response: Response, 
   apiToken: string, 
-  url: string,
-  retryFunction: Function
+  apiEndpoint: string,
+  retryFn: (apiToken: string, apiEndpoint: string) => Promise<any>
 ): Promise<void> {
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Shopify API error (${response.status}):`, errorText);
+  // Check if the response is in the rate limiting range
+  if (response.status === 429) {
+    const retryAfter = response.headers.get('Retry-After') || '5';
+    console.log(`Rate limited by Shopify API. Retrying after ${retryAfter} seconds`);
     
-    if (response.status === 401) {
-      throw new Error("Authentication failed. Your Shopify API token might be invalid or expired.");
-    } else if (response.status === 404) {
-      throw new Error("Store not found. Please verify your Shopify store URL is correct and the app is installed.");
-    } else if (response.status === 403) {
-      throw new Error("Access forbidden. Your API token might not have the necessary permissions.");
-    } else if (response.status === 429) {
-      await handleRateLimiting(apiToken, url, retryFunction);
-    } else {
-      throw new Error(`Shopify API error: ${response.status} - ${errorText || "Unknown error"}`);
-    }
+    // Wait for the specified time and retry
+    await new Promise(resolve => setTimeout(resolve, parseInt(retryAfter) * 1000));
+    return await retryFn(apiToken, apiEndpoint);
   }
-}
-
-/**
- * Handle rate limiting by waiting and retrying
- */
-export async function handleRateLimiting(
-  apiToken: string, 
-  url: string,
-  retryFunction: Function
-): Promise<any> {
-  console.warn("Rate limit hit, waiting and retrying...");
-  // Wait for 2 seconds and retry
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  return retryFunction(apiToken, url);
+  
+  // Handle other error responses
+  if (!response.ok) {
+    const body = await response.text();
+    console.error(`Shopify API error: Status ${response.status}`);
+    console.error(`Response body: ${body}`);
+    
+    // Create a more helpful error message
+    let errorMessage = `Shopify API error: ${response.status} ${response.statusText}`;
+    
+    try {
+      // Try to extract specific error messages from the body
+      const errorData = JSON.parse(body);
+      if (errorData.errors) {
+        errorMessage += ` - ${JSON.stringify(errorData.errors)}`;
+      }
+    } catch (e) {
+      // If the body isn't JSON, just append it to the error
+      errorMessage += ` - ${body}`;
+    }
+    
+    throw new Error(errorMessage);
+  }
 }

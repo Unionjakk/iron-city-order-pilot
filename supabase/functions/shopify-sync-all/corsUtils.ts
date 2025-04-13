@@ -1,20 +1,16 @@
 
-/**
- * CORS utilities for Supabase Edge Functions
- */
-
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders } from "./types.ts";
 
 /**
- * Helper function to handle CORS preflight requests
+ * Handle CORS preflight requests
  */
-export const handleCorsPreflightRequest = (req: Request) => {
-  if (req.method === "OPTIONS") {
-    console.log("Handling CORS preflight request");
-    return new Response(null, { headers: corsHeaders });
+export function handleCorsPreflightRequest(req: Request): Response | null {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: corsHeaders,
+      status: 204,
+    });
   }
   return null;
-};
+}
