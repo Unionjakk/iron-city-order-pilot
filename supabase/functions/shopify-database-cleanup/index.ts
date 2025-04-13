@@ -55,7 +55,12 @@ serve(async (req) => {
     }
     
     // Update status in database
-    await setImportStatus('deleting', debug);
+    try {
+      await setImportStatus('deleting', debug);
+    } catch (statusError: any) {
+      debug(`Failed to set import status: ${statusError.message}`);
+      // Continue anyway as this isn't critical
+    }
     
     debug("Starting database cleanup operation");
     
@@ -71,22 +76,28 @@ serve(async (req) => {
           
           // STEP 1: Delete all order items first
           debug("Deleting all order items with service role...");
-          const { error: itemsDeleteError } = await supabase.rpc('delete_all_shopify_order_items');
+          const { data: itemsDeleteData, error: itemsDeleteError } = await supabase.rpc('delete_all_shopify_order_items');
           
           if (itemsDeleteError) {
             debug(`Error deleting order items: ${itemsDeleteError.message}`);
+            debug(`Error details: ${JSON.stringify(itemsDeleteError)}`);
             throw new Error(`Could not delete order items: ${itemsDeleteError.message}`);
           }
+          
+          debug(`Delete order items result: ${JSON.stringify(itemsDeleteData)}`);
           debug("Successfully deleted all order items");
           
           // STEP 2: Then delete all orders
           debug("Deleting all orders with service role...");
-          const { error: ordersDeleteError } = await supabase.rpc('delete_all_shopify_orders');
+          const { data: ordersDeleteData, error: ordersDeleteError } = await supabase.rpc('delete_all_shopify_orders');
           
           if (ordersDeleteError) {
             debug(`Error deleting orders: ${ordersDeleteError.message}`);
+            debug(`Error details: ${JSON.stringify(ordersDeleteError)}`);
             throw new Error(`Could not delete orders: ${ordersDeleteError.message}`);
           }
+          
+          debug(`Delete orders result: ${JSON.stringify(ordersDeleteData)}`);
           debug("Successfully deleted all orders");
           
           // STEP 3: Verify both tables are empty
@@ -96,11 +107,15 @@ serve(async (req) => {
           
           if (orderCountError) {
             debug(`Error verifying orders deletion: ${orderCountError.message}`);
-          } else if (orderCount && orderCount > 0) {
-            debug(`WARNING: ${orderCount} orders still remain after deletion attempt`);
-            throw new Error(`Failed to delete all orders, ${orderCount} orders remain`);
+            debug(`Error details: ${JSON.stringify(orderCountError)}`);
           } else {
-            debug("Verified all orders have been deleted successfully");
+            debug(`Order count after deletion: ${orderCount}`);
+            if (orderCount && orderCount > 0) {
+              debug(`WARNING: ${orderCount} orders still remain after deletion attempt`);
+              throw new Error(`Failed to delete all orders, ${orderCount} orders remain`);
+            } else {
+              debug("Verified all orders have been deleted successfully");
+            }
           }
           
           const { count: itemCount, error: itemCountError } = await supabase
@@ -109,19 +124,26 @@ serve(async (req) => {
           
           if (itemCountError) {
             debug(`Error verifying order items deletion: ${itemCountError.message}`);
-          } else if (itemCount && itemCount > 0) {
-            debug(`WARNING: ${itemCount} order items still remain after deletion attempt`);
-            throw new Error(`Failed to delete all order items, ${itemCount} order items remain`);
+            debug(`Error details: ${JSON.stringify(itemCountError)}`);
           } else {
-            debug("Verified all order items have been deleted successfully");
+            debug(`Order items count after deletion: ${itemCount}`);
+            if (itemCount && itemCount > 0) {
+              debug(`WARNING: ${itemCount} order items still remain after deletion attempt`);
+              throw new Error(`Failed to delete all order items, ${itemCount} order items remain`);
+            } else {
+              debug("Verified all order items have been deleted successfully");
+            }
           }
           
           cleanupSuccess = true;
           responseData.cleaned = true;
           debug("Database cleanup completed successfully on attempt " + (retries + 1));
           break;
-        } catch (cleanupError) {
+        } catch (cleanupError: any) {
           debug(`Error during database cleanup attempt ${retries + 1}: ${cleanupError.message}`);
+          if (cleanupError.stack) {
+            debug(`Error stack: ${cleanupError.stack}`);
+          }
           
           // Only throw on the last retry
           if (retries >= maxRetries - 1) {
@@ -143,8 +165,12 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
-    } catch (error) {
-      debug(`Error during database cleanup: ${error.message}`);
+    } catch (error: any) {
+      debug(`Error during database cleanup: ${error.message || 'Unknown error'}`);
+      if (error.stack) {
+        debug(`Error stack: ${error.stack}`);
+      }
+      
       await setImportStatus('error', debug);
       
       // Return specific error response with 400 status
@@ -155,11 +181,19 @@ serve(async (req) => {
       });
     }
   } catch (error: any) {
-    debug(`Error in database cleanup: ${error.message}`);
-    responseData.error = error.message;
+    debug(`Error in database cleanup: ${error.message || 'Unknown error'}`);
+    if (error.stack) {
+      debug(`Error stack: ${error.stack}`);
+    }
+    
+    responseData.error = error.message || 'Unknown error occurred';
     
     // Make sure status is set to error in database
-    await setImportStatus('error', debug);
+    try {
+      await setImportStatus('error', debug);
+    } catch (statusError) {
+      debug("Failed to update status to error");
+    }
     
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -173,20 +207,25 @@ async function setImportStatus(status: string, debug: (message: string) => void)
   try {
     debug(`Updating import status to: ${status}`);
     
-    const { error: statusError } = await supabase.rpc("upsert_shopify_setting", {
+    const { data, error: statusError } = await supabase.rpc("upsert_shopify_setting", {
       setting_name_param: "shopify_import_status",
       setting_value_param: status
     });
 
     if (statusError) {
       debug(`Failed to update import status: ${statusError.message}`);
+      debug(`Error details: ${JSON.stringify(statusError)}`);
       return false;
     }
     
     debug(`Successfully updated import status to: ${status}`);
+    debug(`Update result: ${JSON.stringify(data)}`);
     return true;
   } catch (error: any) {
-    debug(`Error updating import status: ${error.message}`);
+    debug(`Exception updating import status: ${error.message || 'Unknown error'}`);
+    if (error.stack) {
+      debug(`Error stack: ${error.stack}`);
+    }
     return false;
   }
 }

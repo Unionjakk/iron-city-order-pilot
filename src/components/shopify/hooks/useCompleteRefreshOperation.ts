@@ -60,12 +60,31 @@ export const useCompleteRefreshOperation = (refreshState: UseRefreshStateReturn)
       // Use Promise.race to implement timeout
       const response = await Promise.race([apiCallPromise, timeoutPromise]) as any;
       
+      // Enhanced error logging for debugging
+      console.log("Complete refresh response received:", response);
+      
       if (response.error) {
+        addDebugMessage(`ERROR: Failed to connect to service: ${response.error.message || 'Unknown error'}`);
+        console.error("Edge function error details:", response.error);
         throw new Error(`Failed to connect to service: ${response.error.message || 'Unknown error'}`);
       }
       
       // Obtain response data
       const responseData = response.data;
+      addDebugMessage(`Response received: status=${response.status}, success=${responseData?.success}, error=${responseData?.error || 'none'}`);
+      
+      if (!responseData) {
+        addDebugMessage("ERROR: Empty response received from edge function");
+        throw new Error("Received empty response from server");
+      }
+      
+      // Log detailed response for debugging
+      console.log("Complete refresh response data:", responseData);
+      
+      if (responseData.error) {
+        addDebugMessage(`ERROR: ${responseData.error}`);
+        throw new Error(`Operation failed: ${responseData.error}`);
+      }
       
       // Handle background processing case
       if (responseData.syncStarted && !responseData.syncComplete) {
@@ -98,10 +117,18 @@ export const useCompleteRefreshOperation = (refreshState: UseRefreshStateReturn)
         await onRefreshComplete();
       } else {
         // Handle explicit error from the function
-        throw new Error(responseData.error || "Unknown error occurred during refresh operation");
+        const errorMsg = responseData.error || "Unknown error occurred during refresh operation";
+        addDebugMessage(`ERROR: Operation failed: ${errorMsg}`);
+        throw new Error(errorMsg);
       }
     } catch (error: any) {
       console.error("Error during complete refresh:", error);
+      
+      // Enhanced error logging
+      addDebugMessage(`ERROR DETAILS: ${error.message || "Unknown error"}`);
+      if (error.stack) {
+        console.error("Error stack:", error.stack);
+      }
       
       // Check for timeout errors specifically
       if (error.message && error.message.includes("timed out")) {
