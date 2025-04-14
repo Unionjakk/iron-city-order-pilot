@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -26,35 +25,36 @@ export const useHarleyDashboardData = () => {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true);
-        console.log("Fetching Harley Davidson statistics from improved view...");
+        console.log("Fetching Harley Davidson statistics from database...");
         
-        // Fetch stats from the enhanced database view
+        // Fetch stats from the database
         const { data: viewData, error: viewError } = await supabase
-          .from('hd_dashboard_stats')
-          .select('*')
-          .single();
+          .from('hd_orders_with_lookup')
+          .select('*', { count: 'exact', head: true })
+          .eq('has_line_items', false)
+          .eq('is_excluded', false);
+
+        // Count backorder items from hd_combined
+        const { count: backorderItemsCount, error: backorderError } = await supabase
+          .from('hd_combined')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_backorder', true);
         
-        if (viewError) {
-          console.error('Error fetching stats from view:', viewError);
-          throw viewError;
+        if (viewError || backorderError) {
+          console.error('Error fetching stats:', viewError || backorderError);
+          throw viewError || backorderError;
         }
         
-        if (viewData) {
-          console.log('Raw view data:', viewData);
-          // Update stats with data from the new, more accurate view
-          // which now accounts for excluded orders in the orders_without_line_items count
-          setStats({
-            totalOrders: viewData.total_orders || 0,
-            ordersWithoutLineItems: viewData.orders_without_line_items || 0,
-            backorderItems: viewData.backorder_items || 0,
-            totalBackorderItems: viewData.total_backorder_items || 0,
-            lastOpenOrdersUpload: viewData.last_open_orders_upload,
-            lastLineItemsUpload: viewData.last_line_items_upload,
-            lastBackordersUpload: viewData.last_backorders_upload
-          });
-        }
+        // Update stats with the fetched data
+        setStats(prevStats => ({
+          ...prevStats,
+          totalOrders: prevStats.totalOrders, // Keep existing total orders
+          ordersWithoutLineItems: viewData?.count || 0,
+          backorderItems: backorderItemsCount || 0,
+          totalBackorderItems: backorderItemsCount || 0
+        }));
         
-        console.log('Harley Davidson stats loaded successfully using improved view');
+        console.log('Harley Davidson stats loaded successfully');
         setIsLoadingStats(false);
       } catch (error) {
         console.error('Error fetching Harley Davidson stats:', error);
