@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -27,8 +28,13 @@ export const useHarleyDashboardData = () => {
         setIsLoadingStats(true);
         console.log("Fetching Harley Davidson statistics from database...");
         
-        // Fetch stats from the database
-        const { data: viewData, error: viewError } = await supabase
+        // Fetch total orders count
+        const { count: totalOrdersCount, error: totalOrdersError } = await supabase
+          .from('hd_orders')
+          .select('*', { count: 'exact', head: true });
+        
+        // Fetch orders without line items
+        const { count: ordersWithoutLineItemsCount, error: ordersError } = await supabase
           .from('hd_orders_with_lookup')
           .select('*', { count: 'exact', head: true })
           .eq('has_line_items', false)
@@ -40,19 +46,49 @@ export const useHarleyDashboardData = () => {
           .select('*', { count: 'exact', head: true })
           .eq('is_backorder', true);
         
-        if (viewError || backorderError) {
-          console.error('Error fetching stats:', viewError || backorderError);
-          throw viewError || backorderError;
+        // Fetch the latest upload dates
+        const { data: openOrdersUpload, error: openOrdersError } = await supabase
+          .from('hd_upload_history')
+          .select('upload_date')
+          .eq('upload_type', 'open_orders')
+          .eq('status', 'success')
+          .order('upload_date', { ascending: false })
+          .limit(1)
+          .single();
+          
+        const { data: lineItemsUpload, error: lineItemsError } = await supabase
+          .from('hd_upload_history')
+          .select('upload_date')
+          .eq('upload_type', 'order_lines')
+          .eq('status', 'success')
+          .order('upload_date', { ascending: false })
+          .limit(1)
+          .single();
+          
+        const { data: backordersUpload, error: backordersError } = await supabase
+          .from('hd_upload_history')
+          .select('upload_date')
+          .eq('upload_type', 'backorders')
+          .eq('status', 'success')
+          .order('upload_date', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (totalOrdersError || ordersError || backorderError) {
+          console.error('Error fetching stats:', totalOrdersError || ordersError || backorderError);
+          throw totalOrdersError || ordersError || backorderError;
         }
         
         // Update stats with the fetched data
-        setStats(prevStats => ({
-          ...prevStats,
-          totalOrders: prevStats.totalOrders, // Keep existing total orders
-          ordersWithoutLineItems: viewData?.count || 0,
+        setStats({
+          totalOrders: totalOrdersCount || 0,
+          ordersWithoutLineItems: ordersWithoutLineItemsCount || 0,
           backorderItems: backorderItemsCount || 0,
-          totalBackorderItems: backorderItemsCount || 0
-        }));
+          totalBackorderItems: backorderItemsCount || 0,
+          lastOpenOrdersUpload: openOrdersUpload?.upload_date || null,
+          lastLineItemsUpload: lineItemsUpload?.upload_date || null,
+          lastBackordersUpload: backordersUpload?.upload_date || null
+        });
         
         console.log('Harley Davidson stats loaded successfully');
         setIsLoadingStats(false);
