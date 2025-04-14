@@ -82,12 +82,8 @@ const HarleyStatsCard = ({
             }}>
                   </div>
                 </div>
-                {stats.backorderItems > 0 && <p className="mt-2 text-amber-400">
-                    {stats.backorderItems} line items currently on backorder
-                  </p>}
-                {stats.totalBackorderItems > 0 && <p className="mt-2 text-amber-400">
-                    {stats.totalBackorderItems} total items in backorder table
-                  </p>}
+                {stats.backorderItems > 0}
+                {stats.totalBackorderItems > 0}
               </div> : <p className="text-xs text-zinc-300">
                 No data has been uploaded yet. Begin by uploading the Open Orders List from H-D NET.
               </p>}
