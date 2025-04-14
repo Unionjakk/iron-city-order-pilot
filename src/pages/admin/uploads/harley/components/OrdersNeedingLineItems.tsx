@@ -31,59 +31,16 @@ const OrdersNeedingLineItems = () => {
       setError(null);
       
       try {
-        // Get excluded order numbers from hd_lineitems_exclude
-        const { data: excludedOrders, error: excludedError } = await supabase
-          .from('hd_lineitems_exclude')
-          .select('hd_order_number');
-        
-        if (excludedError) throw excludedError;
-        
-        // Get excluded order numbers from hd_line_items_exclude
-        const { data: lineItemsExcluded, error: lineItemsExcludedError } = await supabase
-          .from('hd_line_items_exclude')
-          .select('hd_order_number');
-        
-        if (lineItemsExcludedError) throw lineItemsExcludedError;
-        
-        // Get orders that already have line items
-        const { data: ordersWithLineItems, error: lineItemsError } = await supabase
-          .from('hd_order_line_items')
-          .select('hd_order_number');
-        
-        if (lineItemsError) throw lineItemsError;
-        
-        // Create arrays of excluded order numbers
-        const excludedOrderNumbers = excludedOrders.map(o => o.hd_order_number);
-        const lineItemsExcludedNumbers = lineItemsExcluded.map(o => o.hd_order_number);
-        
-        // Get unique order numbers with line items using Set
-        const ordersWithLineItemsNumbers = [...new Set(ordersWithLineItems.map(o => o.hd_order_number))];
-        
-        // Get all orders by default first
-        let query = supabase
-          .from('hd_orders')
+        const { data: orders, error } = await supabase
+          .from('hd_orders_with_lookup')
           .select('hd_order_number, dealer_po_number, order_type, order_date')
+          .eq('has_line_items', false)
+          .eq('is_excluded', false)
           .order('order_date', { ascending: false });
+
+        if (error) throw error;
         
-        // Handle filtering based on excluded lists
-        // Apply filters one by one to avoid complex not.in filtering
-        if (excludedOrderNumbers.length > 0) {
-          query = query.not('hd_order_number', 'in', `(${excludedOrderNumbers.map(n => `"${n}"`).join(',')})`);
-        }
-        
-        if (lineItemsExcludedNumbers.length > 0) {
-          query = query.not('hd_order_number', 'in', `(${lineItemsExcludedNumbers.map(n => `"${n}"`).join(',')})`);
-        }
-        
-        if (ordersWithLineItemsNumbers.length > 0) {
-          query = query.not('hd_order_number', 'in', `(${ordersWithLineItemsNumbers.map(n => `"${n}"`).join(',')})`);
-        }
-        
-        const { data: filteredOrders, error: ordersError } = await query;
-        
-        if (ordersError) throw ordersError;
-        
-        setOrders(filteredOrders || []);
+        setOrders(orders || []);
       } catch (err: any) {
         console.error('Error fetching orders:', err);
         setError(`Failed to load orders: ${err.message}`);
