@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 
@@ -29,7 +28,6 @@ export const fetchOrdersWithPickedItems = async () => {
     console.log(`Found ${uniqueIds.length} unique orders with picked items`);
     
     // Fetch the unfulfilled orders that match these IDs
-    // We'll use a more efficient query that only selects what we need
     const { data, error } = await supabase
       .from('shopify_orders')
       .select(`
@@ -89,43 +87,21 @@ export const fetchPickedItemsProgress = async () => {
   console.log("Fetching 'Picked' items from materialized view...");
   
   try {
-    // Use a more specific query with fewer columns to improve performance
     const { data, error } = await supabase
       .from('picked_items_mv')
-      .select(`
-        id,
-        shopify_order_id,
-        sku,
-        progress,
-        notes,
-        quantity,
-        quantity_picked,
-        quantity_required,
-        is_partial,
-        cost
-      `);
+      .select();
       
     if (error) {
       console.error("Progress fetch error:", error);
       return [];
     }
     
-    // Transform the data to match the expected format
-    const transformedData = data.map(item => ({
-      id: item.id,
-      shopify_order_id: item.shopify_order_id,
-      sku: item.sku,
-      progress: item.progress,
-      notes: item.notes,
-      quantity: item.quantity,
-      quantity_picked: item.quantity_picked,
-      quantity_required: item.quantity_required,
-      is_partial: item.is_partial,
-      cost: item.cost
-    }));
+    if (!data) {
+      return [];
+    }
     
-    console.log(`Fetched ${transformedData.length} 'Picked' progress items from materialized view`);
-    return transformedData;
+    console.log(`Fetched ${data.length} 'Picked' progress items from materialized view`);
+    return data;
   } catch (error) {
     console.error("Error in fetchPickedItemsProgress:", error);
     return [];
@@ -162,16 +138,14 @@ export const fetchStockForSkus = async (skus: string[]) => {
  */
 export const fetchTotalPickedQuantityForSku = async (sku: string): Promise<number> => {
   try {
-    // Use a more efficient query that uses a SUM aggregation directly in SQL
-    const { data, error } = await supabase
-      .rpc('sum_picked_quantity_by_sku', { sku_param: sku });
+    const { data, error } = await supabase.rpc('sum_picked_quantity_by_sku', { sku_param: sku });
       
     if (error) {
       console.error("Error fetching total picked quantity:", error);
       throw error;
     }
     
-    return data || 0;
+    return data ?? 0;
   } catch (error) {
     console.error("Error fetching total picked quantity:", error);
     return 0;

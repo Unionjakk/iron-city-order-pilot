@@ -899,6 +899,7 @@ export type Database = {
           created_at: string | null
           customer_email: string | null
           customer_name: string | null
+          id: string | null
           is_partial: boolean | null
           notes: string | null
           pinnacle_description: string | null
@@ -990,6 +991,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_pinnacle_cost: {
+        Args: { sql_sku: string }
+        Returns: number
+      }
       get_shopify_order_number: {
         Args: { order_id: string }
         Returns: string
@@ -1005,6 +1010,10 @@ export type Database = {
       refresh_picked_items_mv: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      sum_picked_quantity_by_sku: {
+        Args: { sku_param: string }
+        Returns: number
       }
       update_dashboard_stats: {
         Args: Record<PropertyKey, never>
