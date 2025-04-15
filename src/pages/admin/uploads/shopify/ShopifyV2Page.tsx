@@ -8,6 +8,7 @@ import AllOpenOrdersImportCard from './components/v2/AllOpenOrdersImportCard';
 import AllOpenOrdersImportV2Card from './components/v2/AllOpenOrdersImportV2Card';
 import BatchLocationUpdateCard from './components/v2/BatchLocationUpdateCard';
 import BatchLocationUpdateV2 from '@/components/shopify/BatchLocationUpdateV2';
+import BatchLocationUpdateV3 from '@/components/shopify/BatchLocationUpdateV3';
 import ApiIntegrationDetailsCard from './components/v2/ApiIntegrationDetailsCard';
 import DeleteOrdersCard from './components/v2/DeleteOrdersCard';
 import PageHeader from './components/v2/PageHeader';
@@ -101,6 +102,12 @@ const ShopifyV2Page = () => {
           
           {/* New All Open Orders Import V2 */}
           <AllOpenOrdersImportV2Card onImportComplete={refreshData} />
+          
+          {/* Batch Location Update V3 */}
+          <BatchLocationUpdateV3 
+            disabled={refreshInProgress}
+            onUpdateComplete={refreshData}
+          />
           
           {/* Batch Location Update V2 */}
           <BatchLocationUpdateV2 

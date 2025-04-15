@@ -1,15 +1,15 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import BatchLocationUpdateV2 from "@/components/shopify/BatchLocationUpdateV2";
+import BatchLocationUpdateV3 from "@/components/shopify/BatchLocationUpdateV3";
 
 const BatchLocationPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-orange-500">Batch Location Update V2</h1>
-        <p className="text-orange-400/80">Update location information using V2 implementation</p>
+        <h1 className="text-2xl font-bold text-orange-500">Batch Location Update</h1>
+        <p className="text-orange-400/80">Update location information for line items in orders</p>
       </div>
       
       {/* Production Warning */}
@@ -21,7 +21,21 @@ const BatchLocationPage = () => {
         </AlertDescription>
       </Alert>
       
-      <BatchLocationUpdateV2 />
+      {/* New V3 Implementation */}
+      <BatchLocationUpdateV3 />
+      
+      {/* Existing V2 Implementation */}
+      <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-orange-500">Previous Implementations</CardTitle>
+          <CardDescription className="text-zinc-400">
+            Older versions of the batch location update functionality
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BatchLocationUpdateV2 />
+        </CardContent>
+      </Card>
     </div>
   );
 };
