@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -66,20 +65,17 @@ const AllOpenOrdersImportV2Card = ({ onImportComplete }: AllOpenOrdersImportV2Ca
         duration: 5000,
       });
       
-      // If we get an immediate response with details, update the UI
-      if (data && data.success === false) {
+      // If we get an immediate response with details
+      if (data) {
+        // Don't show error state if the import completed successfully
+        const success = !data.error || data.message?.toLowerCase().includes('success');
         setResult({
-          success: false,
-          message: 'Failed to import orders',
-          details: data.error || data.message || 'Unknown error'
-        });
-      } else {
-        setResult({
-          success: true,
-          message: data.message || 'Import completed successfully'
+          success,
+          message: success ? (data.message || 'Import completed successfully') : 'Failed to import orders',
+          details: data.error
         });
         
-        if (onImportComplete) {
+        if (success && onImportComplete) {
           onImportComplete();
         }
       }
