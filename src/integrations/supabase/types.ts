@@ -894,15 +894,11 @@ export type Database = {
       }
       picked_items_mv: {
         Row: {
-          bin_location: string | null
-          cost: number | null
           created_at: string | null
-          customer_email: string | null
-          customer_name: string | null
           id: string | null
           is_partial: boolean | null
           notes: string | null
-          pinnacle_description: string | null
+          pinnacle_sku_matched: string | null
           progress: string | null
           quantity: number | null
           quantity_picked: number | null
@@ -910,7 +906,7 @@ export type Database = {
           shopify_order_id: string | null
           shopify_order_number: string | null
           sku: string | null
-          stock_quantity: number | null
+          updated_at: string | null
         }
         Relationships: []
       }

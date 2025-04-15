@@ -65,6 +65,9 @@ serve(async (req) => {
     debug("Starting database cleanup operation");
     
     try {
+      // Try a different approach for deletion that doesn't directly conflict with the materialized view
+      // First, try to use the RPC functions which should handle dependencies appropriately
+      
       // Add proper error handling and retry logic for the database cleanup
       let cleanupSuccess = false;
       let retries = 0;
@@ -104,28 +107,68 @@ serve(async (req) => {
           
           debug(`Found ${orderItemsCount || 0} order items and ${ordersCount || 0} orders to delete`);
           
+          // Try to refresh the materialized view first to avoid conflicts
+          debug("Pre-refreshing materialized view to avoid conflicts...");
+          try {
+            const { error: refreshError } = await supabase.rpc('refresh_picked_items_mv');
+            if (refreshError) {
+              debug(`Warning: Unable to refresh materialized view: ${refreshError.message}`);
+              // Continue anyway - this is just a precaution
+            } else {
+              debug("Successfully refreshed materialized view");
+            }
+          } catch (refreshError: any) {
+            debug(`Warning: Error refreshing materialized view: ${refreshError.message}`);
+            // Continue anyway - this is just a precaution
+          }
+          
           // CRITICAL FIX: STEP 1 - Delete all order items first
           debug("STEP 1: Deleting all order items with service role...");
           
-          // Using RPC function as primary deletion method for order items
+          // Use RPC function as primary deletion method for order items since it has the correct permissions
           debug("Using RPC function for order items deletion...");
           const { error: itemsDeleteError } = await supabase.rpc('delete_all_shopify_order_items');
           
           if (itemsDeleteError) {
             debug(`RPC delete for order items failed: ${itemsDeleteError.message}`);
             
-            // Fall back to direct delete
-            debug("Falling back to direct delete for order items...");
-            const { error: directDeleteError } = await supabase
+            // Fall back to direct delete with a smaller batch size to avoid timeouts
+            debug("Falling back to direct delete for order items in batches...");
+            
+            // Get all order item IDs
+            const { data: allOrderItemIds, error: idsError } = await supabase
               .from('shopify_order_items')
-              .delete()
-              .neq('id', '00000000-0000-0000-0000-000000000000');
+              .select('id')
+              .limit(10000);
               
-            if (directDeleteError) {
-              debug(`Direct delete for order items also failed: ${directDeleteError.message}`);
-              throw new Error(`Could not delete order items: ${directDeleteError.message}`);
+            if (idsError) {
+              debug(`Error getting order item IDs: ${idsError.message}`);
+              throw new Error(`Could not get order item IDs: ${idsError.message}`);
+            }
+            
+            if (allOrderItemIds && allOrderItemIds.length > 0) {
+              // Delete in batches of 500
+              const batchSize = 500;
+              for (let i = 0; i < allOrderItemIds.length; i += batchSize) {
+                const batchIds = allOrderItemIds.slice(i, i + batchSize).map(item => item.id);
+                debug(`Deleting batch ${i/batchSize + 1} of ${Math.ceil(allOrderItemIds.length/batchSize)}: ${batchIds.length} items`);
+                
+                const { error: batchDeleteError } = await supabase
+                  .from('shopify_order_items')
+                  .delete()
+                  .in('id', batchIds);
+                  
+                if (batchDeleteError) {
+                  debug(`Error deleting batch: ${batchDeleteError.message}`);
+                  throw new Error(`Batch delete failed: ${batchDeleteError.message}`);
+                }
+                
+                // Add a small delay between batches
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+              debug("Successfully deleted all order items in batches");
             } else {
-              debug("Successfully deleted all order items via direct query");
+              debug("No order items found to delete");
             }
           } else {
             debug("Successfully deleted order items via RPC");
@@ -148,7 +191,7 @@ serve(async (req) => {
             }
           }
           
-          // STEP 2: Only after items are deleted, now delete all orders
+          // STEP 2: After refreshing the materialized view and deleting items, now delete orders
           debug("STEP 2: Deleting all orders with service role...");
           
           // Using RPC function as primary deletion method for orders
@@ -158,21 +201,61 @@ serve(async (req) => {
           if (ordersDeleteError) {
             debug(`RPC delete for orders failed: ${ordersDeleteError.message}`);
             
-            // Fall back to direct delete
-            debug("Falling back to direct delete for orders...");
-            const { error: directOrdersDeleteError } = await supabase
+            // Fall back to direct delete in batches
+            debug("Falling back to direct delete for orders in batches...");
+            
+            // Get all order IDs
+            const { data: allOrderIds, error: orderIdsError } = await supabase
               .from('shopify_orders')
-              .delete()
-              .neq('id', '00000000-0000-0000-0000-000000000000');
+              .select('id')
+              .limit(10000);
               
-            if (directOrdersDeleteError) {
-              debug(`Direct delete for orders also failed: ${directOrdersDeleteError.message}`);
-              throw new Error(`Could not delete orders: ${directOrdersDeleteError.message}`);
+            if (orderIdsError) {
+              debug(`Error getting order IDs: ${orderIdsError.message}`);
+              throw new Error(`Could not get order IDs: ${orderIdsError.message}`);
+            }
+            
+            if (allOrderIds && allOrderIds.length > 0) {
+              // Delete in batches of 500
+              const batchSize = 500;
+              for (let i = 0; i < allOrderIds.length; i += batchSize) {
+                const batchIds = allOrderIds.slice(i, i + batchSize).map(item => item.id);
+                debug(`Deleting batch ${i/batchSize + 1} of ${Math.ceil(allOrderIds.length/batchSize)}: ${batchIds.length} orders`);
+                
+                const { error: batchDeleteError } = await supabase
+                  .from('shopify_orders')
+                  .delete()
+                  .in('id', batchIds);
+                  
+                if (batchDeleteError) {
+                  debug(`Error deleting batch: ${batchDeleteError.message}`);
+                  throw new Error(`Batch delete failed: ${batchDeleteError.message}`);
+                }
+                
+                // Add a small delay between batches
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+              debug("Successfully deleted all orders in batches");
             } else {
-              debug("Successfully deleted all orders via direct query");
+              debug("No orders found to delete");
             }
           } else {
             debug("Successfully deleted orders via RPC");
+          }
+          
+          // Try to refresh the materialized view after deletion
+          debug("Refreshing materialized view after deletion...");
+          try {
+            const { error: refreshError } = await supabase.rpc('refresh_picked_items_mv');
+            if (refreshError) {
+              debug(`Warning: Unable to refresh materialized view after deletion: ${refreshError.message}`);
+              // Continue anyway
+            } else {
+              debug("Successfully refreshed materialized view after deletion");
+            }
+          } catch (refreshError: any) {
+            debug(`Warning: Error refreshing materialized view after deletion: ${refreshError.message}`);
+            // Continue anyway
           }
           
           // STEP 3: Verify both tables are empty
