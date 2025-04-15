@@ -892,6 +892,27 @@ export type Database = {
         }
         Relationships: []
       }
+      picked_items_mv: {
+        Row: {
+          bin_location: string | null
+          cost: number | null
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          is_partial: boolean | null
+          notes: string | null
+          pinnacle_description: string | null
+          progress: string | null
+          quantity: number | null
+          quantity_picked: number | null
+          quantity_required: number | null
+          shopify_order_id: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          stock_quantity: number | null
+        }
+        Relationships: []
+      }
       pinnacle_stock_view: {
         Row: {
           bin_location: string | null
@@ -978,6 +999,10 @@ export type Database = {
         Returns: string
       }
       migrate_existing_order_items: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      refresh_picked_items_mv: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
