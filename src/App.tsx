@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -56,7 +57,7 @@ import ShopifyDashboard from "./pages/admin/uploads/shopify/ShopifyDashboard";
 import DeleteAllPage from "./pages/admin/uploads/shopify/pages/DeleteAllPage";
 import ImportAllPage from "./pages/admin/uploads/shopify/pages/ImportAllPage";
 import BatchLocationPage from "./pages/admin/uploads/shopify/pages/BatchLocationPage";
-import PicklistPage from "./pages/admin/uploads/shopify/pages/PicklistPage";
+import ShopifyPicklistPage from "./pages/admin/uploads/shopify/pages/PicklistPage";
 
 function App() {
   return (
@@ -127,7 +128,7 @@ function App() {
                 <Route path="/admin/uploads/shopify/deleteall" element={<DeleteAllPage />} />
                 <Route path="/admin/uploads/shopify/importall" element={<ImportAllPage />} />
                 <Route path="/admin/uploads/shopify/batchlocation" element={<BatchLocationPage />} />
-                <Route path="/admin/uploads/shopify/picklist" element={<PicklistPage />} />
+                <Route path="/admin/uploads/shopify/picklist" element={<ShopifyPicklistPage />} />
                 <Route path="/admin/uploads/shopify/oldAPI" element={<ShopifyOldAPIPage />} />
                 <Route path="/admin/uploads/ShopifyAPI" element={<ShopifyAPIRedirect />} />
                 
