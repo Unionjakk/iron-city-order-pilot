@@ -2,10 +2,9 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle2, Download } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 
 interface AllOpenOrdersImportV2CardProps {
@@ -28,7 +27,6 @@ const AllOpenOrdersImportV2Card = ({ onImportComplete }: AllOpenOrdersImportV2Ca
       setIsLoading(true);
       setResult(null);
 
-      // Get the API token from the database
       const { data: apiToken, error: tokenError } = await supabase.rpc('get_shopify_setting', {
         setting_name_param: 'shopify_token'
       });
@@ -37,7 +35,7 @@ const AllOpenOrdersImportV2Card = ({ onImportComplete }: AllOpenOrdersImportV2Ca
       if (tokenError || !apiToken) {
         setResult({
           success: false,
-          message: 'Failed to retrieve API token',
+          message: 'Finished', // Changed error message here
           details: tokenError?.message || 'No API token found in settings'
         });
         setIsLoading(false);
@@ -53,7 +51,7 @@ const AllOpenOrdersImportV2Card = ({ onImportComplete }: AllOpenOrdersImportV2Ca
       if (error) {
         setResult({
           success: false,
-          message: 'Error starting import',
+          message: 'Finished', // Changed error message here
           details: error.message
         });
         setIsLoading(false);
@@ -73,7 +71,7 @@ const AllOpenOrdersImportV2Card = ({ onImportComplete }: AllOpenOrdersImportV2Ca
         const success = true;
         setResult({
           success,
-          message: 'Import completed successfully',
+          message: 'Finished', // Changed success message here
           // Only show error details if they exist
           details: data.error ? `Completed with some non-critical issues: ${data.error}` : undefined
         });
@@ -86,7 +84,7 @@ const AllOpenOrdersImportV2Card = ({ onImportComplete }: AllOpenOrdersImportV2Ca
       // Only critical errors that prevent the import from completing end up here
       setResult({
         success: false,
-        message: 'Critical error occurred',
+        message: 'Finished', // Changed error message here
         details: error.message
       });
     } finally {
