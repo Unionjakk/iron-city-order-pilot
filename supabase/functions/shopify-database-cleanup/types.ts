@@ -1,5 +1,6 @@
 
-// CORS headers to allow cross-origin requests
+// Essential types for the shopify-database-cleanup function
+
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -9,13 +10,10 @@ export interface SyncResponse {
   success: boolean;
   error: string | null;
   imported: number;
-  cleaned: boolean;
   debugMessages: string[];
+  cleaned?: boolean;
 }
 
-/**
- * Handle CORS preflight requests
- */
 export function handleCorsPreflightRequest(req: Request): Response | null {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -24,7 +22,5 @@ export function handleCorsPreflightRequest(req: Request): Response | null {
       status: 204,
     });
   }
-  
-  // For other requests, return null
   return null;
 }

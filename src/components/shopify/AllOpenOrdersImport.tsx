@@ -1,10 +1,10 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 
@@ -23,27 +23,10 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
     details?: string;
   } | null>(null);
   const { toast } = useToast();
-  
-  // Added state to track polling interval
-  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
-  
-  // Cleanup polling on component unmount
-  useEffect(() => {
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, [pollingInterval]);
 
   // Poll for progress updates
   const startPolling = () => {
-    // Clear any existing interval first
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-    }
-    
-    const interval = window.setInterval(async () => {
+    const pollInterval = setInterval(async () => {
       try {
         // Check status
         const { data: statusData } = await supabase.rpc('get_shopify_setting', {
@@ -68,45 +51,15 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
           setProgress(Math.min(99, Math.floor((importedOrders / Math.max(importedOrders, 50)) * 100)));
         }
 
-        console.log(`Import status: ${statusData}, Orders: ${ordersData}, Lines: ${linesData}`);
-
         // Check if import is complete
         if (statusData === 'complete') {
           setIsLoading(false);
           setProgress(100);
-          
-          // Verify final counts by querying the database directly
-          const { count: actualOrderCount } = await supabase
-            .from('shopify_orders')
-            .select('*', { count: 'exact', head: true });
-            
-          const { count: actualItemCount } = await supabase
-            .from('shopify_order_items')
-            .select('*', { count: 'exact', head: true });
-          
-          // Update settings with actual counts if needed
-          if (actualOrderCount !== parseInt(ordersData || '0')) {
-            await supabase.rpc('upsert_shopify_setting', {
-              setting_name_param: 'shopify_orders_imported',
-              setting_value_param: String(actualOrderCount)
-            });
-            setImportedOrders(actualOrderCount || 0);
-          }
-          
-          if (actualItemCount !== parseInt(linesData || '0')) {
-            await supabase.rpc('upsert_shopify_setting', {
-              setting_name_param: 'shopify_orders_lines_imported',
-              setting_value_param: String(actualItemCount)
-            });
-            setImportedLines(actualItemCount || 0);
-          }
-          
           setResult({
             success: true,
-            message: `Import complete! Imported ${actualOrderCount || importedOrders} orders with ${actualItemCount || importedLines} line items.`
+            message: `Import complete! Imported ${importedOrders} orders with ${importedLines} line items.`
           });
-          clearInterval(interval);
-          setPollingInterval(null);
+          clearInterval(pollInterval);
           
           if (onImportComplete) {
             onImportComplete();
@@ -117,26 +70,7 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
             success: false,
             message: 'Import failed. Check console for details.'
           });
-          clearInterval(interval);
-          setPollingInterval(null);
-        } else if (statusData === 'idle' && isLoading) {
-          // Handle case where status might have been reset inadvertently
-          console.log('Import status is idle but component thinks import is still running');
-          // Check if we have orders - if yes, import might have succeeded
-          if (importedOrders > 0) {
-            setIsLoading(false);
-            setProgress(100);
-            setResult({
-              success: true,
-              message: `Import appears complete! Found ${importedOrders} orders with ${importedLines} line items.`
-            });
-            clearInterval(interval);
-            setPollingInterval(null);
-            
-            if (onImportComplete) {
-              onImportComplete();
-            }
-          }
+          clearInterval(pollInterval);
         }
       } catch (error) {
         console.error('Error polling for import status:', error);
@@ -144,61 +78,7 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
     }, 2000);
 
     // Store the interval ID for cleanup
-    setPollingInterval(interval);
-  };
-
-  // Function to verify current database counts
-  const verifyCurrentCounts = async () => {
-    toast({
-      title: "Refreshing counts",
-      description: "Checking current database counts...",
-    });
-    
-    try {
-      // Get actual counts from database
-      const { count: actualOrderCount } = await supabase
-        .from('shopify_orders')
-        .select('*', { count: 'exact', head: true });
-        
-      const { count: actualItemCount } = await supabase
-        .from('shopify_order_items')
-        .select('*', { count: 'exact', head: true });
-      
-      // Update settings with actual counts
-      await supabase.rpc('upsert_shopify_setting', {
-        setting_name_param: 'shopify_orders_imported',
-        setting_value_param: String(actualOrderCount)
-      });
-      
-      await supabase.rpc('upsert_shopify_setting', {
-        setting_name_param: 'shopify_orders_lines_imported',
-        setting_value_param: String(actualItemCount)
-      });
-      
-      // Update UI
-      setImportedOrders(actualOrderCount || 0);
-      setImportedLines(actualItemCount || 0);
-      
-      toast({
-        title: "Counts refreshed",
-        description: `Found ${actualOrderCount} orders and ${actualItemCount} line items in the database.`,
-      });
-      
-      // Update result if shown
-      if (result) {
-        setResult({
-          ...result,
-          message: `${result.success ? 'Import complete!' : 'Import failed.'} Found ${actualOrderCount} orders with ${actualItemCount} line items.`
-        });
-      }
-    } catch (error) {
-      console.error('Error verifying counts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to verify counts. Check console for details.",
-        variant: "destructive",
-      });
-    }
+    return pollInterval;
   };
 
   const handleImport = async () => {
@@ -243,7 +123,7 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
       });
 
       // Start polling for updates
-      startPolling();
+      const pollInterval = startPolling();
 
       // If there's an immediate error, handle it
       if (error) {
@@ -253,10 +133,7 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
           details: error.message
         });
         setIsLoading(false);
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
-        }
+        clearInterval(pollInterval);
         return;
       }
 
@@ -275,10 +152,7 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
           details: data.error || data.message || 'Unknown error'
         });
         setIsLoading(false);
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
-        }
+        clearInterval(pollInterval);
       }
     } catch (error: any) {
       setResult({
@@ -287,19 +161,13 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
         details: error.message
       });
       setIsLoading(false);
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
-      }
     }
   };
 
   return (
     <Card className="w-full mb-6">
       <CardHeader>
-        <CardTitle className="flex items-center text-blue-500">
-          <span>All Open Unfulfilled Orders and Open Partial Orders Import</span>
-        </CardTitle>
+        <CardTitle>All Open Unfulfilled Orders and Open Partial Orders Import</CardTitle>
         <CardDescription>
           Import all open unfulfilled and partially fulfilled orders from Shopify using the configured API endpoint and token.
           This operation may take several minutes to complete due to API rate limits (40 requests per minute).
@@ -335,44 +203,22 @@ const AllOpenOrdersImport = ({ onImportComplete }: AllOpenOrdersImportProps) => 
                     {result.details}
                   </div>
                 )}
-                <div className="mt-2 text-sm">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={verifyCurrentCounts}
-                    className="flex items-center gap-1"
-                  >
-                    <RefreshCw className="h-3 w-3" /> Refresh Counts
-                  </Button>
-                </div>
               </AlertDescription>
             </Alert>
           )}
           
-          <div className="flex flex-wrap gap-2">
-            <Button 
-              onClick={handleImport} 
-              disabled={isLoading}
-              className="w-full md:w-auto"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Importing...
-                </>
-              ) : 'Import All Open Orders'}
-            </Button>
-            
-            {!isLoading && (
-              <Button 
-                variant="outline" 
-                onClick={verifyCurrentCounts}
-                className="w-full md:w-auto"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" /> Verify DB Counts
-              </Button>
-            )}
-          </div>
+          <Button 
+            onClick={handleImport} 
+            disabled={isLoading}
+            className="w-full md:w-auto"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Importing...
+              </>
+            ) : 'Import All Open Orders'}
+          </Button>
         </div>
       </CardContent>
       <CardFooter className="text-sm text-muted-foreground">
