@@ -128,6 +128,7 @@ export const fetchStockForSkus = async (skus: string[]) => {
   
   console.log(`Fetching stock for ${skus.length} SKUs`);
   
+  // Fix: Ensure we're passing an array of strings for the 'in' query
   const { data, error } = await supabase
     .from('pinnacle_stock')
     .select('part_no, stock_quantity, bin_location, cost')
