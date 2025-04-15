@@ -859,6 +859,39 @@ export type Database = {
         }
         Relationships: []
       }
+      iron_city_action_viewer: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          hd_orderlinecombo: string | null
+          iron_anyaction: boolean | null
+          iron_created: string | null
+          iron_last_updated: string | null
+          iron_notes: string | null
+          iron_order_quantity: number | null
+          iron_picked_quantity: number | null
+          iron_progress: string | null
+          order_id: string | null
+          pinnacle_bin_location: string | null
+          pinnacle_close_match: boolean | null
+          pinnacle_cost: number | null
+          pinnacle_description: string | null
+          pinnacle_exact_match: boolean | null
+          pinnacle_more_than_one_match: boolean | null
+          pinnacle_part_number: string | null
+          pinnacle_stock_quantity: number | null
+          price: number | null
+          price_ex_vat: number | null
+          quantity: number | null
+          quantity_exceeds_picked: boolean | null
+          shopify_line_item_id: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       pinnacle_stock_view: {
         Row: {
           bin_location: string | null
