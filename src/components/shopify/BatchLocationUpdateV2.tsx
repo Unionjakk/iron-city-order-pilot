@@ -15,10 +15,11 @@ interface BatchLocationUpdateV2Props {
 }
 
 type ContinuationToken = {
-  batchNumber: number;
+  page: number;
   updatedCount: number;
   startTime: number;
   processingComplete: boolean;
+  totalCount?: number;
 };
 
 const BatchLocationUpdateV2: React.FC<BatchLocationUpdateV2Props> = ({ 
@@ -50,7 +51,7 @@ const BatchLocationUpdateV2: React.FC<BatchLocationUpdateV2Props> = ({
 
   const addDebugMessage = (message: string) => {
     console.log(message);
-    setDebugInfo(prev => [message, ...prev].slice(0, 100)); // Keep only last 100 messages
+    setDebugInfo(prev => [message, ...prev].slice(0, 100));
   };
 
   // Start a timer to update elapsed time
@@ -208,7 +209,7 @@ const BatchLocationUpdateV2: React.FC<BatchLocationUpdateV2Props> = ({
         setIsUpdating(false);
       } else {
         // Continue with the next batch after a short delay to respect rate limits
-        const delay = data.rateLimitRemaining && data.rateLimitRemaining < 10 ? 1000 : 200;
+        const delay = 500; // Fixed delay between batches
         addDebugMessage(`Waiting ${delay}ms before processing next batch...`);
         
         // Only continue if not paused

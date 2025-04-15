@@ -12,43 +12,22 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Represents a Shopify location
-interface ShopifyLocation {
-  id: number;
-  name: string;
-  address1?: string;
-  address2?: string;
-  city?: string;
-  zip?: string;
-  province?: string;
-  country?: string;
-  phone?: string;
-}
-
-// Interface for continuation token
+// Interfaces for types
 interface ContinuationToken {
-  lastProcessedOrderId?: string;
-  batchNumber: number;
+  page: number;
   updatedCount: number;
   startTime: number;
   processingComplete: boolean;
-  lastPage?: string;
   totalCount?: number;
 }
 
-// Response from Shopify Locations API
-interface ShopifyLocationsResponse {
-  locations: ShopifyLocation[];
-}
-
-// Input parameters for the function
 interface FunctionParams {
   apiToken: string;
   continuationToken?: string;
 }
 
 // Handle CORS preflight requests
-const corsHandler = (req: Request): Response | null => {
+function handleCors(req: Request): Response | null {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: corsHeaders,
@@ -56,9 +35,86 @@ const corsHandler = (req: Request): Response | null => {
     });
   }
   return null;
-};
+}
 
-// Returns the total count of line items needing updates
+// Shopify GraphQL query for locations
+const SHOPIFY_LOCATIONS_QUERY = `
+  query {
+    locations(first: 10) {
+      edges {
+        node {
+          id
+          name
+          isActive
+        }
+      }
+    }
+  }
+`;
+
+// Shopify GraphQL query for fulfillment orders
+const FULFILLMENT_ORDERS_QUERY = `
+  query getFulfillmentOrders($orderId: ID!) {
+    order(id: $orderId) {
+      id
+      name
+      fulfillmentOrders(first: 5) {
+        edges {
+          node {
+            id
+            assignedLocation {
+              id
+              name
+            }
+            lineItems(first: 20) {
+              edges {
+                node {
+                  id
+                  lineItem {
+                    id
+                    name
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+// Execute GraphQL query
+async function executeShopifyGraphQL(token: string, query: string, variables: Record<string, any> = {}): Promise<any> {
+  try {
+    const response = await fetch('https://opus-harley-davidson.myshopify.com/admin/api/2023-07/graphql.json', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': token
+      },
+      body: JSON.stringify({
+        query,
+        variables
+      })
+    });
+
+    const rateLimitHeader = response.headers.get('X-Shopify-Shop-Api-Call-Limit');
+    console.log(`GraphQL API Rate Limit: ${rateLimitHeader || 'Not available'}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Shopify GraphQL API error (${response.status}): ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`GraphQL execution error:`, error);
+    throw error;
+  }
+}
+
+// Get a count estimate of items to process
 async function getApproximateTotalCount(): Promise<number> {
   try {
     const { count, error } = await supabase
@@ -77,17 +133,184 @@ async function getApproximateTotalCount(): Promise<number> {
   }
 }
 
+// Extract Shopify GID from GraphQL ID
+function extractIdFromGid(gid: string): string {
+  // GIDs are like gid://shopify/Order/12345
+  const parts = gid.split('/');
+  return parts[parts.length - 1];
+}
+
+// Main function to process a batch of orders
+async function processBatch(
+  apiToken: string, 
+  page: number, 
+  pageSize: number,
+  locations: Map<string, { id: string, name: string }>
+): Promise<{ batchUpdates: number, hasMore: boolean }> {
+  console.log(`Processing batch: page ${page}, size ${pageSize}`);
+  
+  // Fetch orders for this batch
+  const { data: orders, error: ordersError } = await supabase
+    .from("shopify_orders")
+    .select("id, shopify_order_id")
+    .order("created_at", { ascending: false })
+    .range((page - 1) * pageSize, (page * pageSize) - 1);
+    
+  if (ordersError) {
+    console.error("Error fetching orders:", ordersError);
+    throw new Error(`Failed to fetch orders: ${ordersError.message}`);
+  }
+  
+  console.log(`Retrieved ${orders?.length || 0} orders from database`);
+  
+  if (!orders || orders.length === 0) {
+    return { batchUpdates: 0, hasMore: false };
+  }
+  
+  let batchUpdates = 0;
+  const maxConcurrentRequests = 2; // Process only 2 orders at a time
+  
+  // Process orders in smaller chunks to respect rate limits
+  for (let i = 0; i < orders.length; i += maxConcurrentRequests) {
+    const orderBatch = orders.slice(i, i + maxConcurrentRequests);
+    
+    const results = await Promise.all(
+      orderBatch.map(async (order) => {
+        try {
+          const shopifyOrderId = order.shopify_order_id;
+          console.log(`Processing order ${shopifyOrderId}`);
+          
+          // Use GraphQL to get fulfillment orders with location data
+          const fulfillmentData = await executeShopifyGraphQL(
+            apiToken,
+            FULFILLMENT_ORDERS_QUERY,
+            { orderId: `gid://shopify/Order/${shopifyOrderId}` }
+          );
+          
+          if (!fulfillmentData.data?.order?.fulfillmentOrders?.edges) {
+            console.log(`No fulfillment orders found for order ${shopifyOrderId}`);
+            return 0;
+          }
+          
+          const fulfillmentOrders = fulfillmentData.data.order.fulfillmentOrders.edges;
+          console.log(`Found ${fulfillmentOrders.length} fulfillment orders for order ${shopifyOrderId}`);
+          
+          // Get line items for this order from our database
+          const { data: lineItems, error: lineItemsError } = await supabase
+            .from("shopify_order_items")
+            .select("id, shopify_line_item_id, location_id")
+            .eq("order_id", order.id);
+            
+          if (lineItemsError) {
+            console.error(`Error fetching line items for order ${order.id}:`, lineItemsError);
+            return 0;
+          }
+          
+          if (!lineItems || lineItems.length === 0) {
+            console.log(`No line items found for order ${shopifyOrderId}`);
+            return 0;
+          }
+          
+          console.log(`Found ${lineItems.length} line items for order ${shopifyOrderId}`);
+          
+          // Map line items to locations from fulfillment orders
+          const lineItemLocations = new Map();
+          
+          for (const foEdge of fulfillmentOrders) {
+            const fulfillmentOrder = foEdge.node;
+            if (!fulfillmentOrder.assignedLocation || !fulfillmentOrder.lineItems?.edges) {
+              continue;
+            }
+            
+            const locationId = extractIdFromGid(fulfillmentOrder.assignedLocation.id);
+            const locationName = fulfillmentOrder.assignedLocation.name;
+            
+            for (const lineItemEdge of fulfillmentOrder.lineItems.edges) {
+              const lineItemNode = lineItemEdge.node;
+              if (!lineItemNode.lineItem?.id) continue;
+              
+              const lineItemId = extractIdFromGid(lineItemNode.lineItem.id);
+              lineItemLocations.set(lineItemId, {
+                locationId,
+                locationName
+              });
+            }
+          }
+          
+          // Prepare updates
+          let orderUpdates = 0;
+          const updatePromises = [];
+          
+          for (const item of lineItems) {
+            const locationInfo = lineItemLocations.get(item.shopify_line_item_id);
+            
+            // Only update if location has changed
+            if (locationInfo && locationInfo.locationId !== item.location_id) {
+              updatePromises.push(
+                supabase
+                  .from("shopify_order_items")
+                  .update({
+                    location_id: locationInfo.locationId,
+                    location_name: locationInfo.locationName
+                  })
+                  .eq("id", item.id)
+              );
+            }
+          }
+          
+          if (updatePromises.length === 0) {
+            console.log(`No location updates needed for order ${shopifyOrderId}`);
+            return 0;
+          }
+          
+          // Execute all updates
+          const updateResults = await Promise.all(updatePromises);
+          orderUpdates = updateResults.filter(result => !result.error).length;
+          
+          console.log(`Updated ${orderUpdates} line items for order ${shopifyOrderId}`);
+          return orderUpdates;
+        } catch (error) {
+          console.error(`Error processing order ${order.shopify_order_id}:`, error);
+          return 0;
+        }
+      })
+    );
+    
+    // Sum up successful updates
+    const chunkUpdates = results.reduce((sum, count) => sum + (count || 0), 0);
+    batchUpdates += chunkUpdates;
+    
+    // Add a small delay between chunks to avoid rate limiting
+    if (i + maxConcurrentRequests < orders.length) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+  }
+  
+  return { batchUpdates, hasMore: orders.length === pageSize };
+}
+
 // Main handler function
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight request
-  const corsResponse = corsHandler(req);
+  const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
   try {
     const startTime = performance.now();
     console.log(`Request received at ${new Date().toISOString()}`);
     
-    const { apiToken, continuationToken: continuationTokenStr } = await req.json() as FunctionParams;
+    // Parse the request body
+    let body: FunctionParams;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid JSON in request body' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    
+    const { apiToken, continuationToken: tokenString } = body;
     
     if (!apiToken) {
       return new Response(
@@ -96,30 +319,27 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Parse the continuation token if it exists
-    let continuationToken: ContinuationToken | undefined;
+    // Parse continuation token
+    let token: ContinuationToken;
     let totalEstimated: number | undefined;
     
-    if (continuationTokenStr) {
+    if (tokenString) {
       try {
-        continuationToken = JSON.parse(continuationTokenStr);
-        console.log("Resuming from continuation token:", continuationToken);
+        token = JSON.parse(tokenString);
+        console.log("Resuming from continuation token:", token);
         
-        if (continuationToken.totalCount) {
-          totalEstimated = continuationToken.totalCount;
+        if (token.totalCount) {
+          totalEstimated = token.totalCount;
         }
       } catch (error) {
         console.error("Failed to parse continuation token:", error);
+        token = { page: 1, updatedCount: 0, startTime: Date.now(), processingComplete: false };
       }
-    }
-
-    // If no continuation token or new run, initialize it
-    if (!continuationToken) {
-      // Get an estimate of total items to process for progress tracking
+    } else {
+      // Get an estimate of total items for progress tracking
       totalEstimated = await getApproximateTotalCount();
-      
-      continuationToken = {
-        batchNumber: 1,
+      token = {
+        page: 1,
         updatedCount: 0,
         startTime: Date.now(),
         processingComplete: false,
@@ -128,319 +348,54 @@ Deno.serve(async (req: Request) => {
       console.log("Starting new location sync process");
     }
 
-    // Create a cache for location information to reduce API calls
-    const locationCache = new Map<string, { id: string, name: string }>();
-    let rateLimitRemaining: number | null = null;
-
-    // Fetch all locations from Shopify (once per batch to ensure we have updated data)
-    console.log(`Fetching locations from Shopify API`);
+    // Fetch all locations from Shopify using GraphQL
+    console.log(`Fetching locations from Shopify GraphQL API`);
+    const locationsData = await executeShopifyGraphQL(apiToken, SHOPIFY_LOCATIONS_QUERY);
     
-    const locationsUrl = "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/locations.json";
-    console.log(`Fetching locations from: ${locationsUrl}`);
-    
-    const locationsResponse = await fetch(locationsUrl, {
-      headers: {
-        "X-Shopify-Access-Token": apiToken,
-        "Content-Type": "application/json",
-      },
-    });
-    
-    // Track rate limits
-    rateLimitRemaining = Number(locationsResponse.headers.get("X-Shopify-Shop-Api-Call-Limit")?.split('/')[0]) || null;
-    console.log(`API Rate Limit: ${locationsResponse.headers.get("X-Shopify-Shop-Api-Call-Limit")}`);
-    
-    if (!locationsResponse.ok) {
-      const errorText = await locationsResponse.text();
-      console.error(`Shopify API error: ${locationsResponse.status} ${locationsResponse.statusText}`, errorText);
-      
-      if (locationsResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: "Rate limit exceeded. Please try again later.",
-            continuationToken: JSON.stringify(continuationToken),
-            updated: continuationToken.updatedCount,
-            timeElapsed: (Date.now() - continuationToken.startTime) / 1000,
-            processingComplete: false,
-            rateLimitRemaining
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`Shopify API error: ${locationsResponse.status} ${errorText}`);
+    if (!locationsData.data?.locations?.edges) {
+      throw new Error("Failed to fetch locations from Shopify");
     }
     
-    const locationsData = await locationsResponse.json() as ShopifyLocationsResponse;
+    // Create a map of location IDs to names
+    const locationMap = new Map();
+    const locationEdges = locationsData.data.locations.edges;
     
-    if (!locationsData.locations || !Array.isArray(locationsData.locations)) {
-      console.error("Unexpected Shopify API response format:", locationsData);
-      throw new Error("Received unexpected data format from Shopify API");
-    }
-
-    console.log(`Retrieved ${locationsData.locations.length} locations from Shopify`);
-    
-    // Create a map of location IDs to names for easy lookup
-    for (const location of locationsData.locations) {
-      locationCache.set(String(location.id), {
-        id: String(location.id),
+    for (const edge of locationEdges) {
+      const location = edge.node;
+      const locationId = extractIdFromGid(location.id);
+      locationMap.set(locationId, {
+        id: locationId,
         name: location.name
       });
     }
-
-    // Determine which orders to process
-    const batchSize = 25; // Reduce batch size to avoid rate limits
-    const batchNumber = continuationToken.batchNumber;
     
-    console.log(`Processing batch ${batchNumber} with size ${batchSize}`);
+    console.log(`Retrieved ${locationMap.size} locations from Shopify`);
     
-    const { data: orders, error: ordersError } = await supabase
-      .from("shopify_orders")
-      .select("id, shopify_order_id")
-      .order("created_at", { ascending: false })
-      .range(
-        (batchNumber - 1) * batchSize,
-        (batchNumber * batchSize) - 1
-      );
-      
-    if (ordersError) {
-      console.error("Error fetching orders:", ordersError);
-      throw new Error(`Failed to fetch orders: ${ordersError.message}`);
-    }
-    
-    console.log(`Retrieved ${orders?.length || 0} orders from database`);
-    
-    if (!orders || orders.length === 0) {
-      // We've processed all orders
-      console.log("No more orders to process. Job complete.");
-      
-      continuationToken.processingComplete = true;
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Location sync completed successfully",
-          updated: continuationToken.updatedCount,
-          continuationToken: JSON.stringify(continuationToken),
-          processingComplete: true,
-          timeElapsed: (Date.now() - continuationToken.startTime) / 1000,
-          rateLimitRemaining,
-          totalEstimated
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Track total updated items
-    let totalUpdated = continuationToken.updatedCount;
-    let updatedInThisBatch = 0;
-    
-    // Process orders with controlled concurrency to avoid rate limits
-    const concurrencyLimit = 2; // Process only 2 orders at a time to respect rate limits
-    
-    for (let i = 0; i < orders.length; i += concurrencyLimit) {
-      const batchSlice = orders.slice(i, i + concurrencyLimit);
-      console.log(`Processing mini-batch ${i/concurrencyLimit + 1} of ${Math.ceil(orders.length/concurrencyLimit)}`);
-      
-      // Process this mini-batch of orders concurrently
-      const results = await Promise.all(
-        batchSlice.map(async (order) => {
-          try {
-            console.log(`Processing order ${order.shopify_order_id}`);
-            
-            // Fetch fulfillment orders for this order
-            const fulfillmentOrdersUrl = `https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders/${order.shopify_order_id}/fulfillment_orders.json`;
-            
-            const fulfillmentResponse = await fetch(fulfillmentOrdersUrl, {
-              headers: {
-                "X-Shopify-Access-Token": apiToken,
-                "Content-Type": "application/json",
-              },
-            });
-            
-            // Update rate limit tracking
-            const rateLimit = fulfillmentResponse.headers.get("X-Shopify-Shop-Api-Call-Limit");
-            if (rateLimit) {
-              const parts = rateLimit.split('/');
-              rateLimitRemaining = Number(parts[0]);
-              console.log(`API Rate Limit after order ${order.shopify_order_id}: ${rateLimit}`);
-            }
-            
-            if (!fulfillmentResponse.ok) {
-              console.error(`Error fetching fulfillment orders for ${order.shopify_order_id}: ${fulfillmentResponse.status}`);
-              
-              // If rate limited, we'll stop processing and return current status
-              if (fulfillmentResponse.status === 429) {
-                throw new Error("RATE_LIMIT_EXCEEDED");
-              }
-              
-              return 0; // Skip this order but continue with others
-            }
-            
-            const fulfillmentData = await fulfillmentResponse.json();
-            
-            if (!fulfillmentData.fulfillment_orders || !Array.isArray(fulfillmentData.fulfillment_orders)) {
-              console.error("Unexpected format for fulfillment orders:", fulfillmentData);
-              return 0;
-            }
-            
-            console.log(`Found ${fulfillmentData.fulfillment_orders.length} fulfillment orders for order ${order.shopify_order_id}`);
-            
-            // Get line items for this order
-            const { data: lineItems, error: lineItemsError } = await supabase
-              .from("shopify_order_items")
-              .select("id, shopify_line_item_id, location_id")
-              .eq("order_id", order.id);
-              
-            if (lineItemsError) {
-              console.error(`Error fetching line items for order ${order.id}:`, lineItemsError);
-              return 0;
-            }
-            
-            if (!lineItems || lineItems.length === 0) {
-              console.log(`No line items found for order ${order.shopify_order_id}`);
-              return 0;
-            }
-            
-            console.log(`Found ${lineItems.length} line items for order ${order.shopify_order_id}`);
-            
-            // Build a mapping of line item IDs to location IDs
-            const lineItemLocations = new Map<string, { locationId: string, locationName: string | null }>();
-            
-            for (const fulfillmentOrder of fulfillmentData.fulfillment_orders) {
-              if (!fulfillmentOrder.line_items || !Array.isArray(fulfillmentOrder.line_items)) {
-                continue;
-              }
-              
-              const locationId = String(fulfillmentOrder.assigned_location_id);
-              if (!locationId) {
-                continue;
-              }
-              
-              // Get location name from cache
-              let locationName = null;
-              const cachedLocation = locationCache.get(locationId);
-              if (cachedLocation) {
-                locationName = cachedLocation.name;
-              }
-              
-              for (const item of fulfillmentOrder.line_items) {
-                lineItemLocations.set(String(item.line_item_id), {
-                  locationId,
-                  locationName
-                });
-              }
-            }
-            
-            // Process updates in small batches
-            let orderUpdatedCount = 0;
-            const updateBatchSize = 20;
-            
-            for (let j = 0; j < lineItems.length; j += updateBatchSize) {
-              const updateBatch = lineItems.slice(j, j + updateBatchSize);
-              
-              const updates = updateBatch
-                .filter(item => {
-                  const locationInfo = lineItemLocations.get(item.shopify_line_item_id);
-                  return locationInfo && locationInfo.locationId !== item.location_id;
-                })
-                .map(item => {
-                  const locationInfo = lineItemLocations.get(item.shopify_line_item_id);
-                  return {
-                    id: item.id,
-                    location_id: locationInfo?.locationId,
-                    location_name: locationInfo?.locationName
-                  };
-                });
-              
-              if (updates.length === 0) {
-                console.log(`No updates needed for batch ${j/updateBatchSize + 1} of order ${order.shopify_order_id}`);
-                continue;
-              }
-              
-              console.log(`Updating ${updates.length} items for order ${order.shopify_order_id}`);
-              
-              // Perform updates in parallel
-              const updateResults = await Promise.all(
-                updates.map(update =>
-                  supabase
-                    .from("shopify_order_items")
-                    .update({
-                      location_id: update.location_id,
-                      location_name: update.location_name
-                    })
-                    .eq("id", update.id)
-                )
-              );
-              
-              // Count successful updates
-              const successfulUpdates = updateResults.filter(result => !result.error).length;
-              orderUpdatedCount += successfulUpdates;
-              
-              console.log(`Successfully updated ${successfulUpdates}/${updates.length} items for batch ${j/updateBatchSize + 1}`);
-            }
-            
-            console.log(`Updated ${orderUpdatedCount} line items for order ${order.shopify_order_id}`);
-            return orderUpdatedCount;
-          } catch (error: any) {
-            if (error.message === "RATE_LIMIT_EXCEEDED") {
-              throw error; // Propagate rate limit errors to stop processing
-            }
-            console.error(`Error processing order ${order.shopify_order_id}:`, error);
-            return 0;
-          }
-        })
-      ).catch(error => {
-        // If we hit a rate limit, we want to stop processing and return current status
-        if (error.message === "RATE_LIMIT_EXCEEDED") {
-          throw error;
-        }
-        return [];
-      });
-      
-      // Check if we hit a rate limit
-      if (!Array.isArray(results)) {
-        throw new Error("RATE_LIMIT_EXCEEDED");
-      }
-      
-      // Count successful updates in this batch
-      const batchUpdates = results.reduce((sum, count) => sum + count, 0);
-      updatedInThisBatch += batchUpdates;
-      
-      // Check if we're getting close to rate limits
-      if (rateLimitRemaining !== null && rateLimitRemaining < 5) {
-        console.log(`Rate limit getting low (${rateLimitRemaining}), pausing processing`);
-        break; // Stop processing this batch and return current progress
-      }
-    }
-    
-    // Update total count
-    totalUpdated += updatedInThisBatch;
+    // Process a batch of orders
+    const pageSize = 25;
+    const { batchUpdates, hasMore } = await processBatch(apiToken, token.page, pageSize, locationMap);
     
     // Update the continuation token
-    continuationToken.updatedCount = totalUpdated;
-    continuationToken.batchNumber += 1;
+    token.updatedCount += batchUpdates;
+    token.page += 1;
+    token.processingComplete = !hasMore;
     
-    // If we processed less than the batch size, we're likely done
-    const processingComplete = orders.length < batchSize;
-    continuationToken.processingComplete = processingComplete;
+    const elapsedTime = (performance.now() - startTime) / 1000;
+    console.log(`Batch ${token.page - 1} complete. Updated ${batchUpdates} items in this batch, ${token.updatedCount} total.`);
+    console.log(`Processing ${token.processingComplete ? 'complete' : 'will continue with next batch'}`);
+    console.log(`Elapsed time: ${elapsedTime.toFixed(2)}s`);
     
-    const elapsedTimeMs = performance.now() - startTime;
-    console.log(`Batch ${batchNumber} complete. Updated ${updatedInThisBatch} items in this batch, ${totalUpdated} total.`);
-    console.log(`Processing ${processingComplete ? 'complete' : 'will continue with next batch'}`);
-    console.log(`Elapsed time: ${(elapsedTimeMs/1000).toFixed(2)}s`);
-    
+    // Return the response
     return new Response(
       JSON.stringify({
         success: true,
-        message: processingComplete 
+        message: token.processingComplete 
           ? "Location sync completed successfully" 
           : "Batch processed successfully. More batches remaining.",
-        updated: totalUpdated,
-        continuationToken: JSON.stringify(continuationToken),
-        processingComplete,
-        timeElapsed: (Date.now() - continuationToken.startTime) / 1000,
-        rateLimitRemaining,
+        updated: token.updatedCount,
+        continuationToken: JSON.stringify(token),
+        processingComplete: token.processingComplete,
+        timeElapsed: (Date.now() - token.startTime) / 1000,
         totalEstimated
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -448,28 +403,6 @@ Deno.serve(async (req: Request) => {
     
   } catch (error: any) {
     console.error('Error in shopify-locations-sync-v2 function:', error);
-    
-    // If rate limited, return a continuation token so the client can retry
-    if (error.message === "RATE_LIMIT_EXCEEDED") {
-      const token = {
-        batchNumber: error.continuationToken?.batchNumber || 1,
-        updatedCount: error.continuationToken?.updatedCount || 0,
-        startTime: error.continuationToken?.startTime || Date.now(),
-        processingComplete: false
-      };
-      
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Rate limit exceeded. Please try again in a few minutes.",
-          continuationToken: JSON.stringify(token),
-          updated: token.updatedCount,
-          timeElapsed: (Date.now() - token.startTime) / 1000,
-          processingComplete: false
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
-      );
-    }
     
     return new Response(
       JSON.stringify({ 

@@ -71,7 +71,7 @@ const ApiConfigCard = ({
           </div>
         ) : hasToken ? (
           <div className="space-y-4">
-            <Alert variant="warning" className="bg-zinc-800/60 border-green-500/50">
+            <Alert className="bg-zinc-800/60 border-green-500/50">
               <CheckCircle className="h-4 w-4 text-green-500" />
               <AlertTitle className="text-green-500">API Connection Active</AlertTitle>
               <AlertDescription className="text-zinc-300">

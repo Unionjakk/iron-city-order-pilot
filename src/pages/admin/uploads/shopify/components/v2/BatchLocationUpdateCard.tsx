@@ -44,7 +44,7 @@ const BatchLocationUpdateCard = ({ disabled = false, onUpdateComplete }: BatchLo
         throw new Error("No API token found in settings");
       }
       
-      const { data, error } = await supabase.functions.invoke('shopify-locations-sync', {
+      const { data, error } = await supabase.functions.invoke('shopify-locations-sync-v2', {
         body: { apiToken: token }
       });
       
