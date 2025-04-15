@@ -7,6 +7,7 @@ import SingleOrderImportCard from './components/v2/SingleOrderImportCard';
 import AllOpenOrdersImportCard from './components/v2/AllOpenOrdersImportCard';
 import BatchLocationUpdateCard from './components/v2/BatchLocationUpdateCard';
 import ApiIntegrationDetailsCard from './components/v2/ApiIntegrationDetailsCard';
+import DeleteOrdersCard from './components/v2/DeleteOrdersCard';
 import PageHeader from './components/v2/PageHeader';
 import ProductionWarningAlert from './components/v2/ProductionWarningAlert';
 
@@ -75,6 +76,9 @@ const ShopifyV2Page = () => {
         <>
           {/* Single Order Import */}
           <SingleOrderImportCard onImportComplete={refreshData} />
+          
+          {/* Delete All Orders */}
+          <DeleteOrdersCard />
           
           {/* All Open Orders Import */}
           <AllOpenOrdersImportCard onImportComplete={refreshData} />
