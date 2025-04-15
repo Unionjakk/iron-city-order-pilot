@@ -1,6 +1,6 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { extractPaginationInfo } from '../shopify-sync-all/paginationUtils.ts';
+import { extractPaginationInfo } from './paginationUtils.ts';
 
 // CORS headers for browser requests
 const corsHeaders = {
