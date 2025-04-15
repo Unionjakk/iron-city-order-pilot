@@ -8,7 +8,8 @@ import {
   ClipboardCheck, 
   ShoppingBag,
   Tag,
-  CheckCircle 
+  CheckCircle,
+  CircleDollarSign
 } from "lucide-react";
 
 interface VisualizerStatsProps {
@@ -49,7 +50,7 @@ const VisualizerStats = ({ isLoading, statusCounts, totalOrders }: VisualizerSta
       <Card>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 7 }).map((_, i) => (
               <div key={i} className="flex items-center space-x-4">
                 <Skeleton className="w-10 h-10 rounded-full" />
                 <div>
@@ -77,7 +78,7 @@ const VisualizerStats = ({ isLoading, statusCounts, totalOrders }: VisualizerSta
   return (
     <Card>
       <CardContent className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6">
           <StatCard 
             icon={<ShoppingCart className="h-5 w-5 text-white" />} 
             label="Total Orders" 
@@ -94,13 +95,31 @@ const VisualizerStats = ({ isLoading, statusCounts, totalOrders }: VisualizerSta
             icon={<ShoppingBag className="h-5 w-5 text-white" />} 
             label="To Pick" 
             value={statusCounts.toPick}
-            color="bg-yellow-500"
+            color="bg-amber-600"
+          />
+          <StatCard 
+            icon={<CheckCircle className="h-5 w-5 text-white" />} 
+            label="Picked" 
+            value={statusCounts.picked}
+            color="bg-green-600"
           />
           <StatCard 
             icon={<Package className="h-5 w-5 text-white" />} 
             label="To Order" 
             value={statusCounts.toOrder}
-            color="bg-purple-500"
+            color="bg-purple-600"
+          />
+          <StatCard 
+            icon={<CircleDollarSign className="h-5 w-5 text-white" />} 
+            label="Ordered" 
+            value={statusCounts.ordered}
+            color="bg-blue-600"
+          />
+          <StatCard 
+            icon={<Truck className="h-5 w-5 text-white" />} 
+            label="To Dispatch" 
+            value={statusCounts.toDispatch}
+            color="bg-teal-600"
           />
         </div>
       </CardContent>

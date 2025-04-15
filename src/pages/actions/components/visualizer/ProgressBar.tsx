@@ -16,7 +16,7 @@ const ProgressBar = ({ order }: ProgressBarProps) => {
   
   return (
     <TooltipProvider>
-      <div className="w-full h-3 bg-gray-100 rounded-full relative overflow-hidden flex">
+      <div className="w-full h-3 bg-gray-100 dark:bg-gray-800 rounded-full relative overflow-hidden flex">
         {segments.map((segment, index) => (
           <Tooltip key={index}>
             <TooltipTrigger asChild>
@@ -67,17 +67,17 @@ function getStatusColor(status: string): string {
   
   switch (statusLower) {
     case "to pick":
-      return "#fbbf24"; // yellow-400
+      return "#d97706"; // amber-600
     case "picked":
-      return "#10b981"; // green-500
+      return "#059669"; // green-600
     case "to order":
-      return "#8b5cf6"; // purple-500
+      return "#7c3aed"; // purple-600
     case "ordered":
-      return "#3b82f6"; // blue-500
+      return "#2563eb"; // blue-600
     case "to dispatch":
-      return "#14b8a6"; // teal-500
+      return "#0d9488"; // teal-600
     default:
-      return "#9ca3af"; // gray-400
+      return "#6b7280"; // gray-500
   }
 }
 
