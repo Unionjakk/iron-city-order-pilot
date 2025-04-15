@@ -140,7 +140,6 @@ const PinnacleSearchDialog: React.FC<PinnacleSearchDialogProps> = ({
           )}
           <Button 
             type="submit"
-
             className="absolute right-1 top-1 h-8"
             size="sm"
             disabled={isLoading}

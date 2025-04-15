@@ -9,7 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import PicklistSearch from "./components/picklist-v2/PicklistSearch";
 import PicklistOrdersList from "./components/picklist-v2/PicklistOrdersList";
 import PicklistLoading from "./components/PicklistLoading";
-import { ExternalLink } from "lucide-react";
 
 // Define interfaces for our data
 interface PicklistItem {
@@ -56,6 +55,8 @@ const PicklistV2Page = () => {
     setError(null);
     
     try {
+      console.log("Fetching data from iron_city_action_viewer where iron_progress is null");
+      
       // Get items where iron_progress is null (items to pick)
       const { data, error } = await supabase
         .from('iron_city_action_viewer')
@@ -65,11 +66,14 @@ const PicklistV2Page = () => {
       if (error) throw error;
       
       if (!data || data.length === 0) {
+        console.log("No items found with iron_progress = null");
         setOrders([]);
         setFilteredOrders([]);
         setIsLoading(false);
         return;
       }
+      
+      console.log(`Found ${data.length} items with iron_progress = null`);
       
       // Group items by order
       const orderMap = new Map<string, PicklistOrder>();
@@ -305,7 +309,7 @@ const PicklistV2Page = () => {
             <div className="p-10 text-center">
               <h3 className="mt-6 text-xl font-semibold text-orange-500">No items to pick</h3>
               <p className="mt-2 text-zinc-400 max-w-md mx-auto">
-                No items are currently in the "To Pick" status.
+                No items are currently waiting to be picked.
               </p>
               <Button 
                 variant="outline" 
@@ -326,7 +330,7 @@ const PicklistV2Page = () => {
                 <div className="p-10 text-center">
                   <h3 className="text-xl font-semibold text-orange-500">No matching items found</h3>
                   <p className="mt-2 text-zinc-400 max-w-md mx-auto">
-                    No "To Pick" items match your search for "{searchQuery}".
+                    No items match your search for "{searchQuery}".
                   </p>
                   <Button 
                     variant="outline" 
