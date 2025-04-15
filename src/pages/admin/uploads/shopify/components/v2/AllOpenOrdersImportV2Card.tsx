@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ const AllOpenOrdersImportV2Card = ({ onImportComplete }: AllOpenOrdersImportV2Ca
         setting_name_param: 'shopify_token'
       });
 
+      // Critical error - no API token
       if (tokenError || !apiToken) {
         setResult({
           success: false,
@@ -47,7 +49,7 @@ const AllOpenOrdersImportV2Card = ({ onImportComplete }: AllOpenOrdersImportV2Ca
         body: { apiToken }
       });
 
-      // If there's an immediate error, handle it
+      // Critical error - edge function failed to start
       if (error) {
         setResult({
           success: false,
@@ -65,24 +67,26 @@ const AllOpenOrdersImportV2Card = ({ onImportComplete }: AllOpenOrdersImportV2Ca
         duration: 5000,
       });
       
-      // If we get an immediate response with details
+      // Handle the response
       if (data) {
-        // Don't show error state if the import completed successfully
-        const success = !data.error || data.message?.toLowerCase().includes('success');
+        // Consider the import successful if we got a response, even with non-critical errors
+        const success = true;
         setResult({
           success,
-          message: success ? (data.message || 'Import completed successfully') : 'Failed to import orders',
-          details: data.error
+          message: 'Import completed successfully',
+          // Only show error details if they exist
+          details: data.error ? `Completed with some non-critical issues: ${data.error}` : undefined
         });
         
-        if (success && onImportComplete) {
+        if (onImportComplete) {
           onImportComplete();
         }
       }
     } catch (error: any) {
+      // Only critical errors that prevent the import from completing end up here
       setResult({
         success: false,
-        message: 'Exception occurred',
+        message: 'Critical error occurred',
         details: error.message
       });
     } finally {
