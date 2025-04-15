@@ -35,7 +35,7 @@ const VisualiserPage = () => {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"cards" | "list">("list");
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "name">("newest");
   
   // Filter and sort orders

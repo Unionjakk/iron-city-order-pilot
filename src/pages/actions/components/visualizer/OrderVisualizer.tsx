@@ -44,7 +44,7 @@ const OrderVisualizer = ({ orders }: OrderVisualizerProps) => {
   };
   
   return (
-    <div className="grid grid-cols-1 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {orders.map(order => {
         const isExpanded = expandedOrders.has(order.id);
         const statusCounts = getStatusCounts(order);
@@ -118,7 +118,7 @@ const OrderVisualizer = ({ orders }: OrderVisualizerProps) => {
                             </div>
                           )}
                           {item.notes && (
-                            <div className="italic text-xs mt-2 break-words max-w-full">
+                            <div className="italic text-xs mt-2">
                               Notes: {item.notes}
                             </div>
                           )}

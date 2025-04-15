@@ -4,8 +4,7 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Navigate,
-  Outlet
+  Navigate
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -32,8 +31,6 @@ import ShopifyOldAPIPage from "./pages/admin/uploads/shopify/oldAPI/ShopifyOldAP
 import ShopifyAPIRedirect from "./pages/admin/uploads/ShopifyAPIRedirect";
 import ActionsIndex from "./pages/actions/ActionsIndex";
 import PicklistPage from "./pages/actions/PicklistPage";
-import PicklistV2Page from "./pages/actions/PicklistV2Page";
-import OldPicklistPage from "./pages/actions/OldPicklistPage";
 import ToOrderPage from "./pages/actions/ToOrderPage";
 import OrderedPage from "./pages/actions/OrderedPage";
 import PickedPage from "./pages/actions/PickedPage";
@@ -87,8 +84,7 @@ function App() {
                 
                 {/* Actions Routes */}
                 <Route path="/actions" element={<ActionsIndex />} />
-                <Route path="/actions/picklist" element={<PicklistV2Page />} />
-                <Route path="/actions/oldpicklist" element={<OldPicklistPage />} />
+                <Route path="/actions/picklist" element={<PicklistPage />} />
                 <Route path="/actions/to-order" element={<ToOrderPage />} />
                 <Route path="/actions/ordered" element={<OrderedPage />} />
                 <Route path="/actions/picked" element={<PickedPage />} />
@@ -114,7 +110,6 @@ function App() {
                 <Route path="/admin/uploads/harley/open-orders" element={<OpenOrdersUpload />} />
                 <Route path="/admin/uploads/harley/order-lines" element={<OrderLinesUpload />} />
                 <Route path="/admin/uploads/harley/open-lines-check-in" element={<OpenLinesCheckIn />} />
-                <Route path="/admin/uploads/harley/open-order-check-in" element={<LineItemsExclude />} />
                 <Route path="/admin/uploads/harley/backorders" element={<BackordersUpload />} />
                 <Route path="/admin/uploads/harley/line-items-exclude" element={<LineItemsExclude />} />
                 

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 
@@ -8,26 +9,35 @@ export const fetchOrdersWithPickedItems = async () => {
   console.log("Fetching orders with 'Picked' items...");
   
   try {
-    // Get all unique order IDs directly from the materialized view with a single query
-    const { data: orderIds, error: orderIdsError } = await supabase
-      .from('picked_items_mv')
-      .select('shopify_order_id');
+    // First get the shopify order IDs that have "Picked" progress
+    const { data: progressData, error: progressError } = await supabase
+      .from('iron_city_order_progress')
+      .select('shopify_order_id, sku, quantity, is_partial')
+      .eq('progress', 'Picked');
       
-    if (orderIdsError) {
-      console.error("Error fetching order IDs:", orderIdsError);
-      throw new Error(`Error fetching order IDs: ${orderIdsError.message}`);
+    if (progressError) {
+      console.error("Progress fetch error:", progressError);
+      throw new Error(`Progress fetch error: ${progressError.message}`);
     }
     
-    if (!orderIds || orderIds.length === 0) {
+    // If no orders have "Picked" items, return empty array
+    if (!progressData || progressData.length === 0) {
       console.log("No orders have 'Picked' items");
       return [];
     }
     
-    // Extract the unique order IDs into an array
-    const uniqueIds = [...new Set(orderIds.map(o => o.shopify_order_id))];
-    console.log(`Found ${uniqueIds.length} unique orders with picked items`);
+    console.log(`Found ${progressData.length} orders with 'Picked' progress items:`, progressData);
     
-    // Fetch the unfulfilled orders that match these IDs
+    // Extract the order IDs - fix TypeScript error by ensuring we only take strings
+    // and explicitly mapping to string[] type to avoid the 'unknown[]' error
+    const orderIds: string[] = Array.from(
+      new Set(
+        progressData.map(item => 
+          typeof item.shopify_order_id === 'string' ? item.shopify_order_id : String(item.shopify_order_id)
+        )
+      )
+    );
+    
     const { data, error } = await supabase
       .from('shopify_orders')
       .select(`
@@ -40,7 +50,7 @@ export const fetchOrdersWithPickedItems = async () => {
         status
       `)
       .eq('status', UNFULFILLED_STATUS)
-      .in('shopify_order_id', uniqueIds);
+      .in('shopify_order_id', orderIds);
       
     if (error) {
       console.error("Orders fetch error:", error);
@@ -81,27 +91,26 @@ export const fetchLineItemsForOrders = async (orderIds: string[]) => {
 };
 
 /**
- * Fetch progress information specifically for "Picked" items using materialized view
+ * Fetch progress information specifically for "Picked" items
  */
 export const fetchPickedItemsProgress = async () => {
-  console.log("Fetching 'Picked' items from materialized view...");
+  console.log("Fetching 'Picked' progress items...");
   
   try {
+    // Fetch all picked items directly with the is_partial column 
+    // which now exists in the database
     const { data, error } = await supabase
-      .from('picked_items_mv')
-      .select();
+      .from('iron_city_order_progress')
+      .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number, quantity_picked, quantity_required, is_partial')
+      .eq('progress', 'Picked');
       
     if (error) {
       console.error("Progress fetch error:", error);
       return [];
     }
     
-    if (!data) {
-      return [];
-    }
-    
-    console.log(`Fetched ${data.length} 'Picked' progress items from materialized view`);
-    return data;
+    console.log(`Fetched ${data?.length || 0} 'Picked' progress items with is_partial field:`, data);
+    return data || [];
   } catch (error) {
     console.error("Error in fetchPickedItemsProgress:", error);
     return [];
@@ -138,14 +147,20 @@ export const fetchStockForSkus = async (skus: string[]) => {
  */
 export const fetchTotalPickedQuantityForSku = async (sku: string): Promise<number> => {
   try {
-    const { data, error } = await supabase.rpc('sum_picked_quantity_by_sku', { sku_param: sku });
+    const { data, error } = await supabase
+      .from('iron_city_order_progress')
+      .select('quantity_picked')
+      .eq('sku', sku)
+      .eq('progress', 'Picked');
       
-    if (error) {
-      console.error("Error fetching total picked quantity:", error);
-      throw error;
-    }
+    if (error) throw error;
     
-    return data ?? 0;
+    // Sum up all picked quantities
+    const totalPicked = data?.reduce((sum, item) => {
+      return sum + (item.quantity_picked || 0);
+    }, 0);
+    
+    return totalPicked || 0;
   } catch (error) {
     console.error("Error fetching total picked quantity:", error);
     return 0;

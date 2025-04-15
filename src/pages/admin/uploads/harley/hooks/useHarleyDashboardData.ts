@@ -26,71 +26,35 @@ export const useHarleyDashboardData = () => {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true);
-        console.log("Fetching Harley Davidson statistics from database...");
+        console.log("Fetching Harley Davidson statistics from improved view...");
         
-        // Fetch total orders count
-        const { count: totalOrdersCount, error: totalOrdersError } = await supabase
-          .from('hd_orders')
-          .select('*', { count: 'exact', head: true });
-        
-        // Fetch orders without line items
-        const { count: ordersWithoutLineItemsCount, error: ordersError } = await supabase
-          .from('hd_orders_with_lookup')
-          .select('*', { count: 'exact', head: true })
-          .eq('has_line_items', false)
-          .eq('is_excluded', false);
-
-        // Count backorder items from hd_combined
-        const { count: backorderItemsCount, error: backorderError } = await supabase
-          .from('hd_combined')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_backorder', true);
-        
-        // Fetch the latest upload dates
-        const { data: openOrdersUpload, error: openOrdersError } = await supabase
-          .from('hd_upload_history')
-          .select('upload_date')
-          .eq('upload_type', 'open_orders')
-          .eq('status', 'success')
-          .order('upload_date', { ascending: false })
-          .limit(1)
-          .single();
-          
-        const { data: lineItemsUpload, error: lineItemsError } = await supabase
-          .from('hd_upload_history')
-          .select('upload_date')
-          .eq('upload_type', 'order_lines')
-          .eq('status', 'success')
-          .order('upload_date', { ascending: false })
-          .limit(1)
-          .single();
-          
-        const { data: backordersUpload, error: backordersError } = await supabase
-          .from('hd_upload_history')
-          .select('upload_date')
-          .eq('upload_type', 'backorders')
-          .eq('status', 'success')
-          .order('upload_date', { ascending: false })
-          .limit(1)
+        // Fetch stats from the enhanced database view
+        const { data: viewData, error: viewError } = await supabase
+          .from('hd_dashboard_stats')
+          .select('*')
           .single();
         
-        if (totalOrdersError || ordersError || backorderError) {
-          console.error('Error fetching stats:', totalOrdersError || ordersError || backorderError);
-          throw totalOrdersError || ordersError || backorderError;
+        if (viewError) {
+          console.error('Error fetching stats from view:', viewError);
+          throw viewError;
         }
         
-        // Update stats with the fetched data
-        setStats({
-          totalOrders: totalOrdersCount || 0,
-          ordersWithoutLineItems: ordersWithoutLineItemsCount || 0,
-          backorderItems: backorderItemsCount || 0,
-          totalBackorderItems: backorderItemsCount || 0,
-          lastOpenOrdersUpload: openOrdersUpload?.upload_date || null,
-          lastLineItemsUpload: lineItemsUpload?.upload_date || null,
-          lastBackordersUpload: backordersUpload?.upload_date || null
-        });
+        if (viewData) {
+          console.log('Raw view data:', viewData);
+          // Update stats with data from the new, more accurate view
+          // which now accounts for excluded orders in the orders_without_line_items count
+          setStats({
+            totalOrders: viewData.total_orders || 0,
+            ordersWithoutLineItems: viewData.orders_without_line_items || 0,
+            backorderItems: viewData.backorder_items || 0,
+            totalBackorderItems: viewData.total_backorder_items || 0,
+            lastOpenOrdersUpload: viewData.last_open_orders_upload,
+            lastLineItemsUpload: viewData.last_line_items_upload,
+            lastBackordersUpload: viewData.last_backorders_upload
+          });
+        }
         
-        console.log('Harley Davidson stats loaded successfully');
+        console.log('Harley Davidson stats loaded successfully using improved view');
         setIsLoadingStats(false);
       } catch (error) {
         console.error('Error fetching Harley Davidson stats:', error);

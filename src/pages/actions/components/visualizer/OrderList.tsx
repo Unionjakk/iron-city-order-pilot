@@ -13,7 +13,7 @@ interface OrderListProps {
 }
 
 const OrderList = ({ orders }: OrderListProps) => {
-  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set(orders.map(order => order.id)));
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   
   const toggleOrderExpanded = (orderId: string) => {
     const newExpandedOrders = new Set(expandedOrders);
@@ -137,7 +137,7 @@ const OrderList = ({ orders }: OrderListProps) => {
                                   <span className="text-gray-500">Unknown</span>
                                 )}
                               </TableCell>
-                              <TableCell className="max-w-md break-words">
+                              <TableCell>
                                 {item.notes ? (
                                   <span className="text-xs italic">{item.notes}</span>
                                 ) : (
