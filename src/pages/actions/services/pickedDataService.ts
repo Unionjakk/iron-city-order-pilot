@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 
@@ -11,8 +12,7 @@ export const fetchOrdersWithPickedItems = async () => {
     // First get distinct order IDs from the materialized view
     const { data: orderIds, error: orderIdsError } = await supabase
       .from('picked_items_mv')
-      .select('shopify_order_id')
-      .distinct();
+      .select('shopify_order_id');
       
     if (orderIdsError) {
       console.error("Error fetching order IDs:", orderIdsError);
@@ -24,8 +24,8 @@ export const fetchOrdersWithPickedItems = async () => {
       return [];
     }
     
-    // Extract the order IDs into an array
-    const ids = orderIds.map(o => o.shopify_order_id);
+    // Extract the unique order IDs into an array
+    const uniqueIds = [...new Set(orderIds.map(o => o.shopify_order_id))];
     
     // Fetch the unfulfilled orders that match these IDs
     const { data, error } = await supabase
@@ -40,7 +40,7 @@ export const fetchOrdersWithPickedItems = async () => {
         status
       `)
       .eq('status', UNFULFILLED_STATUS)
-      .in('shopify_order_id', ids);
+      .in('shopify_order_id', uniqueIds);
       
     if (error) {
       console.error("Orders fetch error:", error);
