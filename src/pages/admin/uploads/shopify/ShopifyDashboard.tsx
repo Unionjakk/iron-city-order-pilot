@@ -1,3 +1,4 @@
+
 import { LayoutDashboard, Trash2, Download, MapPin, List, Link } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,8 +59,8 @@ const ShopifyDashboard = () => {
         
         <ProgressCard
           icon={MapPin}
-          title="Batch Location Update"
-          description="Update location information using V3 implementation"
+          title="Batch Location Update V3 (GraphQL)"
+          description="Update locations using the new GraphQL implementation"
           to="/admin/uploads/shopify/batchlocation"
         />
         
