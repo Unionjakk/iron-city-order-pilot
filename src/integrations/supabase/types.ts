@@ -985,14 +985,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
-      refresh_picked_items_mv: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      sum_picked_quantity_by_sku: {
-        Args: { sku_param: string }
-        Returns: number
-      }
       update_dashboard_stats: {
         Args: Record<PropertyKey, never>
         Returns: undefined

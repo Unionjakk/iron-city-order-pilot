@@ -1,4 +1,3 @@
-
 // Supabase Edge Function
 // This function imports ALL open unfulfilled and partially fulfilled orders from Shopify
 // With proper pagination and rate limiting (40 requests per minute)
@@ -398,6 +397,57 @@ serve(async (req) => {
       setting_name_param: "shopify_import_status",
       setting_value_param: "complete"
     });
+    
+    // Perform final count verification
+    try {
+      debug("Performing final count verification...");
+      
+      // Get actual count of orders
+      const { count: actualOrderCount, error: orderCountError } = await supabase
+        .from('shopify_orders')
+        .select('*', { count: 'exact', head: true });
+      
+      if (orderCountError) {
+        debug(`Error getting actual order count: ${orderCountError.message}`);
+      } else {
+        debug(`Actual orders in database: ${actualOrderCount}`);
+        
+        // Update the count in settings with the actual count
+        await supabase.rpc("upsert_shopify_setting", {
+          setting_name_param: "shopify_orders_imported",
+          setting_value_param: String(actualOrderCount)
+        });
+        
+        // Update response data with actual count
+        totalOrdersImported = actualOrderCount || 0;
+        responseData.imported.orders = totalOrdersImported;
+      }
+      
+      // Get actual count of order items
+      const { count: actualItemCount, error: itemCountError } = await supabase
+        .from('shopify_order_items')
+        .select('*', { count: 'exact', head: true });
+      
+      if (itemCountError) {
+        debug(`Error getting actual item count: ${itemCountError.message}`);
+      } else {
+        debug(`Actual order items in database: ${actualItemCount}`);
+        
+        // Update the count in settings with the actual count
+        await supabase.rpc("upsert_shopify_setting", {
+          setting_name_param: "shopify_orders_lines_imported",
+          setting_value_param: String(actualItemCount)
+        });
+        
+        // Update response data with actual count
+        totalLineItemsImported = actualItemCount || 0;
+        responseData.imported.lineItems = totalLineItemsImported;
+      }
+      
+    } catch (countError) {
+      debug(`Error during final count verification: ${countError.message}`);
+      // Continue with the process even if count verification fails
+    }
     
     // Prepare successful response
     responseData.success = true;

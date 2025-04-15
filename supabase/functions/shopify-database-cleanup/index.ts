@@ -128,6 +128,51 @@ serve(async (req) => {
       throw deleteOrdersError;
     }
     
+    // NEW CODE: Reset the shopify_orders_imported and shopify_orders_lines_imported counters to 0
+    // This ensures that the subsequent import process will have the correct counts
+    debug("STEP 3: Resetting shopify order counters in settings...");
+    
+    try {
+      // Reset orders imported counter
+      const { error: resetOrdersError } = await supabase.rpc("upsert_shopify_setting", {
+        setting_name_param: "shopify_orders_imported",
+        setting_value_param: "0"
+      });
+      
+      if (resetOrdersError) {
+        debug(`Error resetting orders counter: ${resetOrdersError.message}`);
+      } else {
+        debug("Successfully reset orders counter to 0");
+      }
+      
+      // Reset order lines imported counter
+      const { error: resetLinesError } = await supabase.rpc("upsert_shopify_setting", {
+        setting_name_param: "shopify_orders_lines_imported",
+        setting_value_param: "0"
+      });
+      
+      if (resetLinesError) {
+        debug(`Error resetting order lines counter: ${resetLinesError.message}`);
+      } else {
+        debug("Successfully reset order lines counter to 0");
+      }
+      
+      // Reset import status to ensure it's not stuck
+      const { error: resetStatusError } = await supabase.rpc("upsert_shopify_setting", {
+        setting_name_param: "shopify_import_status",
+        setting_value_param: "idle"
+      });
+      
+      if (resetStatusError) {
+        debug(`Error resetting import status: ${resetStatusError.message}`);
+      } else {
+        debug("Successfully reset import status to idle");
+      }
+    } catch (resetError: any) {
+      debug(`Error during counter reset: ${resetError.message}`);
+      // Continue with the process even if counter reset fails
+    }
+    
     responseData.success = true;
     responseData.cleaned = true;
     
