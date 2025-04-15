@@ -30,20 +30,214 @@ Deno.serve(async (req) => {
     const apiEndpoint = await getShopifyApiEndpoint(console.log);
     
     // Add query parameters for open, unfulfilled/partial orders only
-    const endpointWithParams = `${apiEndpoint}?status=open&fulfillment_status=unfulfilled,partial`;
+    // Also specify the fields we want to retrieve, matching the single order import
+    const endpointWithParams = `${apiEndpoint}?status=open&fulfillment_status=unfulfilled,partial&fields=id,order_number,name,created_at,fulfillment_status,customer,line_items,shipping_address,note,email,phone`;
     console.log(`Using API endpoint: ${endpointWithParams}`);
 
     // Process all orders
-    await processAllOrders(apiToken, endpointWithParams);
+    let currentEndpoint = endpointWithParams;
+    let totalOrders = 0;
+    
+    try {
+      while (currentEndpoint) {
+        console.log(`Fetching orders from: ${currentEndpoint}`);
+        
+        // Use waitForRateLimit to respect Shopify's rate limits
+        await waitForRateLimit();
+        
+        const response = await fetch(currentEndpoint, {
+          headers: {
+            "X-Shopify-Access-Token": apiToken,
+            "Content-Type": "application/json",
+          },
+        });
+        
+        if (!response.ok) {
+          const error = await response.text();
+          console.error(`Shopify API error: ${response.status} ${response.statusText}`, error);
+          throw new Error(`Shopify API returned error: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.orders || !Array.isArray(data.orders)) {
+          console.error("Unexpected Shopify API response format:", data);
+          throw new Error("Received unexpected data format from Shopify API");
+        }
+        
+        // Process each order - mirroring single order import logic
+        for (const order of data.orders) {
+          console.log(`Processing order ${order.id} (${order.order_number || order.name})`);
+          
+          // Prepare customer data - use safe defaults if missing
+          const customerName = order.customer 
+            ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() 
+            : 'Unknown Customer';
+            
+          const customerEmail = order.customer 
+            ? order.customer.email || null
+            : (order.email || null);
+            
+          const customerPhone = order.customer 
+            ? order.customer.phone || null
+            : (order.phone || null);
+
+          // Check if order already exists
+          const { data: existingOrder, error: checkError } = await supabase
+            .from("shopify_orders")
+            .select("id")
+            .eq("shopify_order_id", String(order.id))
+            .maybeSingle();
+
+          if (checkError) {
+            console.error(`Error checking existing order ${order.id}: ${checkError.message}`);
+            continue;
+          }
+
+          let orderDbId: string;
+
+          if (existingOrder) {
+            console.log(`Order ${order.id} already exists - updating`);
+            
+            // Update existing order with all customer data
+            const { error: updateError } = await supabase
+              .from("shopify_orders")
+              .update({
+                status: order.fulfillment_status || "unfulfilled",
+                imported_at: new Date().toISOString(),
+                customer_name: customerName,
+                customer_email: customerEmail,
+                customer_phone: customerPhone,
+                shipping_address: order.shipping_address || null,
+                note: order.note || null,
+                line_items: order.line_items || null
+              })
+              .eq("id", existingOrder.id);
+
+            if (updateError) {
+              console.error(`Error updating order ${order.id}: ${updateError.message}`);
+              continue;
+            }
+            
+            orderDbId = existingOrder.id;
+
+            // Delete existing line items to avoid duplicates
+            const { error: deleteLineItemsError } = await supabase
+              .from("shopify_order_items")
+              .delete()
+              .eq("order_id", orderDbId);
+
+            if (deleteLineItemsError) {
+              console.error(`Error deleting existing line items for order ${order.id}: ${deleteLineItemsError.message}`);
+            }
+          } else {
+            // Insert new order with all customer data
+            const { data: insertedOrder, error: insertError } = await supabase
+              .from("shopify_orders")
+              .insert({
+                shopify_order_id: String(order.id),
+                shopify_order_number: order.order_number || order.name,
+                created_at: order.created_at,
+                customer_name: customerName,
+                customer_email: customerEmail,
+                customer_phone: customerPhone,
+                status: order.fulfillment_status || "unfulfilled",
+                items_count: order.line_items?.length || 0,
+                imported_at: new Date().toISOString(),
+                note: order.note || null,
+                shipping_address: order.shipping_address || null,
+                line_items: order.line_items || null
+              })
+              .select()
+              .single();
+
+            if (insertError) {
+              console.error(`Error inserting order ${order.id}: ${insertError.message}`);
+              continue;
+            }
+
+            if (!insertedOrder) {
+              console.error(`Error: No order ID returned after inserting order ${order.id}`);
+              continue;
+            }
+
+            orderDbId = insertedOrder.id;
+          }
+
+          // Process line items exactly like single order import
+          if (order.line_items && Array.isArray(order.line_items) && order.line_items.length > 0) {
+            console.log(`Processing ${order.line_items.length} line items for order ${order.id}`);
+            
+            for (const item of order.line_items) {
+              const shopifyLineItemId = String(item.id || `default-${Math.random().toString(36).substring(2, 15)}`);
+              
+              const { error: insertLineItemError } = await supabase
+                .from("shopify_order_items")
+                .insert({
+                  order_id: orderDbId,
+                  shopify_line_item_id: shopifyLineItemId,
+                  title: item.title || "Unknown Product",
+                  sku: item.sku || "",
+                  quantity: item.quantity || 1,
+                  price: item.price || "0.00",
+                  product_id: item.product_id ? String(item.product_id) : "",
+                  variant_id: item.variant_id ? String(item.variant_id) : "",
+                  properties: item.properties || null,
+                  location_id: item.location_id ? String(item.location_id) : null,
+                  location_name: item.location_name || null
+                });
+
+              if (insertLineItemError) {
+                console.error(`Error inserting line item for order ${order.id}: ${insertLineItemError.message}`);
+              } else {
+                console.log(`Successfully inserted line item ${shopifyLineItemId} for order ${order.id}`);
+              }
+            }
+          } else {
+            console.log(`Warning: Order ${order.id} has no line items`);
+          }
+
+          // Verify line items were created
+          const { count, error: countError } = await supabase
+            .from("shopify_order_items")
+            .select("*", { count: 'exact', head: true })
+            .eq("order_id", orderDbId);
+            
+          if (countError) {
+            console.error(`Error verifying line items for order ${order.id}: ${countError.message}`);
+          } else if (!count || count === 0) {
+            console.error(`WARNING: No line items were created for order ${order.id}`);
+          } else {
+            console.log(`Verified ${count} line items for order ${order.id}`);
+          }
+
+          totalOrders++;
+        }
+        
+        // Check for pagination
+        const { nextPageUrl } = extractPaginationInfo(response);
+        currentEndpoint = nextPageUrl;
+        
+        if (nextPageUrl) {
+          console.log(`Moving to next page: ${nextPageUrl}`);
+        }
+      }
+      
+      console.log(`Import complete. Total orders processed: ${totalOrders}`);
+      
+    } catch (error) {
+      console.error("Error processing orders:", error);
+      throw error;
+    }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Import completed successfully'
+        message: `Successfully processed ${totalOrders} orders`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in shopify-all-open-unfulfilled-partial_v2 function:', error);
     
     return new Response(
@@ -56,58 +250,10 @@ Deno.serve(async (req) => {
   }
 });
 
-// Process all orders with pagination handling
-async function processAllOrders(apiToken: string, apiEndpoint: string) {
-  let currentEndpoint = apiEndpoint;
-  
-  try {
-    while (currentEndpoint) {
-      console.log(`Fetching orders from: ${currentEndpoint}`);
-      
-      // Use waitForRateLimit to respect Shopify's rate limits
-      await waitForRateLimit();
-      
-      const response = await fetch(currentEndpoint, {
-        headers: {
-          "X-Shopify-Access-Token": apiToken,
-          "Content-Type": "application/json",
-        },
-      });
-      
-      if (!response.ok) {
-        const error = await response.text();
-        console.error(`Shopify API error: ${response.status} ${response.statusText}`, error);
-        throw new Error(`Shopify API returned error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.orders || !Array.isArray(data.orders)) {
-        console.error("Unexpected Shopify API response format:", data);
-        throw new Error("Received unexpected data format from Shopify API");
-      }
-      
-      // Process each order
-      for (const order of data.orders) {
-        await importOrder(order, order.id, order.order_number || order.name, console.log);
-      }
-      
-      // Check for pagination
-      const { nextPageUrl } = extractPaginationInfo(response);
-      currentEndpoint = nextPageUrl;
-      
-      // If we have more pages, log the progress
-      if (nextPageUrl) {
-        console.log(`Moving to next page: ${nextPageUrl}`);
-      }
-    }
-    
-    console.log(`Import complete`);
-  } catch (error) {
-    console.error("Error processing orders:", error);
-    throw error;
-  }
-}
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Wait to respect Shopify's rate limits (40 requests per minute)
 let lastRequestTime = 0;
@@ -126,22 +272,11 @@ async function waitForRateLimit() {
   lastRequestTime = Date.now();
 }
 
-// Helper functions for database operations
 async function getShopifyApiEndpoint(debug: (message: string) => void): Promise<string> {
   try {
     debug("Getting Shopify API endpoint from database...");
     
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      debug("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
-      throw new Error("Missing Supabase environment variables");
-    }
-    
-    const client = createClient(supabaseUrl, supabaseServiceKey);
-    
-    const { data: endpointData, error: endpointError } = await client.rpc("get_shopify_setting", {
+    const { data: endpointData, error: endpointError } = await supabase.rpc("get_shopify_setting", {
       setting_name_param: "shopify_api_endpoint"
     });
 
@@ -152,8 +287,7 @@ async function getShopifyApiEndpoint(debug: (message: string) => void): Promise<
 
     if (!endpointData || typeof endpointData !== 'string') {
       debug("No API endpoint found in database");
-      // Default endpoint if none is found
-      return "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders";
+      return "https://opus-harley-davidson.myshopify.com/admin/api/2023-07/orders.json";
     }
     
     // Return endpoint without any query parameters (we'll add them later)
@@ -163,111 +297,5 @@ async function getShopifyApiEndpoint(debug: (message: string) => void): Promise<
   } catch (error) {
     debug(`Error getting Shopify API endpoint: ${error.message}`);
     throw error;
-  }
-}
-
-async function importOrder(order: any, orderId: string, orderNumber: string, debug: (message: string) => void): Promise<boolean> {
-  try {
-    debug(`Importing order ${orderId} (${orderNumber}) into database...`);
-    
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      debug("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
-      return false;
-    }
-    
-    const client = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Extract customer name
-    const customerName = `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.trim();
-    
-    // Upsert the order
-    const { data: orderData, error: orderError } = await client
-      .from('shopify_orders')
-      .upsert(
-        {
-          shopify_order_id: orderId,
-          shopify_order_number: orderNumber,
-          created_at: order.created_at,
-          customer_name: customerName,
-          customer_email: order.customer?.email || null,
-          customer_phone: order.customer?.phone || null,
-          status: order.fulfillment_status || "unfulfilled",
-          items_count: order.line_items?.length || 0,
-          imported_at: new Date().toISOString(),
-          note: order.note || null,
-          shipping_address: order.shipping_address || null,
-          line_items: order.line_items || null
-        },
-        { onConflict: 'shopify_order_id', returning: 'minimal' }
-      )
-      .select('id');
-
-    if (orderError) {
-      debug(`Failed to upsert order ${orderId}: ${orderError.message}`);
-      return false;
-    }
-    
-    if (!orderData || orderData.length === 0) {
-      debug(`Failed to retrieve order ID after upsert for order ${orderId}`);
-      return false;
-    }
-    
-    const internalOrderId = orderData[0].id;
-    debug(`Upserted order ${orderId} with internal ID ${internalOrderId}`);
-    
-    // Process line items
-    if (order.line_items && Array.isArray(order.line_items)) {
-      // Delete existing line items to avoid duplicates
-      const { error: deleteLineItemsError } = await client
-        .from("shopify_order_items")
-        .delete()
-        .eq("order_id", internalOrderId);
-
-      if (deleteLineItemsError) {
-        debug(`Error deleting existing line items for order ${orderId}: ${deleteLineItemsError.message}`);
-      }
-      
-      for (const item of order.line_items) {
-        // Ensure that required properties exist
-        if (!item.id) {
-          debug(`Skipping line item due to missing ID in order ${orderId}`);
-          continue;
-        }
-        
-        const { error: itemError } = await client
-          .from('shopify_order_items')
-          .upsert(
-            {
-              order_id: internalOrderId,
-              shopify_line_item_id: item.id,
-              sku: item.sku || '',
-              title: item.title || 'N/A',
-              quantity: item.quantity,
-              price: item.price,
-              location_id: item.location_id ? String(item.location_id) : null,
-              location_name: item.location_name || null,
-              product_id: item.product_id ? String(item.product_id) : null,
-              variant_id: item.variant_id ? String(item.variant_id) : null,
-              properties: item.properties || null
-            },
-            { onConflict: 'order_id, shopify_line_item_id', returning: 'minimal' }
-          );
-
-        if (itemError) {
-          debug(`Failed to upsert line item ${item.id} in order ${orderId}: ${itemError.message}`);
-        } else {
-          debug(`Upserted line item ${item.id} in order ${orderId}`);
-        }
-      }
-    }
-    
-    debug(`Imported order ${orderId} (${orderNumber}) successfully`);
-    return true;
-  } catch (error: any) {
-    debug(`Error importing order ${orderId} (${orderNumber}): ${error.message}`);
-    return false;
   }
 }
