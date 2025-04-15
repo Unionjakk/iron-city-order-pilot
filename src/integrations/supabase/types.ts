@@ -892,24 +892,6 @@ export type Database = {
         }
         Relationships: []
       }
-      picked_items_mv: {
-        Row: {
-          created_at: string | null
-          id: string | null
-          is_partial: boolean | null
-          notes: string | null
-          pinnacle_sku_matched: string | null
-          progress: string | null
-          quantity: number | null
-          quantity_picked: number | null
-          quantity_required: number | null
-          shopify_order_id: string | null
-          shopify_order_number: string | null
-          sku: string | null
-          updated_at: string | null
-        }
-        Relationships: []
-      }
       pinnacle_stock_view: {
         Row: {
           bin_location: string | null

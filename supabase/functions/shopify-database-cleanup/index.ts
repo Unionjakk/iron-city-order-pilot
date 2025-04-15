@@ -65,7 +65,7 @@ serve(async (req) => {
     debug("Starting database cleanup operation");
     
     try {
-      // Try a different approach for deletion that doesn't directly conflict with the materialized view
+      // Try a different approach for deletion that doesn't directly conflict with dependencies
       // First, try to use the RPC functions which should handle dependencies appropriately
       
       // Add proper error handling and retry logic for the database cleanup
@@ -106,21 +106,6 @@ serve(async (req) => {
           }
           
           debug(`Found ${orderItemsCount || 0} order items and ${ordersCount || 0} orders to delete`);
-          
-          // Try to refresh the materialized view first to avoid conflicts
-          debug("Pre-refreshing materialized view to avoid conflicts...");
-          try {
-            const { error: refreshError } = await supabase.rpc('refresh_picked_items_mv');
-            if (refreshError) {
-              debug(`Warning: Unable to refresh materialized view: ${refreshError.message}`);
-              // Continue anyway - this is just a precaution
-            } else {
-              debug("Successfully refreshed materialized view");
-            }
-          } catch (refreshError: any) {
-            debug(`Warning: Error refreshing materialized view: ${refreshError.message}`);
-            // Continue anyway - this is just a precaution
-          }
           
           // CRITICAL FIX: STEP 1 - Delete all order items first
           debug("STEP 1: Deleting all order items with service role...");
@@ -191,7 +176,7 @@ serve(async (req) => {
             }
           }
           
-          // STEP 2: After refreshing the materialized view and deleting items, now delete orders
+          // STEP 2: After deleting items, now delete orders
           debug("STEP 2: Deleting all orders with service role...");
           
           // Using RPC function as primary deletion method for orders
@@ -241,21 +226,6 @@ serve(async (req) => {
             }
           } else {
             debug("Successfully deleted orders via RPC");
-          }
-          
-          // Try to refresh the materialized view after deletion
-          debug("Refreshing materialized view after deletion...");
-          try {
-            const { error: refreshError } = await supabase.rpc('refresh_picked_items_mv');
-            if (refreshError) {
-              debug(`Warning: Unable to refresh materialized view after deletion: ${refreshError.message}`);
-              // Continue anyway
-            } else {
-              debug("Successfully refreshed materialized view after deletion");
-            }
-          } catch (refreshError: any) {
-            debug(`Warning: Error refreshing materialized view after deletion: ${refreshError.message}`);
-            // Continue anyway
           }
           
           // STEP 3: Verify both tables are empty
