@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import ApiConfigCard from './components/v2/ApiConfigCard';
 import SingleOrderImportCard from './components/v2/SingleOrderImportCard';
 import AllOpenOrdersImportCard from './components/v2/AllOpenOrdersImportCard';
+import AllOpenOrdersImportV2Card from './components/v2/AllOpenOrdersImportV2Card';
 import BatchLocationUpdateCard from './components/v2/BatchLocationUpdateCard';
 import ApiIntegrationDetailsCard from './components/v2/ApiIntegrationDetailsCard';
 import DeleteOrdersCard from './components/v2/DeleteOrdersCard';
@@ -82,6 +83,9 @@ const ShopifyV2Page = () => {
           
           {/* All Open Orders Import */}
           <AllOpenOrdersImportCard onImportComplete={refreshData} />
+          
+          {/* New All Open Orders Import V2 */}
+          <AllOpenOrdersImportV2Card onImportComplete={refreshData} />
           
           {/* Batch Location Update */}
           <BatchLocationUpdateCard 

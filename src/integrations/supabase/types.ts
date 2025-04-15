@@ -102,6 +102,33 @@ export type Database = {
           },
         ]
       }
+      hd_combined_allocated: {
+        Row: {
+          created_at: string
+          hd_oderline_allocated: number | null
+          hd_orderline_quantity: number | null
+          hd_orderlinecombo: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hd_oderline_allocated?: number | null
+          hd_orderline_quantity?: number | null
+          hd_orderlinecombo?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hd_oderline_allocated?: number | null
+          hd_orderline_quantity?: number | null
+          hd_orderlinecombo?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hd_line_items_exclude: {
         Row: {
           created_at: string
@@ -320,6 +347,7 @@ export type Database = {
           id: string
           is_partial: boolean | null
           notes: string | null
+          pinnacle_sku_matched: string | null
           progress: string | null
           quantity: number | null
           quantity_ordered: number | null
@@ -327,6 +355,7 @@ export type Database = {
           quantity_required: number | null
           shopify_order_id: string
           shopify_order_number: string | null
+          shopify_ordersku_combo: string | null
           sku: string
           status: string | null
           updated_at: string
@@ -338,6 +367,7 @@ export type Database = {
           id?: string
           is_partial?: boolean | null
           notes?: string | null
+          pinnacle_sku_matched?: string | null
           progress?: string | null
           quantity?: number | null
           quantity_ordered?: number | null
@@ -345,6 +375,7 @@ export type Database = {
           quantity_required?: number | null
           shopify_order_id: string
           shopify_order_number?: string | null
+          shopify_ordersku_combo?: string | null
           sku: string
           status?: string | null
           updated_at?: string
@@ -356,6 +387,7 @@ export type Database = {
           id?: string
           is_partial?: boolean | null
           notes?: string | null
+          pinnacle_sku_matched?: string | null
           progress?: string | null
           quantity?: number | null
           quantity_ordered?: number | null
@@ -363,6 +395,7 @@ export type Database = {
           quantity_required?: number | null
           shopify_order_id?: string
           shopify_order_number?: string | null
+          shopify_ordersku_combo?: string | null
           sku?: string
           status?: string | null
           updated_at?: string
@@ -801,19 +834,88 @@ export type Database = {
       }
       hd_orders_with_lookup: {
         Row: {
+          dealer_po_number: string | null
           has_line_items: boolean | null
           hd_order_number: string | null
           is_excluded: boolean | null
+          order_date: string | null
+          order_type: string | null
         }
         Insert: {
+          dealer_po_number?: string | null
           has_line_items?: never
           hd_order_number?: string | null
           is_excluded?: never
+          order_date?: string | null
+          order_type?: string | null
         }
         Update: {
+          dealer_po_number?: string | null
           has_line_items?: never
           hd_order_number?: string | null
           is_excluded?: never
+          order_date?: string | null
+          order_type?: string | null
+        }
+        Relationships: []
+      }
+      iron_city_action_viewer: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          hd_orderlinecombo: string | null
+          iron_anyaction: boolean | null
+          iron_created: string | null
+          iron_last_updated: string | null
+          iron_notes: string | null
+          iron_order_quantity: number | null
+          iron_picked_quantity: number | null
+          iron_progress: string | null
+          order_id: string | null
+          pinnacle_bin_location: string | null
+          pinnacle_close_match: boolean | null
+          pinnacle_cost: number | null
+          pinnacle_description: string | null
+          pinnacle_exact_match: boolean | null
+          pinnacle_more_than_one_match: boolean | null
+          pinnacle_part_number: string | null
+          pinnacle_stock_quantity: number | null
+          price: number | null
+          price_ex_vat: number | null
+          quantity: number | null
+          quantity_exceeds_picked: boolean | null
+          shopify_line_item_id: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
+      pinnacle_stock_view: {
+        Row: {
+          bin_location: string | null
+          corrected_sku: string | null
+          cost: number | null
+          description: string | null
+          part_no: string | null
+          stock_quantity: number | null
+        }
+        Insert: {
+          bin_location?: string | null
+          corrected_sku?: never
+          cost?: number | null
+          description?: string | null
+          part_no?: string | null
+          stock_quantity?: number | null
+        }
+        Update: {
+          bin_location?: string | null
+          corrected_sku?: never
+          cost?: number | null
+          description?: string | null
+          part_no?: string | null
+          stock_quantity?: number | null
         }
         Relationships: []
       }
@@ -866,6 +968,10 @@ export type Database = {
       get_hd_stats: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_pinnacle_cost: {
+        Args: { sql_sku: string }
+        Returns: number
       }
       get_shopify_order_number: {
         Args: { order_id: string }
