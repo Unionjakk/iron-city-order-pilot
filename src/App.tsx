@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -53,6 +52,11 @@ import { AuthProvider } from "./context/AuthContext";
 
 // Import protected route component
 import ProtectedRoute from "./components/ProtectedRoute";
+import ShopifyDashboard from "./pages/admin/uploads/shopify/ShopifyDashboard";
+import DeleteAllPage from "./pages/admin/uploads/shopify/pages/DeleteAllPage";
+import ImportAllPage from "./pages/admin/uploads/shopify/pages/ImportAllPage";
+import BatchLocationPage from "./pages/admin/uploads/shopify/pages/BatchLocationPage";
+import PicklistPage from "./pages/admin/uploads/shopify/pages/PicklistPage";
 
 function App() {
   return (
@@ -118,7 +122,12 @@ function App() {
                 <Route path="/admin/uploads/harley/line-items-exclude" element={<LineItemsExclude />} />
                 
                 {/* Shopify API Routes */}
-                <Route path="/admin/uploads/shopify" element={<ShopifyV2Page />} />
+                <Route path="/admin/uploads/shopify" element={<ShopifyDashboard />} />
+                <Route path="/admin/uploads/shopify/v2" element={<ShopifyV2Page />} />
+                <Route path="/admin/uploads/shopify/deleteall" element={<DeleteAllPage />} />
+                <Route path="/admin/uploads/shopify/importall" element={<ImportAllPage />} />
+                <Route path="/admin/uploads/shopify/batchlocation" element={<BatchLocationPage />} />
+                <Route path="/admin/uploads/shopify/picklist" element={<PicklistPage />} />
                 <Route path="/admin/uploads/shopify/oldAPI" element={<ShopifyOldAPIPage />} />
                 <Route path="/admin/uploads/ShopifyAPI" element={<ShopifyAPIRedirect />} />
                 
