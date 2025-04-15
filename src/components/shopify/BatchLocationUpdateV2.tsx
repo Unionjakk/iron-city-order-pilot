@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,7 +40,6 @@ const BatchLocationUpdateV2: React.FC<BatchLocationUpdateV2Props> = ({ disabled 
     setIsUpdating(true);
     
     if (!continueFromToken) {
-      // Starting fresh
       setMessage(null);
       setDebugInfo([]);
       setUpdatedCount(0);
@@ -55,7 +53,6 @@ const BatchLocationUpdateV2: React.FC<BatchLocationUpdateV2Props> = ({ disabled 
         ? "Continuing batch location update..." 
         : "Starting batch location update for all orders...");
       
-      // Get token from database
       const { data: token, error: tokenError } = await supabase.rpc('get_shopify_setting', { 
         setting_name_param: 'shopify_token' 
       });
@@ -89,7 +86,6 @@ const BatchLocationUpdateV2: React.FC<BatchLocationUpdateV2Props> = ({ disabled 
       setTimeElapsed(data.timeElapsed);
       setContinuationToken(data.continuationToken);
       
-      // Determine if we're done or need to continue
       if (data.processingComplete) {
         addDebugMessage(`Successfully completed updating ${data.updated} line items with location data`);
         setIsComplete(true);
@@ -101,13 +97,11 @@ const BatchLocationUpdateV2: React.FC<BatchLocationUpdateV2Props> = ({ disabled 
           variant: "default",
         });
       } else {
-        // More batches to process
         const batchNumber = JSON.parse(data.continuationToken).batchNumber;
-        setProgressPercent(Math.min(95, batchNumber * 5)); // Approximation
+        setProgressPercent(Math.min(95, batchNumber * 5));
         
         addDebugMessage(`Processed batch ${batchNumber - 1}. Updated ${data.updated} line items so far.`);
         
-        // Automatically continue with the next batch
         setTimeout(() => {
           handleBatchUpdate(data.continuationToken);
         }, 1000);
@@ -128,7 +122,6 @@ const BatchLocationUpdateV2: React.FC<BatchLocationUpdateV2Props> = ({ disabled 
       setIsUpdating(false);
     }
     
-    // Only set isUpdating to false when fully complete
     if (isComplete) {
       setIsUpdating(false);
     }
@@ -137,7 +130,7 @@ const BatchLocationUpdateV2: React.FC<BatchLocationUpdateV2Props> = ({ disabled 
   return (
     <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle>Batch Location Update V2</CardTitle>
+        <CardTitle>Batch Location Update V-2</CardTitle>
         <CardDescription>
           Efficiently update location information for all line items using the improved V2 implementation
         </CardDescription>
@@ -180,7 +173,7 @@ const BatchLocationUpdateV2: React.FC<BatchLocationUpdateV2Props> = ({ disabled 
               Update Complete - Run Again
             </>
           ) : (
-            "Update All Locations (V2)"
+            "Update All Locations (V-2)"
           )}
         </Button>
         
