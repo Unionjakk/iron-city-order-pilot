@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +20,6 @@ const ShopifyV2Page = () => {
   const [refreshInProgress, setRefreshInProgress] = useState(false);
   const { toast } = useToast();
 
-  // Fetch token on component mount
   useEffect(() => {
     const fetchToken = async () => {
       setIsLoading(true);
@@ -37,7 +35,6 @@ const ShopifyV2Page = () => {
         
         if (data && typeof data === 'string' && data !== 'placeholder_token') {
           setHasToken(true);
-          // Mask the token for display
           const maskedValue = data.substring(0, 4) + '********' + data.substring(data.length - 4);
           setMaskedToken(maskedValue);
         }
@@ -51,12 +48,9 @@ const ShopifyV2Page = () => {
     fetchToken();
   }, []);
 
-  // Function to refresh order data after operations
   const refreshData = async () => {
     try {
       setRefreshInProgress(true);
-      // Add any additional refresh logic here if needed
-      
       toast({
         title: "Refresh Complete",
         description: "Order data has been refreshed",
@@ -79,7 +73,6 @@ const ShopifyV2Page = () => {
       
       <ProductionWarningAlert />
       
-      {/* API Configuration Card */}
       <ApiConfigCard 
         isLoading={isLoading} 
         hasToken={hasToken} 
@@ -88,40 +81,26 @@ const ShopifyV2Page = () => {
         setMaskedToken={setMaskedToken} 
       />
       
-      {/* Only show these components when token is available */}
       {hasToken && (
         <>
-          {/* Single Order Import */}
           <SingleOrderImportCard onImportComplete={refreshData} />
           
-          {/* Delete All Orders */}
           <DeleteOrdersCard />
           
-          {/* All Open Orders Import */}
           <AllOpenOrdersImportCard onImportComplete={refreshData} />
           
-          {/* New All Open Orders Import V2 */}
           <AllOpenOrdersImportV2Card onImportComplete={refreshData} />
           
-          {/* Batch Location Update V3 */}
           <BatchLocationUpdateV3 
             disabled={refreshInProgress}
             onUpdateComplete={refreshData}
           />
           
-          {/* Batch Location Update V2 */}
-          <BatchLocationUpdateV2 
-            disabled={refreshInProgress}
-            onUpdateComplete={refreshData}
-          />
-          
-          {/* Batch Location Update */}
           <BatchLocationUpdateCard 
             disabled={refreshInProgress}
             onUpdateComplete={refreshData}
           />
           
-          {/* API Integration Details */}
           <ApiIntegrationDetailsCard />
         </>
       )}

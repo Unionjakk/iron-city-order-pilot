@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, RefreshCw, CheckCircle2, Pause } from 'lucide-react';
+import { AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
@@ -14,20 +13,11 @@ interface BatchLocationUpdateV3Props {
   onUpdateComplete?: () => Promise<void>;
 }
 
-type ContinuationToken = {
-  lastProcessedId: string | null;
-  batchSize: number;
-  updatedCount: number;
-  totalProcessed: number;
-  startTime: number;
-};
-
 const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({ 
   disabled = false,
   onUpdateComplete
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const [updatedCount, setUpdatedCount] = useState(0);
@@ -41,9 +31,7 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
   const timerRef = useRef<number | null>(null);
   const { toast } = useToast();
 
-  // Get estimated total when component mounts
   useEffect(() => {
-    // Get estimated total number of line items to update
     const getEstimatedTotal = async () => {
       try {
         const { count } = await supabase
@@ -62,7 +50,6 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
 
     getEstimatedTotal();
     
-    // Cleanup timer on unmount
     return () => {
       if (timerRef.current) {
         window.clearInterval(timerRef.current);
@@ -75,7 +62,6 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
     setDebugInfo(prev => [message, ...prev].slice(0, 100));
   };
 
-  // Start a timer to update elapsed time
   const startTimer = () => {
     if (timerRef.current) {
       window.clearInterval(timerRef.current);
@@ -89,7 +75,6 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
     }, 1000) as unknown as number;
   };
 
-  // Stop the timer
   const stopTimer = () => {
     if (timerRef.current) {
       window.clearInterval(timerRef.current);
@@ -97,27 +82,8 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
     }
   };
 
-  const handlePauseResume = () => {
-    if (isPaused) {
-      // Resume the operation
-      setIsPaused(false);
-      addDebugMessage("Resuming batch location update...");
-      handleBatchUpdate(continuationToken);
-      startTimer();
-    } else {
-      // Pause the operation
-      setIsPaused(true);
-      stopTimer();
-      addDebugMessage("Pausing batch location update. Click Resume to continue.");
-      toast({
-        title: "Process Paused",
-        description: "Location update has been paused. Click Resume to continue.",
-      });
-    }
-  };
-
   const handleBatchUpdate = async (continueFromToken?: string | null) => {
-    if (disabled || (isUpdating && !isPaused)) {
+    if (disabled || (isUpdating && !continueFromToken)) {
       toast({
         title: "Operation Blocked",
         description: "Please wait until the current operation completes.",
@@ -125,13 +91,8 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
       });
       return;
     }
-
-    if (isPaused) {
-      return handlePauseResume();
-    }
     
     setIsUpdating(true);
-    setIsPaused(false);
     
     if (!continueFromToken) {
       setMessage(null);
@@ -151,7 +112,6 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
         ? "Continuing batch location update..." 
         : "Starting batch location update for all orders...");
       
-      // Check if there's a token stored
       const { data: token, error: tokenError } = await supabase.rpc('get_shopify_setting', { 
         setting_name_param: 'shopify_token' 
       });
@@ -181,7 +141,6 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
         throw new Error(data.error || "Unknown error during location update");
       }
       
-      // Track rate limiting if available
       if (data.rateLimitRemaining !== undefined) {
         setRateLimitRemaining(data.rateLimitRemaining);
         addDebugMessage(`API Rate limit: ${data.rateLimitRemaining}`);
@@ -191,8 +150,7 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
       setTotalProcessed(data.totalProcessed);
       setTimeElapsed(data.timeElapsed || timeElapsed);
       
-      // Calculate progress percentage
-      const total = estimatedTotal || 1000; // Use estimated total or fallback
+      const total = estimatedTotal || 1000;
       const processed = data.totalProcessed;
       const progressPercent = Math.min(Math.round((processed / total) * 100), 99);
       
@@ -218,31 +176,26 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
         
         setIsUpdating(false);
       } else {
-        // Continue with the next batch after a short delay
         setContinuationToken(data.continuationToken);
-        
-        // Only continue if not paused
-        if (!isPaused) {
-          setTimeout(() => {
-            if (!isPaused) {
-              handleBatchUpdate(data.continuationToken);
-            }
-          }, 100);
-        }
+        setTimeout(() => handleBatchUpdate(data.continuationToken), 100);
       }
     } catch (error: any) {
       console.error('Error in batch location update:', error);
       stopTimer();
       setIsComplete(false);
-      setIsPaused(false);
       setIsUpdating(false);
       
       const errorMessage = error.message || "Unknown error occurred";
       setMessage(errorMessage);
       addDebugMessage(`Error: ${errorMessage}`);
       
+      if (!isComplete) {
+        addDebugMessage("Will auto-restart in 5 seconds...");
+        setTimeout(() => handleBatchUpdate(continuationToken), 5000);
+      }
+      
       toast({
-        title: "Location Update Failed",
+        title: "Location Update Error",
         description: errorMessage,
         variant: "destructive",
       });
@@ -252,7 +205,7 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
   return (
     <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="text-orange-500">Batch Location Update V3</CardTitle>
+        <CardTitle className="text-orange-500">Batch Location Update</CardTitle>
         <CardDescription className="text-zinc-400">
           Update location information for all line items using the GraphQL API
         </CardDescription>
@@ -290,52 +243,26 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
           </div>
         )}
         
-        <div className="flex gap-2">
-          <Button 
-            onClick={() => handleBatchUpdate(continuationToken)}
-            disabled={disabled || (isUpdating && !isPaused)}
-            className="w-full"
-            variant={isComplete ? "outline" : "default"}
-          >
-            {isUpdating && !isPaused ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Updating Locations...
-              </>
-            ) : isPaused ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Resume Update
-              </>
-            ) : isComplete ? (
-              <>
-                <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                Run Again
-              </>
-            ) : continuationToken ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Continue Update
-              </>
-            ) : (
-              "Update All Locations"
-            )}
-          </Button>
-          
-          {isUpdating && !isComplete && (
-            <Button 
-              onClick={handlePauseResume}
-              variant="outline"
-              className="w-auto"
-            >
-              {isPaused ? (
-                <RefreshCw className="h-4 w-4" />
-              ) : (
-                <Pause className="h-4 w-4" />
-              )}
-            </Button>
+        <Button 
+          onClick={() => handleBatchUpdate(continuationToken)}
+          disabled={disabled}
+          className="w-full"
+          variant={isComplete ? "outline" : "default"}
+        >
+          {isUpdating ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Updating Locations...
+            </>
+          ) : isComplete ? (
+            <>
+              <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+              Run Again
+            </>
+          ) : (
+            "Update All Locations"
           )}
-        </div>
+        </Button>
         
         {message && (
           <Alert className="bg-red-900/20 border-red-500/50">
