@@ -1,6 +1,6 @@
 
-import { LayoutDashboard, Trash2, Download, MapPin, List } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { LayoutDashboard, Trash2, Download, MapPin, List, Link } from 'lucide-react';
+import { Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -33,11 +33,11 @@ const ShopifyDashboard = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Link to="/admin/uploads/shopify/v2">
+          <RouterLink to="/admin/uploads/shopify/v2">
             <Button className="w-full md:w-auto bg-orange-500 hover:bg-orange-600">
               Configure API & All Functions
             </Button>
-          </Link>
+          </RouterLink>
         </CardContent>
       </Card>
 
@@ -70,6 +70,17 @@ const ShopifyDashboard = () => {
           description="Generate pick lists from imported orders"
           to="/admin/uploads/shopify/picklist"
         />
+      </div>
+
+      {/* Discrete V2 Page Link */}
+      <div className="text-center mt-6">
+        <RouterLink 
+          to="/admin/uploads/shopify/v2" 
+          className="text-zinc-400 hover:text-orange-500 text-sm inline-flex items-center gap-2"
+        >
+          <Link className="h-4 w-4" /> 
+          Advanced Shopify API Settings
+        </RouterLink>
       </div>
     </div>
   );
