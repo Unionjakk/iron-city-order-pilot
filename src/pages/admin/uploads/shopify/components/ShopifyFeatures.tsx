@@ -4,8 +4,8 @@ import DatabaseHealthCheckCard from './DatabaseHealthCheckCard';
 import OrdersViewCard from './OrdersViewCard';
 import CompleteRefresh from '@/components/shopify/CompleteRefresh';
 import LocationInfoImport from '@/components/shopify/LocationInfoImport';
-import SingleLineItemLocationUpdate from '@/components/shopify/SingleLineItemLocationUpdate';
 import LocationsExplorer from '@/components/shopify/LocationsExplorer';
+import SingleLineItemLocationUpdate from '@/components/shopify/SingleLineItemLocationUpdate';
 import BatchLocationUpdate from '@/components/shopify/BatchLocationUpdate';
 import BatchLocationUpdateV2 from '@/components/shopify/BatchLocationUpdateV2';
 import SingleOrderImport from '@/components/shopify/SingleOrderImport';
@@ -63,6 +63,7 @@ const ShopifyFeatures = ({
       
       <BatchLocationUpdateV2 
         disabled={isRefreshInProgress || isStandaloneImportInProgress}
+        onUpdateComplete={fetchRecentOrders}
       />
       
       <BatchLocationUpdate 

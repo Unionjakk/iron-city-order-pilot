@@ -52,10 +52,24 @@ const ShopifyV2Page = () => {
 
   // Function to refresh order data after operations
   const refreshData = async () => {
-    toast({
-      title: "Refresh Complete",
-      description: "Order data has been refreshed",
-    });
+    try {
+      setRefreshInProgress(true);
+      // Add any additional refresh logic here if needed
+      
+      toast({
+        title: "Refresh Complete",
+        description: "Order data has been refreshed",
+      });
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      toast({
+        title: "Refresh Failed",
+        description: "An error occurred while refreshing data",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshInProgress(false);
+    }
   };
 
   return (
@@ -91,6 +105,7 @@ const ShopifyV2Page = () => {
           {/* Batch Location Update V2 */}
           <BatchLocationUpdateV2 
             disabled={refreshInProgress}
+            onUpdateComplete={refreshData}
           />
           
           {/* Batch Location Update */}
