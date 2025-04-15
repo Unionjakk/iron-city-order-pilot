@@ -9,7 +9,7 @@ export const fetchOrdersWithPickedItems = async () => {
   console.log("Fetching orders with 'Picked' items...");
   
   try {
-    // First get distinct order IDs from the materialized view
+    // Get all unique order IDs directly from the materialized view with a single query
     const { data: orderIds, error: orderIdsError } = await supabase
       .from('picked_items_mv')
       .select('shopify_order_id');
@@ -26,8 +26,10 @@ export const fetchOrdersWithPickedItems = async () => {
     
     // Extract the unique order IDs into an array
     const uniqueIds = [...new Set(orderIds.map(o => o.shopify_order_id))];
+    console.log(`Found ${uniqueIds.length} unique orders with picked items`);
     
     // Fetch the unfulfilled orders that match these IDs
+    // We'll use a more efficient query that only selects what we need
     const { data, error } = await supabase
       .from('shopify_orders')
       .select(`
@@ -87,9 +89,21 @@ export const fetchPickedItemsProgress = async () => {
   console.log("Fetching 'Picked' items from materialized view...");
   
   try {
+    // Use a more specific query with fewer columns to improve performance
     const { data, error } = await supabase
       .from('picked_items_mv')
-      .select('*');
+      .select(`
+        id,
+        shopify_order_id,
+        sku,
+        progress,
+        notes,
+        quantity,
+        quantity_picked,
+        quantity_required,
+        is_partial,
+        cost
+      `);
       
     if (error) {
       console.error("Progress fetch error:", error);
@@ -98,14 +112,16 @@ export const fetchPickedItemsProgress = async () => {
     
     // Transform the data to match the expected format
     const transformedData = data.map(item => ({
+      id: item.id,
       shopify_order_id: item.shopify_order_id,
       sku: item.sku,
-      progress: 'Picked',
+      progress: item.progress,
       notes: item.notes,
       quantity: item.quantity,
       quantity_picked: item.quantity_picked,
       quantity_required: item.quantity_required,
-      is_partial: item.is_partial
+      is_partial: item.is_partial,
+      cost: item.cost
     }));
     
     console.log(`Fetched ${transformedData.length} 'Picked' progress items from materialized view`);
@@ -146,19 +162,16 @@ export const fetchStockForSkus = async (skus: string[]) => {
  */
 export const fetchTotalPickedQuantityForSku = async (sku: string): Promise<number> => {
   try {
+    // Use a more efficient query that uses a SUM aggregation directly in SQL
     const { data, error } = await supabase
-      .from('picked_items_mv')
-      .select('quantity_picked')
-      .eq('sku', sku);
+      .rpc('sum_picked_quantity_by_sku', { sku_param: sku });
       
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching total picked quantity:", error);
+      throw error;
+    }
     
-    // Sum up all picked quantities
-    const totalPicked = data?.reduce((sum, item) => {
-      return sum + (item.quantity_picked || 0);
-    }, 0);
-    
-    return totalPicked || 0;
+    return data || 0;
   } catch (error) {
     console.error("Error fetching total picked quantity:", error);
     return 0;
