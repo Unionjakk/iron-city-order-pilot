@@ -26,16 +26,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Set import status to 'in_progress'
-    await setImportStatus('in_progress', console.log);
-    
-    // Reset counters
-    await updateImportProgress({ 
-      ordersImported: 0, 
-      ordersTotal: 0, 
-      orderItemsImported: 0 
-    }, console.log);
-
     // Get the Shopify API endpoint from the database
     const apiEndpoint = await getShopifyApiEndpoint(console.log);
     
@@ -46,12 +36,6 @@ Deno.serve(async (req) => {
     // Process all orders
     await processAllOrders(apiToken, endpointWithParams);
 
-    // Update last sync time
-    await updateLastSyncTime(console.log);
-    
-    // Set import status to 'complete'
-    await setImportStatus('complete', console.log);
-
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -61,9 +45,6 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error('Error in shopify-all-open-unfulfilled-partial_v2 function:', error);
-    
-    // Set import status to 'error'
-    await setImportStatus('error', console.log);
     
     return new Response(
       JSON.stringify({ 
@@ -78,8 +59,6 @@ Deno.serve(async (req) => {
 // Process all orders with pagination handling
 async function processAllOrders(apiToken: string, apiEndpoint: string) {
   let currentEndpoint = apiEndpoint;
-  let totalProcessed = 0;
-  let totalItems = 0;
   
   try {
     while (currentEndpoint) {
@@ -111,15 +90,6 @@ async function processAllOrders(apiToken: string, apiEndpoint: string) {
       // Process each order
       for (const order of data.orders) {
         await importOrder(order, order.id, order.order_number || order.name, console.log);
-        totalProcessed++;
-        totalItems += (order.line_items?.length || 0);
-        
-        // Update progress after each order
-        await updateImportProgress({
-          ordersImported: totalProcessed,
-          ordersTotal: totalProcessed, // We don't know the total in advance
-          orderItemsImported: totalItems
-        }, console.log);
       }
       
       // Check for pagination
@@ -128,12 +98,11 @@ async function processAllOrders(apiToken: string, apiEndpoint: string) {
       
       // If we have more pages, log the progress
       if (nextPageUrl) {
-        console.log(`Processed ${totalProcessed} orders so far. Moving to next page.`);
+        console.log(`Moving to next page: ${nextPageUrl}`);
       }
     }
     
-    console.log(`Import complete. Processed ${totalProcessed} orders with ${totalItems} line items.`);
-    return { totalProcessed, totalItems };
+    console.log(`Import complete`);
   } catch (error) {
     console.error("Error processing orders:", error);
     throw error;
@@ -220,12 +189,17 @@ async function importOrder(order: any, orderId: string, orderNumber: string, deb
       .upsert(
         {
           shopify_order_id: orderId,
-          shopify_order_number: order.order_number || order.name,
+          shopify_order_number: orderNumber,
+          created_at: order.created_at,
           customer_name: customerName,
+          customer_email: order.customer?.email || null,
+          customer_phone: order.customer?.phone || null,
+          status: order.fulfillment_status || "unfulfilled",
           items_count: order.line_items?.length || 0,
-          status: order.fulfillment_status || 'unfulfilled',
           imported_at: new Date().toISOString(),
-          created_at: order.created_at
+          note: order.note || null,
+          shipping_address: order.shipping_address || null,
+          line_items: order.line_items || null
         },
         { onConflict: 'shopify_order_id', returning: 'minimal' }
       )
@@ -246,6 +220,16 @@ async function importOrder(order: any, orderId: string, orderNumber: string, deb
     
     // Process line items
     if (order.line_items && Array.isArray(order.line_items)) {
+      // Delete existing line items to avoid duplicates
+      const { error: deleteLineItemsError } = await client
+        .from("shopify_order_items")
+        .delete()
+        .eq("order_id", internalOrderId);
+
+      if (deleteLineItemsError) {
+        debug(`Error deleting existing line items for order ${orderId}: ${deleteLineItemsError.message}`);
+      }
+      
       for (const item of order.line_items) {
         // Ensure that required properties exist
         if (!item.id) {
@@ -259,12 +243,15 @@ async function importOrder(order: any, orderId: string, orderNumber: string, deb
             {
               order_id: internalOrderId,
               shopify_line_item_id: item.id,
-              sku: item.sku || 'N/A',
+              sku: item.sku || '',
               title: item.title || 'N/A',
               quantity: item.quantity,
               price: item.price,
-              location_id: item.location_id || null,
-              location_name: item.location_name || null
+              location_id: item.location_id ? String(item.location_id) : null,
+              location_name: item.location_name || null,
+              product_id: item.product_id ? String(item.product_id) : null,
+              variant_id: item.variant_id ? String(item.variant_id) : null,
+              properties: item.properties || null
             },
             { onConflict: 'order_id, shopify_line_item_id', returning: 'minimal' }
           );
@@ -281,108 +268,6 @@ async function importOrder(order: any, orderId: string, orderNumber: string, deb
     return true;
   } catch (error: any) {
     debug(`Error importing order ${orderId} (${orderNumber}): ${error.message}`);
-    return false;
-  }
-}
-
-async function updateLastSyncTime(debug: (message: string) => void): Promise<boolean> {
-  try {
-    debug("Updating last sync time...");
-    
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      debug("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
-      return false;
-    }
-    
-    const client = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { error: updateError } = await client.rpc("upsert_shopify_setting", {
-      setting_name_param: "last_sync_time",
-      setting_value_param: new Date().toISOString()
-    });
-
-    if (updateError) {
-      debug(`Failed to update last sync time: ${updateError.message}`);
-      return false;
-    }
-    
-    debug("Successfully updated last sync time");
-    return true;
-  } catch (error: any) {
-    debug(`Error updating last sync time: ${error.message}`);
-    return false;
-  }
-}
-
-async function setImportStatus(status: string, debug: (message: string) => void): Promise<boolean> {
-  try {
-    debug(`Updating import status to: ${status}`);
-    
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      debug("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
-      return false;
-    }
-    
-    const client = createClient(supabaseUrl, supabaseServiceKey);
-    
-    const { error: statusError } = await client.rpc("upsert_shopify_setting", {
-      setting_name_param: "shopify_import_status",
-      setting_value_param: status
-    });
-
-    if (statusError) {
-      debug(`Failed to update import status: ${statusError.message}`);
-      return false;
-    }
-    
-    debug(`Successfully updated import status to: ${status}`);
-    return true;
-  } catch (error) {
-    debug(`Error updating import status: ${error.message}`);
-    return false;
-  }
-}
-
-interface ImportProgress {
-  ordersImported: number;
-  ordersTotal: number;
-  orderItemsImported: number;
-}
-
-async function updateImportProgress(progress: ImportProgress, debug: (message: string) => void): Promise<boolean> {
-  try {
-    debug(`Updating import progress: ${progress.ordersImported} orders, ${progress.orderItemsImported} items`);
-    
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      debug("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
-      return false;
-    }
-    
-    const client = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Also update item counts for frontend tracking
-    await client.rpc("upsert_shopify_setting", {
-      setting_name_param: "shopify_orders_imported",
-      setting_value_param: String(progress.ordersImported)
-    });
-    
-    await client.rpc("upsert_shopify_setting", {
-      setting_name_param: "shopify_orders_lines_imported",
-      setting_value_param: String(progress.orderItemsImported)
-    });
-    
-    return true;
-  } catch (error) {
-    debug(`Error updating import progress: ${error.message}`);
     return false;
   }
 }
