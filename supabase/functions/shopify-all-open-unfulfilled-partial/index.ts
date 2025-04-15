@@ -1,5 +1,6 @@
+
 // Supabase Edge Function
-// This function imports ALL open unfulfilled and partially fulfilled orders from Shopify
+// This function imports ONLY ACTIVE unfulfilled and partially fulfilled orders from Shopify
 // With proper pagination and rate limiting (40 requests per minute)
 
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
@@ -97,7 +98,7 @@ serve(async (req) => {
     }
 
     // Build the filtered API endpoint for OPEN unfulfilled and partially fulfilled orders
-    // Important: Add status=open to filter out archived orders
+    // CRITICAL FIX: Explicitly add status=open to filter out archived orders
     const filters = "status=open&fulfillment_status=unfulfilled,partial&limit=50";
     const filteredApiEndpoint = apiEndpoint.includes('?') 
       ? `${apiEndpoint}&${filters}`
@@ -175,21 +176,37 @@ serve(async (req) => {
       // Log the number of orders received
       debug(`Received ${data.orders.length} orders from Shopify API`);
       
-      // Double check to ensure we only process OPEN unfulfilled or partially fulfilled orders
+      // CRITICAL FIX: More strict filtering to ensure we're only processing OPEN orders
+      // that are unfulfilled or partially fulfilled
       const ordersToProcess = data.orders.filter(order => {
+        // First check if order status is explicitly "open" (not archived)
+        if (order.status !== 'open') {
+          debug(`Filtered out non-open order ${order.name || order.order_number}: status=${order.status}`);
+          return false;
+        }
+        
         // Check if order is cancelled or closed (should be filtered by API, but double check)
         const isCancelled = order.cancelled_at !== null && order.cancelled_at !== undefined;
         const isClosed = order.closed_at !== null && order.closed_at !== undefined;
-        const isArchived = order.status === 'archived';
         
-        // Only include orders that are not cancelled/closed/archived AND (unfulfilled OR partially fulfilled)
+        if (isCancelled || isClosed) {
+          debug(`Filtered out cancelled/closed order ${order.name || order.order_number}`);
+          return false;
+        }
+        
+        // Check fulfillment status
         const fulfillmentStatus = order.fulfillment_status || 'unfulfilled';
         const isValidStatus = fulfillmentStatus === 'unfulfilled' || fulfillmentStatus === 'partial';
         
-        return !isCancelled && !isClosed && !isArchived && isValidStatus;
+        if (!isValidStatus) {
+          debug(`Filtered out order with invalid fulfillment status: ${fulfillmentStatus}`);
+          return false;
+        }
+        
+        return true;
       });
       
-      debug(`After filtering, ${ordersToProcess.length} open orders match criteria`);
+      debug(`After filtering, ${ordersToProcess.length} of ${data.orders.length} orders match criteria (open + unfulfilled/partial)`);
       
       // Process orders in batches
       for (let i = 0; i < ordersToProcess.length; i += BATCH_SIZE) {
@@ -356,6 +373,16 @@ serve(async (req) => {
           if (match && match[2] === 'next') {
             nextPageUrl = match[1];
             debug(`Found next page URL: ${nextPageUrl}`);
+            
+            // CRITICAL FIX: Make sure we maintain our status=open filter on pagination URLs
+            if (nextPageUrl && !nextPageUrl.includes('status=open')) {
+              if (nextPageUrl.includes('?')) {
+                nextPageUrl = `${nextPageUrl}&status=open`;
+              } else {
+                nextPageUrl = `${nextPageUrl}?status=open`;
+              }
+              debug(`Added status=open filter to next page URL: ${nextPageUrl}`);
+            }
             break;
           }
         }
