@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // CORS headers for browser requests
@@ -88,7 +87,7 @@ Deno.serve(async (req) => {
 
     // Set default values
     const batchSize = continuationToken?.batchSize || 40;
-    let lastProcessedId = continuationToken?.lastProcessedId || null;
+    const lastProcessedId = continuationToken?.lastProcessedId || null;
     let updatedCount = continuationToken?.updatedCount || 0;
     let totalProcessed = continuationToken?.totalProcessed || 0;
     let startTimeFromToken = continuationToken?.startTime || startTime;
@@ -96,7 +95,8 @@ Deno.serve(async (req) => {
     // Get a batch of line items to update
     console.log(`Fetching batch of up to ${batchSize} line items. Last ID: ${lastProcessedId || 'N/A'}`);
     
-    const { data: lineItems, error: lineItemsError } = await supabase
+    // Build query based on whether we have a lastProcessedId
+    let query = supabase
       .from("shopify_order_items")
       .select(`
         id, 
@@ -106,8 +106,14 @@ Deno.serve(async (req) => {
       `)
       .order('id', { ascending: true })
       .limit(batchSize)
-      .gt('id', lastProcessedId || '')
       .is('location_id', null);
+
+    // Only add the gt condition if we have a lastProcessedId
+    if (lastProcessedId) {
+      query = query.gt('id', lastProcessedId);
+    }
+
+    const { data: lineItems, error: lineItemsError } = await query;
 
     if (lineItemsError) {
       console.error("Error fetching line items:", lineItemsError);
