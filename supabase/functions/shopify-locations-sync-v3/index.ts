@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
     const shopifyAdminUrl = `https://opus-harley-davidson.myshopify.com/admin/api/2023-07/graphql.json`;
     const lineItemIds = lineItems.map(item => `gid://shopify/LineItem/${item.shopify_line_item_id}`);
     
-    const query = `
+    const graphqlQuery = `
       query GetLocationsForLineItems($ids: [ID!]!) {
         nodes(ids: $ids) {
           ... on LineItem {
@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        query,
+        query: graphqlQuery,
         variables: {
           ids: lineItemIds
         },
@@ -251,11 +251,11 @@ Deno.serve(async (req) => {
     // Update progress information
     updatedCount += batchUpdated;
     totalProcessed += lineItems.length;
-    const lastProcessedId = lineItems[lineItems.length - 1].id;
+    const lastProcessedItemId = lineItems[lineItems.length - 1].id;
 
     // Prepare continuation token for next batch
     const newContinuationToken: ContinuationToken = {
-      lastProcessedId,
+      lastProcessedId: lastProcessedItemId,
       batchSize,
       updatedCount,
       totalProcessed,
