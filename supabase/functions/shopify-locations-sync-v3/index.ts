@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // CORS headers for browser requests
@@ -148,10 +149,6 @@ Deno.serve(async (req) => {
         nodes(ids: $ids) {
           ... on LineItem {
             id
-            currentLocation {
-              id
-              name
-            }
             variant {
               inventoryItem {
                 inventoryLevels(first: 5) {
@@ -211,15 +208,11 @@ Deno.serve(async (req) => {
 
         const lineItemId = node.id.replace('gid://shopify/LineItem/', '');
         
-        // First try to get location from currentLocation
-        let location = node.currentLocation;
-        
-        // Fall back to inventory location if no current location exists
-        if (!location) {
-          const inventoryLevels = node.variant?.inventoryItem?.inventoryLevels?.edges || [];
-          if (inventoryLevels.length > 0) {
-            location = inventoryLevels[0].node.location;
-          }
+        // Get inventory location
+        let location = null;
+        const inventoryLevels = node.variant?.inventoryItem?.inventoryLevels?.edges || [];
+        if (inventoryLevels.length > 0) {
+          location = inventoryLevels[0].node.location;
         }
         
         if (location) {
