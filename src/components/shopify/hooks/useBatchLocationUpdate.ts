@@ -131,77 +131,77 @@ export const useBatchLocationUpdate = (
         addToLogs('requestPayloads')
       );
       
-      const { data, error } = await invokeBatchLocationSync(token, continuationToken);
+      const { data } = await invokeBatchLocationSync(token, continuationToken);
       
-      LocationSyncLogger.logResponse(
-        `Response: ${JSON.stringify(data, null, 2)}`, 
-        addToLogs('responses')
-      );
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (!data.success) {
-        throw new Error(data.error || "Unknown error during location update");
-      }
-      
-      setState(prev => ({
-        ...prev,
-        rateLimitRemaining: data.rateLimitRemaining,
-        updatedCount: data.updated,
-        totalProcessed: data.totalProcessed,
-        timeElapsed: data.timeElapsed || prev.timeElapsed,
-        progressPercent: Math.min(Math.round((data.totalProcessed / (prev.estimatedTotal || 1000)) * 100), 99)
-      }));
+      if (data) {
+        LocationSyncLogger.logResponse(
+          `Response: ${JSON.stringify(data, null, 2)}`, 
+          addToLogs('responses')
+        );
+        
+        setState(prev => ({
+          ...prev,
+          rateLimitRemaining: data.rateLimitRemaining,
+          updatedCount: data.updated,
+          totalProcessed: data.totalProcessed,
+          timeElapsed: data.timeElapsed || prev.timeElapsed,
+          progressPercent: Math.min(Math.round((data.totalProcessed / (prev.estimatedTotal || 1000)) * 100), 99)
+        }));
 
-      if (data.rateLimitRemaining !== undefined) {
-        LocationSyncLogger.logConnection(
-          `API Rate limit: ${data.rateLimitRemaining}`, 
-          addToLogs('connectionInfo')
-        );
-      }
-      
-      if (data.processingComplete) {
-        LocationSyncLogger.logDatabase(
-          `Completed! Successfully updated ${data.updated} line items.`, 
-          addToLogs('databaseUpdates')
-        );
-        setState(prev => ({ ...prev, isComplete: true, progressPercent: 100 }));
-        stopTimer();
-        
-        toast({
-          title: "Location Update Complete",
-          description: `Successfully updated ${data.updated} of ${data.totalProcessed} line items in ${data.timeElapsed.toFixed(1)}s`,
-          variant: "default",
-        });
-        
-        if (onUpdateComplete) {
-          LocationSyncLogger.logConnection("Refreshing data...", addToLogs('connectionInfo'));
-          await onUpdateComplete();
+        if (data.rateLimitRemaining !== undefined) {
+          LocationSyncLogger.logConnection(
+            `API Rate limit: ${data.rateLimitRemaining}`, 
+            addToLogs('connectionInfo')
+          );
         }
-      } else if (data.continuationToken) {
+        
+        if (data.processingComplete) {
+          LocationSyncLogger.logDatabase(
+            `Completed! Successfully updated ${data.updated} line items.`, 
+            addToLogs('databaseUpdates')
+          );
+          setState(prev => ({ ...prev, isComplete: true, progressPercent: 100 }));
+          stopTimer();
+          
+          toast({
+            title: "Location Update Complete",
+            description: `Successfully updated ${data.updated} of ${data.totalProcessed} line items in ${data.timeElapsed.toFixed(1)}s`,
+            variant: "default",
+          });
+          
+          if (onUpdateComplete) {
+            LocationSyncLogger.logConnection("Refreshing data...", addToLogs('connectionInfo'));
+            await onUpdateComplete();
+          }
+        } else {
+          LocationSyncLogger.logConnection(
+            `Batch complete. Processing next batch...`, 
+            addToLogs('connectionInfo')
+          );
+          LocationSyncLogger.logDatabase(
+            `Updated ${data.updated} line items in this batch.`, 
+            addToLogs('databaseUpdates')
+          );
+          
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          await processBatch(data.continuationToken);
+        }
+      } else {
         LocationSyncLogger.logConnection(
-          `Batch complete. Processing next batch with continuation token...`, 
+          "No data in response, continuing with next batch...",
           addToLogs('connectionInfo')
         );
-        LocationSyncLogger.logDatabase(
-          `Updated ${data.updated} line items in this batch.`, 
-          addToLogs('databaseUpdates')
-        );
-        
-        // Process next batch with the continuation token
-        await processBatch(data.continuationToken);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await processBatch(null);
       }
     } catch (error: any) {
       console.error('Error in batch location update:', error);
-      stopTimer();
-      setState(prev => ({ 
-        ...prev,
-        isComplete: false,
-        message: error.message
-      }));
       LocationSyncLogger.logResponse(`Error: ${error.message}`, addToLogs('responses'));
+      
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      await processBatch(null);
     }
   };
 
@@ -233,16 +233,14 @@ export const useBatchLocationUpdate = (
 
     startTimer();
     
-    try {
-      LocationSyncLogger.logConnection(
-        "Starting continuous batch location update...", 
-        addToLogs('connectionInfo')
-      );
-      
-      await processBatch(null);
-    } finally {
-      setState(prev => ({ ...prev, isUpdating: false }));
-    }
+    LocationSyncLogger.logConnection(
+      "Starting continuous batch location update...", 
+      addToLogs('connectionInfo')
+    );
+    
+    await processBatch(null);
+    
+    setState(prev => ({ ...prev, isUpdating: false }));
   };
 
   return {
