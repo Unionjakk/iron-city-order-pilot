@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import TabView from '@/components/ui/tab-view';
+import LogEntryList from './components/LogEntryList';
 import { useBatchLocationUpdate } from './hooks/useBatchLocationUpdate';
 
 interface BatchLocationUpdateV3Props {
@@ -18,12 +20,35 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
 }) => {
   const { state, handleBatchUpdate } = useBatchLocationUpdate(disabled, onUpdateComplete);
 
+  const tabs = [
+    {
+      id: "connection",
+      label: "Connection Info",
+      content: <LogEntryList entries={state.connectionInfo} />
+    },
+    {
+      id: "request",
+      label: "Request Payloads",
+      content: <LogEntryList entries={state.requestPayloads} />
+    },
+    {
+      id: "response",
+      label: "API Responses",
+      content: <LogEntryList entries={state.responses} />
+    },
+    {
+      id: "database",
+      label: "Database Updates",
+      content: <LogEntryList entries={state.databaseUpdates} />
+    }
+  ];
+
   return (
     <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="text-orange-500">Batch Location Update</CardTitle>
+        <CardTitle className="text-orange-500">Batch Location Update (Debug Mode)</CardTitle>
         <CardDescription className="text-zinc-400">
-          Update location information for all line items using the GraphQL API
+          Update location information for all line items using the GraphQL API (limited to 1 batch)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -44,6 +69,11 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
               <span>{state.updatedCount} items updated</span>
               <span>{state.timeElapsed.toFixed(1)}s elapsed</span>
             </div>
+            {state.rateLimitRemaining !== null && (
+              <div className="text-xs text-amber-400/80">
+                API rate limit: {state.rateLimitRemaining}
+              </div>
+            )}
             <Progress value={state.progressPercent} className="h-2" />
             {state.estimatedTotal > 0 && (
               <div className="text-xs text-zinc-500">
@@ -63,15 +93,15 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
           {state.isUpdating ? (
             <>
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Updating Locations...
+              Updating Locations (Debug Mode)...
             </>
           ) : state.isComplete ? (
             <>
               <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-              Run Again
+              Run Again (Debug Mode)
             </>
           ) : (
-            "Update All Locations"
+            "Update Locations (Debug Mode - Single Batch)"
           )}
         </Button>
         
@@ -84,6 +114,8 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
             </AlertDescription>
           </Alert>
         )}
+        
+        <TabView tabs={tabs} />
       </CardContent>
     </Card>
   );
