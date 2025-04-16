@@ -26,11 +26,11 @@ export const getEstimatedTotal = async () => {
   return count;
 };
 
-export const invokeBatchLocationSync = async (token: string) => {
+export const invokeBatchLocationSync = async (token: string, continuationToken: string | null = null) => {
   return await supabase.functions.invoke('shopify-locations-sync-v3', {
     body: { 
       apiToken: token,
-      continuationToken: null
+      continuationToken
     }
   });
 };
