@@ -148,9 +148,11 @@ Deno.serve(async (req) => {
         nodes(ids: $ids) {
           ... on LineItem {
             id
-            currentLocation {
-              id
-              name
+            fulfillmentOrder {
+              assignedLocation {
+                id
+                name
+              }
             }
             variant {
               inventoryItem {
@@ -211,10 +213,10 @@ Deno.serve(async (req) => {
 
         const lineItemId = node.id.replace('gid://shopify/LineItem/', '');
         
-        // First try to get location from currentLocation
-        let location = node.currentLocation;
+        // First try to get location from fulfillment order
+        let location = node.fulfillmentOrder?.assignedLocation;
         
-        // Fall back to inventory location if no current location exists
+        // Fall back to inventory location if no fulfillment location exists
         if (!location) {
           const inventoryLevels = node.variant?.inventoryItem?.inventoryLevels?.edges || [];
           if (inventoryLevels.length > 0) {
