@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // CORS headers for browser requests
@@ -149,6 +148,12 @@ Deno.serve(async (req) => {
         nodes(ids: $ids) {
           ... on LineItem {
             id
+            fulfillmentOrder {
+              assignedLocation {
+                id
+                name
+              }
+            }
             variant {
               inventoryItem {
                 inventoryLevels(first: 5) {
@@ -207,12 +212,20 @@ Deno.serve(async (req) => {
         if (!node) continue;
 
         const lineItemId = node.id.replace('gid://shopify/LineItem/', '');
-        const inventoryLevels = node.variant?.inventoryItem?.inventoryLevels?.edges || [];
         
-        if (inventoryLevels.length > 0) {
-          const location = inventoryLevels[0].node.location;
+        // First try to get location from fulfillment order
+        let location = node.fulfillmentOrder?.assignedLocation;
+        
+        // Fall back to inventory location if no fulfillment location exists
+        if (!location) {
+          const inventoryLevels = node.variant?.inventoryItem?.inventoryLevels?.edges || [];
+          if (inventoryLevels.length > 0) {
+            location = inventoryLevels[0].node.location;
+          }
+        }
+        
+        if (location) {
           const locationId = location.id.replace('gid://shopify/Location/', '');
-          
           locationUpdates.push({
             lineItemId,
             locationId,
