@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, ArrowUpDown } from "lucide-react";
@@ -8,16 +9,17 @@ const BatchLocationPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-orange-500">GraphQL Batch Location Update (V3)</h1>
-        <p className="text-orange-400/80">The latest implementation using GraphQL for efficient updates</p>
+        <h1 className="text-2xl font-bold text-orange-500">GraphQL Batch Location Update (V3 - Debug Mode)</h1>
+        <p className="text-orange-400/80">Single batch implementation for debugging with detailed log output</p>
       </div>
       
       {/* Production Warning */}
       <Alert className="bg-zinc-800/60 border-amber-500/50">
         <AlertTriangle className="h-5 w-5 text-amber-500" />
-        <AlertTitle className="text-amber-500">Production System</AlertTitle>
+        <AlertTitle className="text-amber-500">Debug Mode Activated</AlertTitle>
         <AlertDescription className="text-zinc-300">
-          This is a real production system connected to the live Shopify store. All actions here will affect the actual store data.
+          This version has been modified to run only a single batch and provides detailed diagnostic information.
+          All API responses and database operations will be shown in the tabs below.
         </AlertDescription>
       </Alert>
       
@@ -26,10 +28,10 @@ const BatchLocationPage = () => {
         <CardHeader className="border-b border-orange-800/20 pb-3">
           <div className="flex items-center gap-2">
             <ArrowUpDown className="h-5 w-5 text-orange-500" />
-            <CardTitle className="text-orange-500">V3 GraphQL Implementation</CardTitle>
+            <CardTitle className="text-orange-500">V3 GraphQL Implementation (Debug Mode)</CardTitle>
           </div>
           <CardDescription className="text-zinc-400">
-            Latest version with automatic retries and improved performance
+            Single batch version with detailed logging for diagnosis
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">

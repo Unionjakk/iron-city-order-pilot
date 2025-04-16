@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
-import DebugInfoPanel from './DebugInfoPanel';
+import TabView from '@/components/ui/tab-view';
 
 interface BatchLocationUpdateV3Props {
   disabled?: boolean;
@@ -19,17 +20,20 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [connectionInfo, setConnectionInfo] = useState<string[]>([]);
+  const [requestPayloads, setRequestPayloads] = useState<string[]>([]);
+  const [responses, setResponses] = useState<string[]>([]);
+  const [databaseUpdates, setDatabaseUpdates] = useState<string[]>([]);
   const [updatedCount, setUpdatedCount] = useState(0);
   const [totalProcessed, setTotalProcessed] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [continuationToken, setContinuationToken] = useState<string | null>(null);
   const [progressPercent, setProgressPercent] = useState(0);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [estimatedTotal, setEstimatedTotal] = useState(0);
   const [rateLimitRemaining, setRateLimitRemaining] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
   const { toast } = useToast();
+  const edgeFunctionUrl = `https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/shopify-locations-sync-v3`;
 
   useEffect(() => {
     const getEstimatedTotal = async () => {
@@ -41,13 +45,19 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
         
         if (count !== null) {
           setEstimatedTotal(count);
-          addDebugMessage(`Estimated ${count} line items need location updates`);
+          addConnectionInfo(`Estimated ${count} line items need location updates`);
         }
       } catch (error) {
         console.error('Error getting estimated total:', error);
       }
     };
 
+    // Add initial connection info
+    addConnectionInfo(`Edge Function: ${edgeFunctionUrl}`);
+    addConnectionInfo(`API Version: 2023-07`);
+    addConnectionInfo(`Graphql Endpoint: https://opus-harley-davidson.myshopify.com/admin/api/2023-07/graphql.json`);
+    addConnectionInfo(`Batch Size: 40 items (restricted to 1 batch for debugging)`);
+    
     getEstimatedTotal();
     
     return () => {
@@ -57,9 +67,24 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
     };
   }, []);
 
-  const addDebugMessage = (message: string) => {
-    console.log(message);
-    setDebugInfo(prev => [message, ...prev].slice(0, 100));
+  const addConnectionInfo = (message: string) => {
+    console.log(`[Connection]: ${message}`);
+    setConnectionInfo(prev => [message, ...prev].slice(0, 100));
+  };
+
+  const addRequestPayload = (message: string) => {
+    console.log(`[Request]: ${message}`);
+    setRequestPayloads(prev => [message, ...prev].slice(0, 100));
+  };
+
+  const addResponse = (message: string) => {
+    console.log(`[Response]: ${message}`);
+    setResponses(prev => [message, ...prev].slice(0, 100));
+  };
+
+  const addDatabaseUpdate = (message: string) => {
+    console.log(`[Database]: ${message}`);
+    setDatabaseUpdates(prev => [message, ...prev].slice(0, 100));
   };
 
   const startTimer = () => {
@@ -82,8 +107,8 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
     }
   };
 
-  const handleBatchUpdate = async (continueFromToken?: string | null) => {
-    if (disabled || (isUpdating && !continueFromToken)) {
+  const handleBatchUpdate = async () => {
+    if (disabled || isUpdating) {
       toast({
         title: "Operation Blocked",
         description: "Please wait until the current operation completes.",
@@ -93,24 +118,21 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
     }
     
     setIsUpdating(true);
-    
-    if (!continueFromToken) {
-      setMessage(null);
-      setDebugInfo([]);
-      setUpdatedCount(0);
-      setTotalProcessed(0);
-      setIsComplete(false);
-      setContinuationToken(null);
-      setProgressPercent(0);
-      setTimeElapsed(0);
-      setRateLimitRemaining(null);
-      startTimer();
-    }
+    setMessage(null);
+    setConnectionInfo([]);
+    setRequestPayloads([]);
+    setResponses([]);
+    setDatabaseUpdates([]);
+    setUpdatedCount(0);
+    setTotalProcessed(0);
+    setIsComplete(false);
+    setProgressPercent(0);
+    setTimeElapsed(0);
+    setRateLimitRemaining(null);
+    startTimer();
     
     try {
-      addDebugMessage(continueFromToken 
-        ? "Continuing batch location update..." 
-        : "Starting batch location update for all orders...");
+      addConnectionInfo("Starting batch location update (limited to 1 batch)...");
       
       const { data: token, error: tokenError } = await supabase.rpc('get_shopify_setting', { 
         setting_name_param: 'shopify_token' 
@@ -124,14 +146,21 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
         throw new Error("No API token found in settings");
       }
       
-      addDebugMessage("Calling Shopify locations sync V3 edge function...");
+      addConnectionInfo(`API Token retrieved (length: ${token.length})`);
+      addConnectionInfo(`Calling Shopify locations sync V3 edge function...`);
+      
+      const requestPayload = { 
+        apiToken: token,
+        continuationToken: null
+      };
+      
+      addRequestPayload(`Request payload: ${JSON.stringify(requestPayload, null, 2)}`);
       
       const { data, error } = await supabase.functions.invoke('shopify-locations-sync-v3', {
-        body: { 
-          apiToken: token,
-          continuationToken: continueFromToken
-        }
+        body: requestPayload
       });
+      
+      addResponse(`Response: ${JSON.stringify(data, null, 2)}`);
       
       if (error) {
         throw error;
@@ -143,7 +172,7 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
       
       if (data.rateLimitRemaining !== undefined) {
         setRateLimitRemaining(data.rateLimitRemaining);
-        addDebugMessage(`API Rate limit: ${data.rateLimitRemaining}`);
+        addConnectionInfo(`API Rate limit: ${data.rateLimitRemaining}`);
       }
       
       setUpdatedCount(data.updated);
@@ -155,10 +184,9 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
       const progressPercent = Math.min(Math.round((processed / total) * 100), 99);
       
       setProgressPercent(progressPercent);
-      addDebugMessage(`Progress: ${progressPercent}% (${processed}/${total} items)`);
       
       if (data.processingComplete) {
-        addDebugMessage(`✅ Completed! Successfully updated ${data.updated} line items.`);
+        addDatabaseUpdate(`Completed! Successfully updated ${data.updated} line items.`);
         setIsComplete(true);
         setProgressPercent(100);
         stopTimer();
@@ -170,44 +198,73 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
         });
         
         if (onUpdateComplete) {
-          addDebugMessage("Refreshing data...");
+          addConnectionInfo("Refreshing data...");
           await onUpdateComplete();
         }
-        
-        setIsUpdating(false);
       } else {
-        setContinuationToken(data.continuationToken);
-        setTimeout(() => handleBatchUpdate(data.continuationToken), 100);
+        // We're forcing completion here even if there are more batches to process
+        addConnectionInfo(`Batch complete. Only processing 1 batch for debugging.`);
+        addDatabaseUpdate(`Updated ${data.updated} line items in this batch.`);
+        setIsComplete(true);
+        stopTimer();
       }
     } catch (error: any) {
       console.error('Error in batch location update:', error);
       stopTimer();
       setIsComplete(false);
-      setIsUpdating(false);
       
       const errorMessage = error.message || "Unknown error occurred";
       setMessage(errorMessage);
-      addDebugMessage(`Error: ${errorMessage}`);
-      
-      if (!isComplete) {
-        addDebugMessage("Will auto-restart in 5 seconds...");
-        setTimeout(() => handleBatchUpdate(continuationToken), 5000);
-      }
-      
-      toast({
-        title: "Location Update Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      addResponse(`Error: ${errorMessage}`);
+    } finally {
+      setIsUpdating(false);
     }
   };
+
+  const renderLogEntries = (entries: string[]) => {
+    return (
+      <div className="font-mono text-xs">
+        {entries.map((entry, index) => (
+          <div key={index} className="py-1 border-b border-zinc-800/50 last:border-0 whitespace-pre-wrap">
+            {entry}
+          </div>
+        ))}
+        {entries.length === 0 && (
+          <div className="text-zinc-500 italic">No logs available</div>
+        )}
+      </div>
+    );
+  };
+
+  const tabs = [
+    {
+      id: "connection",
+      label: "Connection Info",
+      content: renderLogEntries(connectionInfo)
+    },
+    {
+      id: "request",
+      label: "Request Payloads",
+      content: renderLogEntries(requestPayloads)
+    },
+    {
+      id: "response",
+      label: "API Responses",
+      content: renderLogEntries(responses)
+    },
+    {
+      id: "database",
+      label: "Database Updates",
+      content: renderLogEntries(databaseUpdates)
+    }
+  ];
 
   return (
     <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="text-orange-500">Batch Location Update</CardTitle>
+        <CardTitle className="text-orange-500">Batch Location Update (Debug Mode)</CardTitle>
         <CardDescription className="text-zinc-400">
-          Update location information for all line items using the GraphQL API
+          Update location information for all line items using the GraphQL API (limited to 1 batch)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -244,23 +301,23 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
         )}
         
         <Button 
-          onClick={() => handleBatchUpdate(continuationToken)}
-          disabled={disabled}
+          onClick={handleBatchUpdate}
+          disabled={disabled || isUpdating}
           className="w-full"
           variant={isComplete ? "outline" : "default"}
         >
           {isUpdating ? (
             <>
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Updating Locations...
+              Updating Locations (Debug Mode)...
             </>
           ) : isComplete ? (
             <>
               <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-              Run Again
+              Run Again (Debug Mode)
             </>
           ) : (
-            "Update All Locations"
+            "Update Locations (Debug Mode - Single Batch)"
           )}
         </Button>
         
@@ -274,12 +331,7 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
           </Alert>
         )}
         
-        {debugInfo.length > 0 && (
-          <div className="mt-4">
-            <h3 className="text-sm font-medium mb-2">Processing Log</h3>
-            <DebugInfoPanel debugInfo={debugInfo} />
-          </div>
-        )}
+        <TabView tabs={tabs} />
       </CardContent>
     </Card>
   );
