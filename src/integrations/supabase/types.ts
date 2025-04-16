@@ -886,7 +886,6 @@ export type Database = {
           quantity: number | null
           quantity_exceeds_picked: boolean | null
           shopify_line_item_id: string | null
-          shopify_notes: string | null
           shopify_order_number: string | null
           sku: string | null
           title: string | null
@@ -983,10 +982,6 @@ export type Database = {
         Returns: string
       }
       migrate_existing_order_items: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      refresh_iron_city_new_orders_table: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
