@@ -24,24 +24,21 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Rate limiting helper
+// Rate limiting helper - 1.5 seconds between requests
+const minTimeBetweenRequests = 1500;
 let lastRequestTime = 0;
-const minTimeBetweenRequests = 1500; // 1.5 seconds between requests
 
 async function waitForRateLimit() {
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
-  
   if (timeSinceLastRequest < minTimeBetweenRequests) {
     const waitTime = minTimeBetweenRequests - timeSinceLastRequest;
     console.log(`Rate limit: Waiting ${waitTime}ms before next request`);
     await new Promise(resolve => setTimeout(resolve, waitTime));
   }
-  
   lastRequestTime = Date.now();
 }
 
-// Continuation token interface
 interface ContinuationToken {
   lastProcessedId: string | null;
   batchSize: number;
@@ -50,19 +47,15 @@ interface ContinuationToken {
   startTime: number;
 }
 
-// Handler for the edge function
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const startTime = Date.now();
-    
-    // Parse request body
     const { apiToken, continuationToken: continuationTokenStr } = await req.json();
-    
+
     if (!apiToken) {
       return new Response(
         JSON.stringify({ 
@@ -96,11 +89,11 @@ Deno.serve(async (req) => {
     // Get a batch of line items to update
     console.log(`Fetching batch of up to ${batchSize} line items. Last ID: ${lastProcessedId || 'N/A'}`);
     
-    // Build query based on whether we have a lastProcessedId
+    // Build query for line items without locations
     let query = supabase
       .from("shopify_order_items")
       .select(`
-        id, 
+        id,
         shopify_line_item_id,
         order_id,
         shopify_orders!inner(shopify_order_id)
@@ -109,7 +102,6 @@ Deno.serve(async (req) => {
       .limit(batchSize)
       .is('location_id', null);
 
-    // Only add the gt condition if we have a lastProcessedId
     if (lastProcessedId) {
       query = query.gt('id', lastProcessedId);
     }
@@ -130,7 +122,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // If no more items to process, we're done
     if (!lineItems || lineItems.length === 0) {
       console.log("No more line items to process");
       return new Response(
@@ -146,71 +137,22 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Processing ${lineItems.length} line items`);
+    await waitForRateLimit();
+
+    // Prepare GraphQL query for batch of line items
+    const shopifyAdminUrl = `https://opus-harley-davidson.myshopify.com/admin/api/2023-07/graphql.json`;
+    const lineItemIds = lineItems.map(item => `gid://shopify/LineItem/${item.shopify_line_item_id}`);
     
-    // Group line items by order
-    const lineItemsByOrder: Record<string, any[]> = {};
-    for (const item of lineItems) {
-      const orderId = item.shopify_orders.shopify_order_id;
-      if (!lineItemsByOrder[orderId]) {
-        lineItemsByOrder[orderId] = [];
-      }
-      lineItemsByOrder[orderId].push(item);
-    }
-    
-    // For each order, fetch location data and update line items
-    let batchUpdated = 0;
-    const orderIds = Object.keys(lineItemsByOrder);
-    console.log(`Processing ${orderIds.length} orders`);
-    
-    for (const orderId of orderIds) {
-      console.log(`Processing order ${orderId}`);
-      await waitForRateLimit();
-      
-      try {
-        // Fetch location data for this order using the GraphQL API
-        const shopifyAdminUrl = `https://opus-harley-davidson.myshopify.com/admin/api/2023-07/graphql.json`;
-        
-        // Fixed GraphQL query based on the error messages
-        const query = `
-          query GetOrderWithLocations($id: ID!) {
-            order(id: $id) {
-              id
-              lineItems(first: 100) {
-                edges {
-                  node {
-                    id
-                    variant {
-                      inventoryItem {
-                        # Get inventory item locations without using the inventoryLevel field that requires locationId
-                        inventoryLevels(first: 5) {
-                          edges {
-                            node {
-                              location {
-                                id
-                                name
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              fulfillmentOrders(first: 10) {
-                edges {
-                  node {
-                    # Fix for accessing line items in fulfillment orders
-                    lineItems(first: 100) {
-                      edges {
-                        node {
-                          lineItem {
-                            id
-                          }
-                        }
-                      }
-                    }
-                    assignedLocation {
+    const query = `
+      query GetLocationsForLineItems($ids: [ID!]!) {
+        nodes(ids: $ids) {
+          ... on LineItem {
+            id
+            variant {
+              inventoryItem {
+                inventoryLevels(first: 5) {
+                  edges {
+                    node {
                       location {
                         id
                         name
@@ -221,150 +163,95 @@ Deno.serve(async (req) => {
               }
             }
           }
-        `;
-        
-        const response = await fetch(shopifyAdminUrl, {
-          method: 'POST',
-          headers: {
-            'X-Shopify-Access-Token': apiToken,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query,
-            variables: {
-              id: `gid://shopify/Order/${orderId}`,
-            },
-          }),
-        });
-        
-        // Record rate limit information
-        const rateLimitRemaining = response.headers.get('X-Shopify-Shop-Api-Call-Limit');
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Error fetching order ${orderId}:`, errorText);
-          continue;
         }
+      }
+    `;
+
+    const response = await fetch(shopifyAdminUrl, {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Access-Token': apiToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        variables: {
+          ids: lineItemIds
+        },
+      }),
+    });
+
+    // Record rate limit information
+    const rateLimitRemaining = response.headers.get('X-Shopify-Shop-Api-Call-Limit');
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Error from Shopify API:`, errorText);
+      throw new Error(`Shopify API error: ${response.status} ${response.statusText}`);
+    }
+
+    const responseData = await response.json();
+    
+    if (responseData.errors) {
+      console.error(`GraphQL errors:`, responseData.errors);
+      throw new Error(`GraphQL errors: ${responseData.errors[0].message}`);
+    }
+
+    // Process locations from response
+    const locationUpdates = [];
+    const processedLineItems = new Set();
+
+    if (responseData.data?.nodes) {
+      for (const node of responseData.data.nodes) {
+        if (!node) continue;
+
+        const lineItemId = node.id.replace('gid://shopify/LineItem/', '');
+        const inventoryLevels = node.variant?.inventoryItem?.inventoryLevels?.edges || [];
         
-        const responseData = await response.json();
-        
-        if (responseData.errors && responseData.errors.length > 0) {
-          console.error(`GraphQL errors for order ${orderId}:`, responseData.errors);
-          continue;
-        }
-        
-        if (!responseData.data || !responseData.data.order) {
-          console.error(`No data returned for order ${orderId}`);
-          continue;
-        }
-        
-        // Process the response to extract location information
-        const orderData = responseData.data.order;
-        
-        // First build a map from fulfillment orders
-        const locationByLineItem: Record<string, { id: string, name: string }> = {};
-        
-        // Check fulfillment orders for assigned locations
-        if (orderData.fulfillmentOrders && orderData.fulfillmentOrders.edges) {
-          for (const edge of orderData.fulfillmentOrders.edges) {
-            const fulfillmentOrder = edge.node;
-            
-            if (fulfillmentOrder.assignedLocation && fulfillmentOrder.assignedLocation.location) {
-              const location = fulfillmentOrder.assignedLocation.location;
-              const locationId = location.id.replace('gid://shopify/Location/', '');
-              
-              // Updated to use proper structure for accessing line items in fulfillment orders
-              if (fulfillmentOrder.lineItems && fulfillmentOrder.lineItems.edges) {
-                for (const lineItemEdge of fulfillmentOrder.lineItems.edges) {
-                  if (lineItemEdge.node && lineItemEdge.node.lineItem) {
-                    const lineItemId = lineItemEdge.node.lineItem.id.replace('gid://shopify/LineItem/', '');
-                    locationByLineItem[lineItemId] = {
-                      id: locationId,
-                      name: location.name
-                    };
-                  }
-                }
-              }
-            }
-          }
-        }
-        
-        // Then check inventory levels for line items
-        if (orderData.lineItems && orderData.lineItems.edges) {
-          for (const edge of orderData.lineItems.edges) {
-            const lineItem = edge.node;
-            const lineItemId = lineItem.id.replace('gid://shopify/LineItem/', '');
-            
-            // Skip if already have location from fulfillment orders
-            if (locationByLineItem[lineItemId]) {
-              continue;
-            }
-            
-            if (lineItem.variant && lineItem.variant.inventoryItem) {
-              const inventoryItem = lineItem.variant.inventoryItem;
-              
-              // Updated to use inventoryLevels instead of inventoryLevel
-              if (inventoryItem.inventoryLevels && 
-                  inventoryItem.inventoryLevels.edges && 
-                  inventoryItem.inventoryLevels.edges.length > 0) {
-                const inventoryLevel = inventoryItem.inventoryLevels.edges[0].node;
-                
-                if (inventoryLevel.location) {
-                  const location = inventoryLevel.location;
-                  const locationId = location.id.replace('gid://shopify/Location/', '');
-                  
-                  locationByLineItem[lineItemId] = {
-                    id: locationId,
-                    name: location.name
-                  };
-                }
-              }
-            }
-          }
-        }
-        
-        // Update line items for this order
-        const orderLineItems = lineItemsByOrder[orderId];
-        const updates = [];
-        
-        for (const item of orderLineItems) {
-          const location = locationByLineItem[item.shopify_line_item_id];
+        if (inventoryLevels.length > 0) {
+          const location = inventoryLevels[0].node.location;
+          const locationId = location.id.replace('gid://shopify/Location/', '');
           
-          updates.push({
-            id: item.id,
-            location_id: location ? location.id : null,
-            location_name: location ? location.name : null
+          locationUpdates.push({
+            lineItemId,
+            locationId,
+            locationName: location.name
           });
         }
         
-        if (updates.length > 0) {
-          // Update line items in database
-          for (const update of updates) {
-            const { error: updateError } = await supabase
-              .from("shopify_order_items")
-              .update({
-                location_id: update.location_id,
-                location_name: update.location_name
-              })
-              .eq("id", update.id);
-            
-            if (updateError) {
-              console.error(`Error updating line item ${update.id}:`, updateError);
-            } else {
-              batchUpdated++;
-            }
-          }
-        }
-      } catch (error) {
-        console.error(`Error processing order ${orderId}:`, error);
+        processedLineItems.add(lineItemId);
       }
     }
-    
+
+    // Update line items in database
+    let batchUpdated = 0;
+    for (const update of locationUpdates) {
+      const lineItem = lineItems.find(item => 
+        item.shopify_line_item_id === update.lineItemId
+      );
+
+      if (lineItem) {
+        const { error: updateError } = await supabase
+          .from("shopify_order_items")
+          .update({
+            location_id: update.locationId,
+            location_name: update.locationName
+          })
+          .eq("id", lineItem.id);
+
+        if (updateError) {
+          console.error(`Error updating line item ${lineItem.id}:`, updateError);
+        } else {
+          batchUpdated++;
+        }
+      }
+    }
+
     // Update progress information
     updatedCount += batchUpdated;
     totalProcessed += lineItems.length;
-    lastProcessedId = lineItems[lineItems.length - 1].id;
-    
+    const lastProcessedId = lineItems[lineItems.length - 1].id;
+
     // Prepare continuation token for next batch
     const newContinuationToken: ContinuationToken = {
       lastProcessedId,
@@ -373,14 +260,14 @@ Deno.serve(async (req) => {
       totalProcessed,
       startTime: startTimeFromToken
     };
-    
+
     console.log(`Batch complete. Updated: ${batchUpdated}, Total updated: ${updatedCount}, Total processed: ${totalProcessed}`);
-    
+
     return new Response(
       JSON.stringify({
         success: true,
         updated: updatedCount,
-        totalProcessed: totalProcessed,
+        totalProcessed,
         processingComplete: false,
         continuationToken: JSON.stringify(newContinuationToken),
         rateLimitRemaining,
@@ -388,6 +275,7 @@ Deno.serve(async (req) => {
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
+
   } catch (error: any) {
     console.error("Error in shopify-locations-sync-v3:", error);
     
