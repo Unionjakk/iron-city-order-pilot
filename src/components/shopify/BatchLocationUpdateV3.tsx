@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,7 +32,6 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
   const [rateLimitRemaining, setRateLimitRemaining] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
   const { toast } = useToast();
-  const edgeFunctionUrl = `https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/shopify-locations-sync-v3`;
 
   useEffect(() => {
     const getEstimatedTotal = async () => {
@@ -52,10 +50,13 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
       }
     };
 
-    // Add initial connection info
-    addConnectionInfo(`Edge Function: ${edgeFunctionUrl}`);
-    addConnectionInfo(`API Version: 2023-07`);
-    addConnectionInfo(`Graphql Endpoint: https://opus-harley-davidson.myshopify.com/admin/api/2023-07/graphql.json`);
+    const edgeFunctionUrl = `https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/shopify-locations-sync-v3`;
+    
+    addConnectionInfo(`Connection Information:`);
+    addConnectionInfo(`Edge Function URL: ${edgeFunctionUrl}`);
+    addConnectionInfo(`Shopify API Version: 2023-07`);
+    addConnectionInfo(`GraphQL Endpoint: https://opus-harley-davidson.myshopify.com/admin/api/2023-07/graphql.json`);
+    addConnectionInfo(`Rate Limiting: 1.5 seconds between requests`);
     addConnectionInfo(`Batch Size: 40 items (restricted to 1 batch for debugging)`);
     
     getEstimatedTotal();
@@ -212,10 +213,8 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
       console.error('Error in batch location update:', error);
       stopTimer();
       setIsComplete(false);
-      
-      const errorMessage = error.message || "Unknown error occurred";
-      setMessage(errorMessage);
-      addResponse(`Error: ${errorMessage}`);
+      setMessage(error.message);
+      addResponse(`Error: ${error.message}`);
     } finally {
       setIsUpdating(false);
     }
