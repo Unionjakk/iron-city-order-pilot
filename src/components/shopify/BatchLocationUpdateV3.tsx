@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,11 @@ const BatchLocationUpdateV3: React.FC<BatchLocationUpdateV3Props> = ({
     addConnectionInfo(`GraphQL Endpoint: https://opus-harley-davidson.myshopify.com/admin/api/2023-07/graphql.json`);
     addConnectionInfo(`Rate Limiting: 1.5 seconds between requests`);
     addConnectionInfo(`Batch Size: 40 items (restricted to 1 batch for debugging)`);
+    
+    // Add more detailed information about the GraphQL query schema
+    addConnectionInfo(`GraphQL Query Structure:`);
+    addConnectionInfo(`- Using inventoryLevels(first: 5) instead of inventoryLevel`);
+    addConnectionInfo(`- Reading line items from fulfillmentOrders using edges->node->lineItem->id pattern`);
     
     getEstimatedTotal();
     

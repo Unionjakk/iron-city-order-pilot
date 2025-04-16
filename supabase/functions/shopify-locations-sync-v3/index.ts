@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 
 // CORS headers for browser requests
@@ -169,6 +170,7 @@ Deno.serve(async (req) => {
         // Fetch location data for this order using the GraphQL API
         const shopifyAdminUrl = `https://opus-harley-davidson.myshopify.com/admin/api/2023-07/graphql.json`;
         
+        // Fixed GraphQL query based on the error messages
         const query = `
           query GetOrderWithLocations($id: ID!) {
             order(id: $id) {
@@ -179,7 +181,8 @@ Deno.serve(async (req) => {
                     id
                     variant {
                       inventoryItem {
-                        inventoryLevel(first: 1) {
+                        # Get inventory item locations without using the inventoryLevel field that requires locationId
+                        inventoryLevels(first: 5) {
                           edges {
                             node {
                               location {
@@ -197,8 +200,15 @@ Deno.serve(async (req) => {
               fulfillmentOrders(first: 10) {
                 edges {
                   node {
+                    # Fix for accessing line items in fulfillment orders
                     lineItems(first: 100) {
-                      lineItemId
+                      edges {
+                        node {
+                          lineItem {
+                            id
+                          }
+                        }
+                      }
                     }
                     assignedLocation {
                       location {
@@ -263,12 +273,16 @@ Deno.serve(async (req) => {
               const location = fulfillmentOrder.assignedLocation.location;
               const locationId = location.id.replace('gid://shopify/Location/', '');
               
-              for (const lineItem of fulfillmentOrder.lineItems) {
-                if (lineItem.lineItemId) {
-                  locationByLineItem[lineItem.lineItemId] = {
-                    id: locationId,
-                    name: location.name
-                  };
+              // Updated to use proper structure for accessing line items in fulfillment orders
+              if (fulfillmentOrder.lineItems && fulfillmentOrder.lineItems.edges) {
+                for (const lineItemEdge of fulfillmentOrder.lineItems.edges) {
+                  if (lineItemEdge.node && lineItemEdge.node.lineItem) {
+                    const lineItemId = lineItemEdge.node.lineItem.id.replace('gid://shopify/LineItem/', '');
+                    locationByLineItem[lineItemId] = {
+                      id: locationId,
+                      name: location.name
+                    };
+                  }
                 }
               }
             }
@@ -289,8 +303,11 @@ Deno.serve(async (req) => {
             if (lineItem.variant && lineItem.variant.inventoryItem) {
               const inventoryItem = lineItem.variant.inventoryItem;
               
-              if (inventoryItem.inventoryLevel && inventoryItem.inventoryLevel.edges && inventoryItem.inventoryLevel.edges.length > 0) {
-                const inventoryLevel = inventoryItem.inventoryLevel.edges[0].node;
+              // Updated to use inventoryLevels instead of inventoryLevel
+              if (inventoryItem.inventoryLevels && 
+                  inventoryItem.inventoryLevels.edges && 
+                  inventoryItem.inventoryLevels.edges.length > 0) {
+                const inventoryLevel = inventoryItem.inventoryLevels.edges[0].node;
                 
                 if (inventoryLevel.location) {
                   const location = inventoryLevel.location;
