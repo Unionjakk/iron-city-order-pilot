@@ -1,6 +1,5 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
 
@@ -13,8 +12,14 @@ interface ProgressCardProps {
 }
 
 const ProgressCard = ({ icon: Icon, title, description, to, className = "" }: ProgressCardProps) => {
+  const handleClick = () => {
+    window.location.href = to === "/actions/picklist" 
+      ? "https://tracker.auraengage.com/settings/generatepicks" 
+      : to;
+  };
+
   return (
-    <Link to={to} className={className}>
+    <div onClick={handleClick} className={`cursor-pointer ${className}`}>
       <Card className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 transition-colors cursor-pointer h-full">
         <CardContent className="p-6 flex flex-col items-center text-center">
           <Icon className="h-10 w-10 text-orange-500 mb-3" />
@@ -22,7 +27,7 @@ const ProgressCard = ({ icon: Icon, title, description, to, className = "" }: Pr
           <p className="text-zinc-400 text-sm">{description}</p>
         </CardContent>
       </Card>
-    </Link>
+    </div>
   );
 };
 
