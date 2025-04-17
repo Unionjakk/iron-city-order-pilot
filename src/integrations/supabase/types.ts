@@ -942,7 +942,6 @@ export type Database = {
           last_line_items_upload: string | null
           last_open_orders_upload: string | null
           orders_without_line_items: number | null
-          total_backorder_items: number | null
           total_orders: number | null
         }
         Relationships: []

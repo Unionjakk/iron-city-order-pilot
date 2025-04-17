@@ -35,6 +35,7 @@ const OrdersNeedingRefresh = () => {
         const { data, error } = await supabase
           .from('hd_orders_status_summary')
           .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, updated_date')
+          .eq('contains_open_orders', true) // Filter only where contains_open_orders is true
           .order('updated_date', { ascending: true });
         
         if (error) throw error;
