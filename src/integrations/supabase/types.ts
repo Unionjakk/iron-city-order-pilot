@@ -339,6 +339,108 @@ export type Database = {
         }
         Relationships: []
       }
+      iron_city_new_orders_table: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          hd_orderlinecombo: string | null
+          id: string
+          iron_anyaction: boolean | null
+          iron_created: string | null
+          iron_last_updated: string | null
+          iron_notes: string | null
+          iron_order_quantity: number | null
+          iron_picked_quantity: number | null
+          iron_progress: string | null
+          order_id: string | null
+          pinnacle_bin_location: string | null
+          pinnacle_close_match: boolean | null
+          pinnacle_cost: number | null
+          pinnacle_description: string | null
+          pinnacle_exact_match: boolean | null
+          pinnacle_more_than_one_match: boolean | null
+          pinnacle_part_number: string | null
+          pinnacle_stock_quantity: number | null
+          price: number | null
+          price_ex_vat: number | null
+          quantity: number | null
+          quantity_exceeds_picked: boolean | null
+          shopify_line_item_id: string | null
+          shopify_notes: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          snapshot_date: string | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          hd_orderlinecombo?: string | null
+          id?: string
+          iron_anyaction?: boolean | null
+          iron_created?: string | null
+          iron_last_updated?: string | null
+          iron_notes?: string | null
+          iron_order_quantity?: number | null
+          iron_picked_quantity?: number | null
+          iron_progress?: string | null
+          order_id?: string | null
+          pinnacle_bin_location?: string | null
+          pinnacle_close_match?: boolean | null
+          pinnacle_cost?: number | null
+          pinnacle_description?: string | null
+          pinnacle_exact_match?: boolean | null
+          pinnacle_more_than_one_match?: boolean | null
+          pinnacle_part_number?: string | null
+          pinnacle_stock_quantity?: number | null
+          price?: number | null
+          price_ex_vat?: number | null
+          quantity?: number | null
+          quantity_exceeds_picked?: boolean | null
+          shopify_line_item_id?: string | null
+          shopify_notes?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          snapshot_date?: string | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          hd_orderlinecombo?: string | null
+          id?: string
+          iron_anyaction?: boolean | null
+          iron_created?: string | null
+          iron_last_updated?: string | null
+          iron_notes?: string | null
+          iron_order_quantity?: number | null
+          iron_picked_quantity?: number | null
+          iron_progress?: string | null
+          order_id?: string | null
+          pinnacle_bin_location?: string | null
+          pinnacle_close_match?: boolean | null
+          pinnacle_cost?: number | null
+          pinnacle_description?: string | null
+          pinnacle_exact_match?: boolean | null
+          pinnacle_more_than_one_match?: boolean | null
+          pinnacle_part_number?: string | null
+          pinnacle_stock_quantity?: number | null
+          price?: number | null
+          price_ex_vat?: number | null
+          quantity?: number | null
+          quantity_exceeds_picked?: boolean | null
+          shopify_line_item_id?: string | null
+          shopify_notes?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          snapshot_date?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       iron_city_order_progress: {
         Row: {
           created_at: string
@@ -480,6 +582,33 @@ export type Database = {
           total_average_cost?: number | null
           total_cost?: number | null
           total_retail?: number | null
+        }
+        Relationships: []
+      }
+      pinnacle_stock_lookup_table: {
+        Row: {
+          bin_location: string | null
+          corrected_sku: string | null
+          cost: number | null
+          description: string | null
+          id: number
+          stock_quantity: number | null
+        }
+        Insert: {
+          bin_location?: string | null
+          corrected_sku?: string | null
+          cost?: number | null
+          description?: string | null
+          id?: number
+          stock_quantity?: number | null
+        }
+        Update: {
+          bin_location?: string | null
+          corrected_sku?: string | null
+          cost?: number | null
+          description?: string | null
+          id?: number
+          stock_quantity?: number | null
         }
         Relationships: []
       }
@@ -893,6 +1022,40 @@ export type Database = {
         }
         Relationships: []
       }
+      iron_city_action_viewer2: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          hd_orderlinecombo: string | null
+          iron_anyaction: boolean | null
+          iron_created: string | null
+          iron_last_updated: string | null
+          iron_notes: string | null
+          iron_order_quantity: number | null
+          iron_picked_quantity: number | null
+          iron_progress: string | null
+          order_id: string | null
+          pinnacle_bin_location: string | null
+          pinnacle_close_match: boolean | null
+          pinnacle_cost: number | null
+          pinnacle_description: string | null
+          pinnacle_exact_match: boolean | null
+          pinnacle_more_than_one_match: boolean | null
+          pinnacle_part_number: string | null
+          pinnacle_stock_quantity: number | null
+          price: number | null
+          price_ex_vat: number | null
+          quantity: number | null
+          quantity_exceeds_picked: boolean | null
+          shopify_line_item_id: string | null
+          shopify_notes: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       pinnacle_stock_view: {
         Row: {
           bin_location: string | null
@@ -926,9 +1089,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      clean_iron_city_new_orders_table: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       column_exists: {
         Args: { table_name: string; column_name: string }
         Returns: boolean
+      }
+      daily_shopify_refresh_job: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       delete_all_shopify_order_items: {
         Args: Record<PropertyKey, never>
@@ -989,6 +1160,14 @@ export type Database = {
       refresh_iron_city_new_orders_table: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      refresh_iron_city_new_orders_table_structure: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      refresh_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       update_dashboard_stats: {
         Args: Record<PropertyKey, never>

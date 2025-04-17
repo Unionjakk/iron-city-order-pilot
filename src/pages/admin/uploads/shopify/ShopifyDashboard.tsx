@@ -1,3 +1,4 @@
+
 import { LayoutDashboard, Trash2, Download, MapPin, List, Link } from 'lucide-react';
 import { Link as RouterLink } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,6 +6,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ProgressCard from '@/components/dashboard/ProgressCard';
+import DatabaseStats from '@/components/shopify/components/DatabaseStats';
+
 const ShopifyDashboard = () => {
   return <div className="space-y-6">
       <div>
@@ -30,6 +33,8 @@ const ShopifyDashboard = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <DatabaseStats />
+          
           <RouterLink to="/admin/uploads/shopify/v2">
             
           </RouterLink>
