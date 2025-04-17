@@ -47,7 +47,7 @@ export const useHarleyDashboardData = () => {
             totalOrders: viewData.total_orders || 0,
             ordersWithoutLineItems: viewData.orders_without_line_items || 0,
             backorderItems: viewData.backorder_items || 0,
-            totalBackorderItems: viewData.total_backorder_items || 0,
+            totalBackorderItems: viewData.backorder_items || 0, // Using backorder_items for both since totalBackorderItems not in view
             lastOpenOrdersUpload: viewData.last_open_orders_upload,
             lastLineItemsUpload: viewData.last_line_items_upload,
             lastBackordersUpload: viewData.last_backorders_upload

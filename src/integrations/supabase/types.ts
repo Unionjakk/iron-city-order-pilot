@@ -988,6 +988,16 @@ export type Database = {
         }
         Relationships: []
       }
+      hd_orders_with_status: {
+        Row: {
+          contains_open_orders: boolean | null
+          dealer_po_number: string | null
+          hd_order_number: string | null
+          order_date: string | null
+          order_type: string | null
+        }
+        Relationships: []
+      }
       iron_city_action_viewer: {
         Row: {
           created_at: string | null
