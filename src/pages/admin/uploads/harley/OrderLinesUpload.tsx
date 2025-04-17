@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Code } from '@/components/ui/code';
 import { FileText, AlertTriangle } from 'lucide-react'; 
 import OrdersNeedingLineItems from './components/OrdersNeedingLineItems';
+import OrdersNeedingRefresh from './components/OrdersNeedingRefresh';
 import OrderLinesInstructions from './components/OrderLinesInstructions';
 import FileUploadZone from './components/FileUploadZone';
 import UploadSuccessDisplay from './components/UploadSuccessDisplay';
@@ -71,6 +72,8 @@ const OrderLinesUpload = () => {
       </Card>
       
       <OrdersNeedingLineItems />
+      
+      <OrdersNeedingRefresh />
     </div>
   );
 };
