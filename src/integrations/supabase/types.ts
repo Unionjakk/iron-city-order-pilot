@@ -961,16 +961,6 @@ export type Database = {
         }
         Relationships: []
       }
-      hd_orders_status_summary: {
-        Row: {
-          contains_open_orders: boolean | null
-          dealer_po_number: string | null
-          hd_order_number: string | null
-          order_date: string | null
-          order_type: string | null
-        }
-        Relationships: []
-      }
       hd_orders_with_lookup: {
         Row: {
           dealer_po_number: string | null
