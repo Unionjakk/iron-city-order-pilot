@@ -82,14 +82,8 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
       // Step 2: Import all open orders
       setRefreshStatus("Importing all open orders...");
       try {
-        // Create a dummy component instance to call its method
-        const importComponent = document.createElement('div');
-        const importCard = new AllOpenOrdersImportV2Card({
-          onImportComplete: () => {}
-        });
-        
-        // Use the handleImport method - this won't actually work as the method is internal to the component
-        // Instead we'll use the edge function directly
+        // We don't need to instantiate components with 'new'
+        // Instead, we'll directly call the edge function
         const { data: apiToken } = await supabase.rpc("get_shopify_setting", {
           setting_name_param: "shopify_token"
         });
