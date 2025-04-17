@@ -50,7 +50,12 @@ const HarleyStatsCard = ({
                 {stats.backorderItems > 0 ? stats.backorderItems.toLocaleString() : 'None'}
               </span>
             </div>
-            
+            <div>
+              <span className="text-zinc-400 text-sm">Total Backorder Items:</span>
+              <span className="ml-2 text-zinc-200 font-semibold">
+                {stats.totalBackorderItems > 0 ? stats.totalBackorderItems.toLocaleString() : 'None'}
+              </span>
+            </div>
           </div>
           
           <div className="space-y-2">
@@ -85,6 +90,9 @@ const HarleyStatsCard = ({
                 </div>
                 {stats.backorderItems > 0 && <p className="mt-2 text-amber-400">
                     {stats.backorderItems} line items currently on backorder
+                  </p>}
+                {stats.totalBackorderItems > 0 && stats.totalBackorderItems !== stats.backorderItems && <p className="mt-2 text-amber-400">
+                    {stats.totalBackorderItems} total items in backorder table
                   </p>}
               </div> : <p className="text-xs text-zinc-300">
                 No data has been uploaded yet. Begin by uploading the Open Orders List from H-D NET.

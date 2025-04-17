@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -42,12 +41,11 @@ export const useHarleyDashboardData = () => {
         if (viewData) {
           console.log('Raw view data:', viewData);
           // Update stats with data from the new, more accurate view
-          // which now accounts for excluded orders in the orders_without_line_items count
           setStats({
             totalOrders: viewData.total_orders || 0,
             ordersWithoutLineItems: viewData.orders_without_line_items || 0,
             backorderItems: viewData.backorder_items || 0,
-            totalBackorderItems: viewData.backorder_items || 0, // Using backorder_items for both since totalBackorderItems not in view
+            totalBackorderItems: viewData.total_backorder_items || 0,
             lastOpenOrdersUpload: viewData.last_open_orders_upload,
             lastLineItemsUpload: viewData.last_line_items_upload,
             lastBackordersUpload: viewData.last_backorders_upload
