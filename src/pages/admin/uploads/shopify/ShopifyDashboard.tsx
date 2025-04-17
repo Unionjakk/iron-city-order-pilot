@@ -7,6 +7,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ProgressCard from '@/components/dashboard/ProgressCard';
 import DatabaseStats from '@/components/shopify/components/DatabaseStats';
+import RefreshAllShopify from '@/components/shopify/components/RefreshAllShopify';
 
 const ShopifyDashboard = () => {
   return <div className="space-y-6">
@@ -26,11 +27,14 @@ const ShopifyDashboard = () => {
 
       {/* API Configuration Card */}
       <Card className="border-zinc-800 bg-zinc-900/60">
-        <CardHeader>
-          <CardTitle className="text-orange-500">Database Status</CardTitle>
-          <CardDescription>
-            Securely connect to your Shopify store
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div>
+            <CardTitle className="text-orange-500">Database Status</CardTitle>
+            <CardDescription>
+              Securely connect to your Shopify store
+            </CardDescription>
+          </div>
+          <RefreshAllShopify />
         </CardHeader>
         <CardContent>
           <DatabaseStats />
