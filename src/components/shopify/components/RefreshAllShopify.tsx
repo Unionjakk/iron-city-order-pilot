@@ -1,13 +1,9 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-// Importing the required components that will be executed in sequence
-import AllOpenOrdersImportV2Card from '@/pages/admin/uploads/shopify/components/v2/AllOpenOrdersImportV2Card';
-import BatchLocationUpdateV3 from '@/components/shopify/BatchLocationUpdateV3';
 
 interface RefreshAllShopifyProps {
   onRefreshComplete?: () => void;
@@ -18,6 +14,7 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [refreshStatus, setRefreshStatus] = useState<string | null>(null);
+  const [locationCheckComplete, setLocationCheckComplete] = useState<boolean>(false);
   const { toast } = useToast();
   
   // Helper function to create a delay
@@ -48,9 +45,56 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
   };
   
   // Run on component mount
-  useState(() => {
+  useEffect(() => {
     fetchLastUpdated();
-  });
+  }, []);
+  
+  // Function to check if all locations are populated
+  const checkLocationCompletion = async (): Promise<boolean> => {
+    try {
+      // Check if all locations are populated
+      const { count: nullLocations, error: locationsError } = await supabase
+        .from('shopify_order_items')
+        .select('*', { count: 'exact', head: true })
+        .is('location_name', null);
+      
+      if (locationsError) {
+        console.error("Error checking locations:", locationsError);
+        return false;
+      }
+      
+      // If nullLocations is 0, all locations are populated
+      return nullLocations === 0;
+    } catch (error) {
+      console.error("Error in location check:", error);
+      return false;
+    }
+  };
+  
+  // Function to run the location update
+  const runLocationUpdate = async (): Promise<void> => {
+    try {
+      const { data: apiToken } = await supabase.rpc("get_shopify_setting", {
+        setting_name_param: "shopify_token"
+      });
+      
+      // Call the locations sync edge function
+      await supabase.functions.invoke('shopify-locations-sync-v3', {
+        body: { apiToken }
+      });
+      
+      // Wait 5 seconds for the operation to complete
+      await delay(5000);
+      
+      // Check if location update is complete
+      const isComplete = await checkLocationCompletion();
+      setLocationCheckComplete(isComplete);
+      
+      return;
+    } catch (error) {
+      console.error("Error in location update:", error);
+    }
+  };
   
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -58,6 +102,7 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
     try {
       setIsRefreshing(true);
       setCurrentStep(1);
+      setLocationCheckComplete(false);
       
       // Step 1: Delete all orders
       setRefreshStatus("Deleting all orders...");
@@ -82,8 +127,6 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
       // Step 2: Import all open orders
       setRefreshStatus("Importing all open orders...");
       try {
-        // We don't need to instantiate components with 'new'
-        // Instead, we'll directly call the edge function
         const { data: apiToken } = await supabase.rpc("get_shopify_setting", {
           setting_name_param: "shopify_token"
         });
@@ -100,20 +143,24 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
       await delay(10000);
       setCurrentStep(3);
       
-      // Step 3: Update batch locations
+      // Step 3: Update batch locations - now with retry mechanism
       setRefreshStatus("Updating batch locations...");
-      try {
-        const { data: apiToken } = await supabase.rpc("get_shopify_setting", {
-          setting_name_param: "shopify_token"
-        });
+      let maxAttempts = 5; // Maximum number of attempts
+      let attempts = 0;
+      
+      while (!locationCheckComplete && attempts < maxAttempts) {
+        attempts++;
+        setRefreshStatus(`Updating batch locations (attempt ${attempts})...`);
         
-        // Call the locations sync edge function directly
-        await supabase.functions.invoke('shopify-locations-sync-v3', {
-          body: { apiToken }
-        });
-      } catch (error) {
-        console.error("Error in step 3:", error);
-        // Continue regardless of errors
+        await runLocationUpdate();
+        
+        if (locationCheckComplete) {
+          console.log("Location update complete after attempt", attempts);
+          break;
+        } else {
+          console.log("Location update incomplete, retrying...", attempts);
+          await delay(8000); // Wait before retrying
+        }
       }
       
       // Step 4: Update setting to indicate completion
