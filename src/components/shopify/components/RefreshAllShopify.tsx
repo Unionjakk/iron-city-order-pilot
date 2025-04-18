@@ -101,10 +101,6 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
           throw new Error("No data received from location sync function");
         }
         
-        if (data.rateLimitRemaining !== undefined) {
-          console.log(`API Rate limit remaining: ${data.rateLimitRemaining}`);
-        }
-        
         totalUpdated += data.updated;
         totalProcessed += data.totalProcessed;
         
@@ -112,6 +108,7 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
           console.log(`Location update complete. Updated ${totalUpdated} of ${totalProcessed} items`);
           isComplete = true;
           setLocationCheckComplete(true);
+          break;
         } else if (data.continuationToken) {
           console.log("Continuing with next batch...");
           continuationToken = data.continuationToken;
@@ -121,8 +118,6 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
           throw new Error("Location sync error: Missing continuation token");
         }
       }
-      
-      return;
     } catch (error) {
       console.error("Error in location update:", error);
       throw error;
@@ -171,12 +166,7 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
       
       setRefreshStatus("Updating batch locations...");
       
-      try {
-        await runLocationUpdate();
-      } catch (error) {
-        console.error("Error during location update:", error);
-        throw error;
-      }
+      await runLocationUpdate();
       
       setCurrentStep(4);
       setRefreshStatus("Updating settings...");
@@ -205,6 +195,10 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
       }
     } catch (error) {
       console.error("Error during refresh:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred during refresh.",
+      });
     } finally {
       setIsRefreshing(false);
     }
