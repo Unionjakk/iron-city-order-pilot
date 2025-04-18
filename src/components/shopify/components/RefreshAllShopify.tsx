@@ -8,6 +8,16 @@ interface RefreshAllShopifyProps {
   onRefreshComplete?: () => void;
 }
 
+interface LocationUpdateResponse {
+  success: boolean;
+  updated: number;
+  totalProcessed: number;
+  processingComplete: boolean;
+  continuationToken?: string;
+  rateLimitRemaining?: number;
+  timeElapsed?: number;
+}
+
 const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(0);
@@ -69,18 +79,53 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
         setting_name_param: "shopify_token"
       });
       
-      await supabase.functions.invoke('shopify-locations-sync-v3', {
-        body: { apiToken }
-      });
+      let continuationToken: string | null = null;
+      let totalUpdated = 0;
+      let totalProcessed = 0;
+      let isComplete = false;
       
-      await delay(5000);
-      
-      const isComplete = await checkLocationCompletion();
-      setLocationCheckComplete(isComplete);
+      while (!isComplete) {
+        setRefreshStatus(`Updating batch locations... (${totalProcessed} processed)`);
+        
+        const response = await supabase.functions.invoke('shopify-locations-sync-v3', {
+          body: { 
+            apiToken,
+            continuationToken
+          }
+        });
+        
+        const data = response.data as LocationUpdateResponse;
+        
+        if (!data) {
+          console.error("No data received from location sync function");
+          throw new Error("No data received from location sync function");
+        }
+        
+        if (data.rateLimitRemaining !== undefined) {
+          console.log(`API Rate limit remaining: ${data.rateLimitRemaining}`);
+        }
+        
+        totalUpdated += data.updated;
+        totalProcessed += data.totalProcessed;
+        
+        if (data.processingComplete) {
+          console.log(`Location update complete. Updated ${totalUpdated} of ${totalProcessed} items`);
+          isComplete = true;
+          setLocationCheckComplete(true);
+        } else if (data.continuationToken) {
+          console.log("Continuing with next batch...");
+          continuationToken = data.continuationToken;
+          await delay(1500); // Respect rate limiting
+        } else {
+          console.error("No continuation token received but processing not complete");
+          throw new Error("Location sync error: Missing continuation token");
+        }
+      }
       
       return;
     } catch (error) {
       console.error("Error in location update:", error);
+      throw error;
     }
   };
   
@@ -126,18 +171,11 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
       
       setRefreshStatus("Updating batch locations...");
       
-      while (!locationCheckComplete) {
-        setRefreshStatus("Updating batch locations...");
-        
+      try {
         await runLocationUpdate();
-        
-        if (locationCheckComplete) {
-          console.log("Location update complete");
-          break;
-        } else {
-          console.log("Location update incomplete, retrying...");
-          await delay(8000);
-        }
+      } catch (error) {
+        console.error("Error during location update:", error);
+        throw error;
       }
       
       setCurrentStep(4);
