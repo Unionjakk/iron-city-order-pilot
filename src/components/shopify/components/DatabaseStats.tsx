@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Database, CircleCheck, CircleX, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +16,7 @@ export const DatabaseStats = () => {
     { label: 'Count of Partial Orders', value: 0, loading: true },
     { label: 'Count of Shopify Order Lines', value: 0, loading: true },
     { label: 'Check of Location Names', value: 'Checking...', loading: true },
+    { label: 'Check of Last Update', value: 'Checking...', loading: true },
   ]);
 
   useEffect(() => {
@@ -62,6 +62,18 @@ export const DatabaseStats = () => {
         
         const locationCheck = nullLocations === 0 ? true : false;
         
+        // Get the last update time
+        const { data: lastUpdateData, error: lastUpdateError } = await supabase
+          .from('shopify_orders')
+          .select('imported_at')
+          .order('imported_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (lastUpdateError) throw new Error(`Error checking last update: ${lastUpdateError.message}`);
+        
+        const lastUpdateValue = lastUpdateData ? new Date(lastUpdateData.imported_at).toLocaleString() : 'Never';
+        
         // Update all stats at once
         setStats([
           { label: 'Count of Shopify Orders', value: totalOrders || 0, loading: false },
@@ -69,6 +81,7 @@ export const DatabaseStats = () => {
           { label: 'Count of Partial Orders', value: partialOrders || 0, loading: false },
           { label: 'Count of Shopify Order Lines', value: orderItems || 0, loading: false },
           { label: 'Check of Location Names', value: locationCheck ? 'Complete' : 'Incomplete', loading: false },
+          { label: 'Check of Last Update', value: lastUpdateValue, loading: false }
         ]);
         
       } catch (error: any) {
