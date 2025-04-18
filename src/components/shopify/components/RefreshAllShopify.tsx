@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
@@ -17,10 +16,8 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
   const [locationCheckComplete, setLocationCheckComplete] = useState<boolean>(false);
   const { toast } = useToast();
   
-  // Helper function to create a delay
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
   
-  // Get last update info from settings
   const fetchLastUpdated = async () => {
     try {
       const { data, error } = await supabase.rpc("get_shopify_setting", {
@@ -28,7 +25,6 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
       });
       
       if (!error && data === "True") {
-        // Get timestamp of when it was updated
         const { data: timestamp, error: timestampError } = await supabase
           .from('shopify_settings')
           .select('updated_at')
@@ -44,15 +40,12 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
     }
   };
   
-  // Run on component mount
   useEffect(() => {
     fetchLastUpdated();
   }, []);
   
-  // Function to check if all locations are populated
   const checkLocationCompletion = async (): Promise<boolean> => {
     try {
-      // Check if all locations are populated
       const { count: nullLocations, error: locationsError } = await supabase
         .from('shopify_order_items')
         .select('*', { count: 'exact', head: true })
@@ -63,7 +56,6 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
         return false;
       }
       
-      // If nullLocations is 0, all locations are populated
       return nullLocations === 0;
     } catch (error) {
       console.error("Error in location check:", error);
@@ -71,22 +63,18 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
     }
   };
   
-  // Function to run the location update
   const runLocationUpdate = async (): Promise<void> => {
     try {
       const { data: apiToken } = await supabase.rpc("get_shopify_setting", {
         setting_name_param: "shopify_token"
       });
       
-      // Call the locations sync edge function
       await supabase.functions.invoke('shopify-locations-sync-v3', {
         body: { apiToken }
       });
       
-      // Wait 5 seconds for the operation to complete
       await delay(5000);
       
-      // Check if location update is complete
       const isComplete = await checkLocationCompletion();
       setLocationCheckComplete(isComplete);
       
@@ -104,27 +92,22 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
       setCurrentStep(1);
       setLocationCheckComplete(false);
       
-      // Step 1: Delete all orders
       setRefreshStatus("Deleting all orders...");
       try {
         const { data: apiToken } = await supabase.rpc("get_shopify_setting", {
           setting_name_param: "shopify_token"
         });
         
-        // Call the database cleanup function
         await supabase.functions.invoke('shopify-database-cleanup', {
           body: { apiToken }
         });
       } catch (error) {
         console.error("Error in step 1:", error);
-        // Continue regardless of errors
       }
       
-      // Wait 10 seconds
       await delay(10000);
       setCurrentStep(2);
       
-      // Step 2: Import all open orders
       setRefreshStatus("Importing all open orders...");
       try {
         const { data: apiToken } = await supabase.rpc("get_shopify_setting", {
@@ -136,34 +119,27 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
         });
       } catch (error) {
         console.error("Error in step 2:", error);
-        // Continue regardless of errors
       }
       
-      // Wait 10 seconds
       await delay(10000);
       setCurrentStep(3);
       
-      // Step 3: Update batch locations - now with retry mechanism
       setRefreshStatus("Updating batch locations...");
-      let maxAttempts = 5; // Maximum number of attempts
-      let attempts = 0;
       
-      while (!locationCheckComplete && attempts < maxAttempts) {
-        attempts++;
-        setRefreshStatus(`Updating batch locations (attempt ${attempts})...`);
+      while (!locationCheckComplete) {
+        setRefreshStatus("Updating batch locations...");
         
         await runLocationUpdate();
         
         if (locationCheckComplete) {
-          console.log("Location update complete after attempt", attempts);
+          console.log("Location update complete");
           break;
         } else {
-          console.log("Location update incomplete, retrying...", attempts);
-          await delay(8000); // Wait before retrying
+          console.log("Location update incomplete, retrying...");
+          await delay(8000);
         }
       }
       
-      // Step 4: Update setting to indicate completion
       setCurrentStep(4);
       setRefreshStatus("Updating settings...");
       
@@ -173,13 +149,11 @@ const RefreshAllShopify = ({ onRefreshComplete }: RefreshAllShopifyProps) => {
           setting_value_param: "True"
         });
         
-        // Update the last updated timestamp
         await fetchLastUpdated();
       } catch (error) {
         console.error("Error updating settings:", error);
       }
       
-      // Complete
       setCurrentStep(5);
       setRefreshStatus("Completed");
       
