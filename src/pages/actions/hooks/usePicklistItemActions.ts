@@ -36,18 +36,18 @@ export const usePicklistItemActions = (
     setProcessing(true);
     
     try {
-      // First delete any existing progress entries for this order/SKU combination
+      // First delete any existing progress entries for this order/SKU combination - Updated to use proper column name
       await supabase
         .from('iron_city_order_progress')
         .delete()
-        .eq('shopify_order_id', order.shopify_order_id)
+        .eq('shopify_line_item_id', order.shopify_order_id)
         .eq('sku', sku);
       
-      // Insert new progress entry
+      // Insert new progress entry - Updated to use proper column name
       const { error } = await supabase
         .from('iron_city_order_progress')
         .insert({
-          shopify_order_id: order.shopify_order_id,
+          shopify_line_item_id: order.shopify_order_id,
           shopify_order_number: order.shopify_order_number,
           sku: sku,
           progress: action,

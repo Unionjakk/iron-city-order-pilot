@@ -8,10 +8,10 @@ import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 export const fetchOrdersWithToDispatchItems = async () => {
   console.log("Fetching orders with 'To Dispatch' items...");
   
-  // First get the shopify order IDs that have "To Dispatch" progress
+  // First get the shopify order IDs that have "To Dispatch" progress - Updated to use shopify_line_item_id
   const { data: progressData, error: progressError } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, quantity')
+    .select('shopify_line_item_id, sku, quantity')
     .eq('progress', 'To Dispatch');
     
   if (progressError) {
@@ -27,8 +27,8 @@ export const fetchOrdersWithToDispatchItems = async () => {
   
   console.log(`Found ${progressData.length} orders with 'To Dispatch' progress items:`, progressData);
   
-  // Extract the order IDs
-  const orderIds = [...new Set(progressData.map(item => item.shopify_order_id))];
+  // Extract the order IDs - Using shopify_line_item_id as shopify_order_id
+  const orderIds = [...new Set(progressData.map(item => item.shopify_line_item_id))];
   
   const { data, error } = await supabase
     .from('shopify_orders')
@@ -86,7 +86,7 @@ export const fetchToDispatchItemsProgress = async () => {
   
   const { data, error } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number')
+    .select('shopify_line_item_id, sku, progress, notes, quantity, hd_orderlinecombo, status, dealer_po_number')
     .eq('progress', 'To Dispatch');
     
   if (error) {
@@ -131,13 +131,14 @@ export const markDispatchItemAsFulfilled = async (shopifyOrderId: string, sku: s
   const noteAddition = `Marked as fulfilled: ${currentDate}`;
   const updatedNotes = notes ? `${notes} | ${noteAddition}` : noteAddition;
   
+  // Updated to use shopify_line_item_id instead of shopify_order_id
   const { data, error } = await supabase
     .from('iron_city_order_progress')
     .update({
       progress: "Fulfilled",
       notes: updatedNotes
     })
-    .eq('shopify_order_id', shopifyOrderId)
+    .eq('shopify_line_item_id', shopifyOrderId)
     .eq('sku', sku);
     
   if (error) {

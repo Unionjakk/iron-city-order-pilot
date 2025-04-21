@@ -29,11 +29,11 @@ export const useProgressUpdate = ({ refreshData }: UseProgressUpdateProps) => {
       
       // Special case for To Dispatch - need to update all items in the order
       if (payload.progress === "To Dispatch") {
-        // First delete any existing progress entries for this order
+        // First delete any existing progress entries for this order - Updated to use shopify_line_item_id
         await supabase
           .from('iron_city_order_progress')
           .delete()
-          .eq('shopify_order_id', payload.shopifyOrderId);
+          .eq('shopify_line_item_id', payload.shopifyOrderId);
         
         // Get all line items for this order to update them
         const { data: orderData } = await supabase
@@ -49,26 +49,26 @@ export const useProgressUpdate = ({ refreshData }: UseProgressUpdateProps) => {
         // Get line items for this order
         const { data: lineItems, error: lineItemsError } = await supabase
           .from('shopify_order_items')
-          .select('sku')
+          .select('sku, shopify_line_item_id')
           .eq('order_id', orderData.id);
         
         if (lineItemsError) throw lineItemsError;
         
-        // Insert progress entries for all line items
-        const progressEntries = lineItems?.map(item => ({
-          shopify_order_id: payload.shopifyOrderId,
-          shopify_order_number: orderData.shopify_order_number,
-          sku: item.sku,
-          progress: payload.progress,
-          notes: payload.notes || null
-        })) || [];
-        
-        if (progressEntries.length > 0) {
-          const { error: insertError } = await supabase
-            .from('iron_city_order_progress')
-            .insert(progressEntries);
-          
-          if (insertError) throw insertError;
+        // Insert progress entries for all line items - Updated to use shopify_line_item_id
+        if (lineItems && lineItems.length > 0) {
+          for (const item of lineItems) {
+            const { error: insertError } = await supabase
+              .from('iron_city_order_progress')
+              .insert({
+                shopify_line_item_id: payload.shopifyOrderId,
+                shopify_order_number: orderData.shopify_order_number,
+                sku: item.sku,
+                progress: payload.progress,
+                notes: payload.notes || null
+              });
+              
+            if (insertError) throw insertError;
+          }
         }
         
         toast({
@@ -77,11 +77,11 @@ export const useProgressUpdate = ({ refreshData }: UseProgressUpdateProps) => {
         });
       } else {
         // Regular item update
-        // First delete any existing progress entry for this item
+        // First delete any existing progress entry for this item - Updated to use shopify_line_item_id
         await supabase
           .from('iron_city_order_progress')
           .delete()
-          .eq('shopify_order_id', payload.shopifyOrderId)
+          .eq('shopify_line_item_id', payload.shopifyOrderId)
           .eq('sku', payload.sku);
         
         // Get order number
@@ -95,11 +95,11 @@ export const useProgressUpdate = ({ refreshData }: UseProgressUpdateProps) => {
           throw new Error("Order not found");
         }
         
-        // Insert new progress entry
+        // Insert new progress entry - Updated to use shopify_line_item_id
         const { error: insertError } = await supabase
           .from('iron_city_order_progress')
           .insert({
-            shopify_order_id: payload.shopifyOrderId,
+            shopify_line_item_id: payload.shopifyOrderId,
             shopify_order_number: orderData.shopify_order_number,
             sku: payload.sku,
             progress: payload.progress,

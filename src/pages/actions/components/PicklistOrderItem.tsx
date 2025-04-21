@@ -105,11 +105,11 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
     setProcessing(true);
     
     try {
-      // First delete any existing progress entries for this order/SKU combination
+      // First delete any existing progress entries for this order/SKU combination - Updated to use proper column name
       await supabase
         .from('iron_city_order_progress')
         .delete()
-        .eq('shopify_order_id', order.shopify_order_id)
+        .eq('shopify_line_item_id', order.shopify_order_id)
         .eq('sku', item.sku);
       
       const requiredQuantity = item.quantity || 1;
@@ -129,11 +129,11 @@ const PicklistOrderItem = ({ item, order, refreshData }: PicklistOrderItemProps)
           : `Partial pick: ${quantityPicked} picked, ${remainingQuantity} to order`;
       }
       
-      // Create the record with appropriate status and quantities
+      // Create the record with appropriate status and quantities - Updated to use proper column name
       const { error } = await supabase
         .from('iron_city_order_progress')
         .insert({
-          shopify_order_id: order.shopify_order_id,
+          shopify_line_item_id: order.shopify_order_id,
           shopify_order_number: order.shopify_order_number,
           sku: item.sku,
           progress: action,

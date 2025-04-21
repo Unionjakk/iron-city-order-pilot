@@ -157,11 +157,10 @@ export const useVisualizerData = (): OrderVisualizerData => {
       
       const stockMap = createStockMap(stockData || []);
       
-      // Step 5: Get ALL progress data for these orders (not filtered by status)
+      // Step 5: Get ALL progress data for these orders (not filtered by status) - Updated to use shopify_line_item_id instead of shopify_order_id
       const { data: progressData, error: progressError } = await supabase
         .from('iron_city_order_progress')
-        .select('shopify_order_id, sku, progress, notes, quantity, quantity_required, quantity_picked, is_partial, hd_orderlinecombo, status, dealer_po_number')
-        .in('shopify_order_id', ordersData.map(o => o.shopify_order_id));
+        .select('shopify_line_item_id, sku, progress, notes, quantity, quantity_required, quantity_picked, is_partial, hd_orderlinecombo, status, dealer_po_number');
       
       if (progressError) {
         throw new Error(`Progress fetch error: ${progressError.message}`);
@@ -182,10 +181,10 @@ export const useVisualizerData = (): OrderVisualizerData => {
         other: 0
       };
       
-      // Create a lookup map for progress data
+      // Create a lookup map for progress data - Updated to use shopify_line_item_id instead of shopify_order_id
       const progressByOrderAndSku = new Map<string, any>();
       progressData?.forEach(item => {
-        const key = `${item.shopify_order_id}_${item.sku}`;
+        const key = `${item.shopify_line_item_id}_${item.sku}`;
         progressByOrderAndSku.set(key, item);
       });
       
@@ -202,7 +201,7 @@ export const useVisualizerData = (): OrderVisualizerData => {
         orderItems.forEach(item => {
           const stock = stockMap.get(item.sku);
           
-          // Look up progress for this item
+          // Look up progress for this item - Using order's shopify_order_id as shopify_line_item_id
           const progressKey = `${order.shopify_order_id}_${item.sku}`;
           const progressItem = progressByOrderAndSku.get(progressKey);
           

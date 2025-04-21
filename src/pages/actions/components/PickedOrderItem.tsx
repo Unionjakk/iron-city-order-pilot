@@ -50,18 +50,18 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
     setProcessing(true);
     
     try {
-      // Delete existing progress entry 
+      // Delete existing progress entry - Updated to use proper column name
       await supabase
         .from('iron_city_order_progress')
         .delete()
-        .eq('shopify_order_id', order.shopify_order_id)
+        .eq('shopify_line_item_id', order.shopify_order_id)
         .eq('sku', item.sku);
       
-      // Insert new progress entry with "To Pick" status
+      // Insert new progress entry with "To Pick" status - Updated to use proper column name
       const { error } = await supabase
         .from('iron_city_order_progress')
         .insert({
-          shopify_order_id: order.shopify_order_id,
+          shopify_line_item_id: order.shopify_order_id,
           shopify_order_number: order.shopify_order_number,
           sku: item.sku,
           progress: "To Pick",
@@ -98,14 +98,14 @@ const PickedOrderItem = ({ item, order, refreshData, isCompleteOrder }: PickedOr
     setProcessing(true);
     
     try {
-      // Update progress entry to "To Dispatch" status
+      // Update progress entry to "To Dispatch" status - Updated to use proper column name
       const { error } = await supabase
         .from('iron_city_order_progress')
         .update({
           progress: "To Dispatch",
           notes: (item.notes ? item.notes + " | " : "") + "Marked ready for dispatch: " + new Date().toISOString().slice(0, 10)
         })
-        .eq('shopify_order_id', order.shopify_order_id)
+        .eq('shopify_line_item_id', order.shopify_order_id)
         .eq('sku', item.sku);
       
       if (error) throw error;

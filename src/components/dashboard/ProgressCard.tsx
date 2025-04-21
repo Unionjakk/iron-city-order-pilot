@@ -7,12 +7,14 @@ interface ProgressCardProps {
   icon: LucideIcon;
   title: string;
   description: string;
-  to: string;
+  to?: string;  // Made this optional
   className?: string;
 }
 
 const ProgressCard = ({ icon: Icon, title, description, to, className = "" }: ProgressCardProps) => {
   const handleClick = () => {
+    if (!to) return; // Don't navigate if no "to" prop is provided
+    
     window.location.href = to === "/actions/picklist" 
       ? "https://tracker.auraengage.com/settings/generatepicks" 
       : to;
