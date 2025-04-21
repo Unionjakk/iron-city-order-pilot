@@ -449,13 +449,15 @@ export type Database = {
           id: string
           is_partial: boolean | null
           notes: string | null
+          pinnacle_last_checked_date: string | null
+          pinnacle_qty_when_ordered: number | null
           pinnacle_sku_matched: string | null
           progress: string | null
           quantity: number | null
           quantity_ordered: number | null
           quantity_picked: number | null
           quantity_required: number | null
-          shopify_order_id: string
+          shopify_line_item_id: string
           shopify_order_number: string | null
           shopify_ordersku_combo: string | null
           sku: string
@@ -469,13 +471,15 @@ export type Database = {
           id?: string
           is_partial?: boolean | null
           notes?: string | null
+          pinnacle_last_checked_date?: string | null
+          pinnacle_qty_when_ordered?: number | null
           pinnacle_sku_matched?: string | null
           progress?: string | null
           quantity?: number | null
           quantity_ordered?: number | null
           quantity_picked?: number | null
           quantity_required?: number | null
-          shopify_order_id: string
+          shopify_line_item_id: string
           shopify_order_number?: string | null
           shopify_ordersku_combo?: string | null
           sku: string
@@ -489,13 +493,15 @@ export type Database = {
           id?: string
           is_partial?: boolean | null
           notes?: string | null
+          pinnacle_last_checked_date?: string | null
+          pinnacle_qty_when_ordered?: number | null
           pinnacle_sku_matched?: string | null
           progress?: string | null
           quantity?: number | null
           quantity_ordered?: number | null
           quantity_picked?: number | null
           quantity_required?: number | null
-          shopify_order_id?: string
+          shopify_line_item_id?: string
           shopify_order_number?: string | null
           shopify_ordersku_combo?: string | null
           sku?: string
@@ -1076,6 +1082,27 @@ export type Database = {
         }
         Relationships: []
       }
+      iron_city_picked_view: {
+        Row: {
+          customer_email: string | null
+          customer_name: string | null
+          is_partial: boolean | null
+          notes: string | null
+          order_date: string | null
+          order_id: string | null
+          pinnacle_sku_matched: string | null
+          progress_status: string | null
+          quantity_picked: number | null
+          ready_for_dispatch: boolean | null
+          required_quantity: number | null
+          shopify_line_item_id: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          status: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       pinnacle_stock_view: {
         Row: {
           bin_location: string | null
@@ -1188,6 +1215,18 @@ export type Database = {
       refresh_orders: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      shopify_delete_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      shopify_import_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      shopify_sync_locations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       update_dashboard_stats: {
         Args: Record<PropertyKey, never>

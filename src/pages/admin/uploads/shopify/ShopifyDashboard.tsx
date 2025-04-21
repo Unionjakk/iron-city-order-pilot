@@ -53,7 +53,10 @@ const ShopifyDashboard = () => {
         
         <ProgressCard icon={MapPin} title="Batch Location Update V3 (GraphQL)" description="Update locations using the new GraphQL implementation" to="/admin/uploads/shopify/batchlocation" />
         
-        <ProgressCard icon={List} title="Generate Pick List" description="Generate pick lists from imported orders" to="/admin/uploads/shopify/picklist" />
+        {/* Updated pick list card with external link wrapping */}
+        <a href="https://tracker.auraengage.com/settings/generatepicks" target="_self" rel="noopener noreferrer">
+          <ProgressCard icon={List} title="Generate Pick List" description="Generate pick lists from imported orders" />
+        </a>
       </div>
 
       {/* Discrete V2 Page Link */}
