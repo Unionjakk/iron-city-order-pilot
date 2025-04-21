@@ -1,4 +1,3 @@
-
 import React from "react";
 import { format } from "date-fns";
 import { ExternalLink, Mail, CheckCircle, TruckIcon, XCircle } from "lucide-react";
@@ -30,17 +29,25 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
     return `https://admin.shopify.com/store/opus-harley-davidson/orders/${orderId}`;
   };
 
-  // Check if all items in the order are fully picked
-  const isCompleteOrder = order.items.length > 0 && order.items.every(item => {
-    const quantityRequired = item.quantity_required || item.quantity || 1;
-    const quantityPicked = item.quantity_picked || 0;
-    return quantityPicked >= quantityRequired;
-  });
+  // Use a proper calculation to determine if order is complete
+  const isCompleteOrder = React.useMemo(() => {
+    return order.items.length > 0 && order.items.every(item => {
+      const quantityRequired = item.quantity_required || item.quantity || 1;
+      const quantityPicked = item.quantity_picked || 0;
+      return quantityPicked >= quantityRequired;
+    });
+  }, [order.items]);
 
   // Calculate overall picking progress
-  const totalRequiredQuantity = order.items.reduce((sum, item) => sum + (item.quantity_required || item.quantity || 1), 0);
-  const totalPickedQuantity = order.items.reduce((sum, item) => sum + (item.quantity_picked || 0), 0);
-  const pickingProgress = Math.round((totalPickedQuantity / totalRequiredQuantity) * 100);
+  const { totalRequiredQuantity, totalPickedQuantity, pickingProgress } = React.useMemo(() => {
+    const totalRequired = order.items.reduce((sum, item) => sum + (item.quantity_required || item.quantity || 1), 0);
+    const totalPicked = order.items.reduce((sum, item) => sum + (item.quantity_picked || 0), 0);
+    return {
+      totalRequiredQuantity: totalRequired,
+      totalPickedQuantity: totalPicked,
+      pickingProgress: Math.round((totalPicked / totalRequired) * 100)
+    };
+  }, [order.items]);
 
   // Handle moving all items in the order to "To Dispatch" status
   const handleMoveToDispatch = async () => {
@@ -56,7 +63,7 @@ const PickedOrderComponent = ({ order, refreshData }: PickedOrderComponentProps)
       const { data: currentItems, error: fetchError } = await supabase
         .from('iron_city_order_progress')
         .select('id, notes')
-        .eq('shopify_order_id', order.shopify_order_id)
+        .eq('shopify_line_item_id', order.shopify_order_id)
         .eq('progress', 'Picked');
         
       if (fetchError) throw fetchError;

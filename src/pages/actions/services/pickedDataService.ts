@@ -1,6 +1,4 @@
 
-// This file has existing code I'm modifying to use shopify_line_item_id instead of shopify_order_id
-
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -73,6 +71,76 @@ export const fetchTotalPickedQuantityForSku = async (sku: string): Promise<numbe
     console.error("Error fetching picked quantity for sku:", sku, error);
     return 0;
   }
+};
+
+/**
+ * Fetch all items with progress status "Picked"
+ */
+export const fetchPickedItemsProgress = async () => {
+  console.log("Fetching 'Picked' progress items...");
+  
+  const { data, error } = await supabase
+    .from('iron_city_order_progress')
+    .select('shopify_line_item_id, sku, progress, notes, hd_orderlinecombo, status, dealer_po_number, quantity_picked, is_partial')
+    .eq('progress', 'Picked');
+    
+  if (error) {
+    console.error("Progress fetch error:", error);
+    throw new Error(`Progress fetch error: ${error.message}`);
+  }
+  
+  console.log(`Fetched ${data?.length || 0} 'Picked' progress items`);
+  return data || [];
+};
+
+/**
+ * Fetch line items for given order IDs
+ */
+export const fetchLineItemsForOrders = async (orderIds: string[]) => {
+  console.log(`Fetching line items for ${orderIds.length} orders:`, orderIds);
+  
+  if (orderIds.length === 0) {
+    console.log("No order IDs provided, skipping line items fetch");
+    return [];
+  }
+  
+  const { data, error } = await supabase
+    .from('shopify_order_items')
+    .select('*')
+    .in('order_id', orderIds);
+    
+  if (error) {
+    console.error("Line items fetch error:", error);
+    throw new Error(`Line items fetch error: ${error.message}`);
+  }
+  
+  console.log(`Fetched ${data?.length || 0} line items for the orders`);
+  return data || [];
+};
+
+/**
+ * Fetch stock information for given SKUs
+ */
+export const fetchStockForSkus = async (skus: string[]) => {
+  if (!skus.length) {
+    console.log("No SKUs provided, skipping stock fetch");
+    return [];
+  }
+  
+  console.log(`Fetching stock for ${skus.length} SKUs`);
+  
+  const { data, error } = await supabase
+    .from('pinnacle_stock')
+    .select('part_no, stock_quantity, bin_location, cost')
+    .in('part_no', skus);
+    
+  if (error) {
+    console.error("Stock fetch error:", error);
+    throw new Error(`Stock fetch error: ${error.message}`);
+  }
+  
+  console.log(`Fetched stock data for ${data?.length || 0} SKUs`);
+  return data || [];
 };
 
 /**

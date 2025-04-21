@@ -67,7 +67,7 @@ export const fetchAccuratePickStatsData = async (): Promise<PickStatsData> => {
     // Get all progress entries
     const { data: progressEntries, error: progressError } = await supabase
       .from('iron_city_order_progress')
-      .select('shopify_order_id, sku');
+      .select('shopify_line_item_id, sku');
       
     if (progressError) throw progressError;
     
@@ -76,7 +76,7 @@ export const fetchAccuratePickStatsData = async (): Promise<PickStatsData> => {
     // Create a set of order_id+sku combinations that have progress entries
     const progressSet = new Set();
     progressEntries?.forEach(entry => {
-      progressSet.add(`${entry.shopify_order_id}:${entry.sku}`);
+      progressSet.add(`${entry.shopify_line_item_id}:${entry.sku}`);
     });
     
     // Filter out items with progress entries
@@ -125,7 +125,7 @@ export const fetchAccuratePickStatsData = async (): Promise<PickStatsData> => {
     // Get count of orders processed today
     const { data: processedToday, error: processedError } = await supabase
       .from('iron_city_order_progress')
-      .select('shopify_order_id')
+      .select('shopify_line_item_id')
       .eq('progress', 'Picked')
       .gte('updated_at', new Date().toISOString().split('T')[0]);
       
@@ -133,7 +133,7 @@ export const fetchAccuratePickStatsData = async (): Promise<PickStatsData> => {
     
     // Get unique order IDs processed today
     const uniqueOrdersProcessed = processedToday 
-      ? [...new Set(processedToday.map(item => item.shopify_order_id))].length 
+      ? [...new Set(processedToday.map(item => item.shopify_line_item_id))].length 
       : 0;
     
     return {

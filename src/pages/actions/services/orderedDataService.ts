@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 import { PicklistDebugInfo } from "../types/picklistTypes";
@@ -11,7 +12,7 @@ export const fetchOrdersWithOrderedItems = async () => {
   // First get the shopify order IDs that have "Ordered" progress
   const { data: progressData, error: progressError } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku')
+    .select('shopify_line_item_id, sku')
     .eq('progress', 'Ordered');
     
   if (progressError) {
@@ -28,7 +29,7 @@ export const fetchOrdersWithOrderedItems = async () => {
   console.log(`Found ${progressData.length} orders with 'Ordered' progress items:`, progressData);
   
   // Extract the order IDs
-  const orderIds = [...new Set(progressData.map(item => item.shopify_order_id))];
+  const orderIds = [...new Set(progressData.map(item => item.shopify_line_item_id))];
   
   // Now fetch just those orders
   const { data, error } = await supabase
@@ -62,7 +63,7 @@ export const fetchOrderedItemsProgress = async () => {
   
   const { data, error } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, progress, notes, hd_orderlinecombo, status, dealer_po_number')
+    .select('shopify_line_item_id, sku, progress, notes, hd_orderlinecombo, status, dealer_po_number')
     .eq('progress', 'Ordered');
     
   if (error) {
@@ -88,7 +89,7 @@ export const markOrderedItemAsPicked = async (shopifyOrderId: string, sku: strin
       progress: "Picked",
       notes: updatedNotes
     })
-    .eq('shopify_order_id', shopifyOrderId)
+    .eq('shopify_line_item_id', shopifyOrderId)
     .eq('sku', sku);
     
   if (error) {

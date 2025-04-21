@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -48,6 +47,51 @@ export const fetchOrdersWithToOrderItems = async () => {
   
   console.log(`Fetched ${ordersData?.length || 0} orders with 'To Order' items`);
   return ordersData || [];
+};
+
+/**
+ * Fetch line items for given order IDs - Adding this as a shared utility
+ */
+export const fetchLineItemsForOrders = async (orderIds: string[]) => {
+  console.log(`Fetching line items for ${orderIds.length} orders`);
+  
+  if (orderIds.length === 0) {
+    console.log("No order IDs provided, skipping line items fetch");
+    return [];
+  }
+  
+  const { data, error } = await supabase
+    .from('shopify_order_items')
+    .select('*')
+    .in('order_id', orderIds);
+    
+  if (error) {
+    console.error("Line items fetch error:", error);
+    throw new Error(`Line items fetch error: ${error.message}`);
+  }
+  
+  console.log(`Fetched ${data?.length || 0} line items for the orders`);
+  return data || [];
+};
+
+/**
+ * Fetch all "To Order" progress items
+ */
+export const fetchToOrderItemsProgress = async () => {
+  console.log("Fetching 'To Order' progress items...");
+  
+  const { data, error } = await supabase
+    .from('iron_city_order_progress')
+    .select('shopify_line_item_id, sku, progress, notes, hd_orderlinecombo, status, dealer_po_number')
+    .eq('progress', 'To Order');
+    
+  if (error) {
+    console.error("Progress fetch error:", error);
+    throw new Error(`Progress fetch error: ${error.message}`);
+  }
+  
+  console.log(`Fetched ${data?.length || 0} 'To Order' progress items`);
+  return data || [];
 };
 
 /**
@@ -144,6 +188,31 @@ export const fetchToOrderItemsForOrder = async (shopifyOrderId: string) => {
   
   console.log(`Combined data for ${combinedData.length} items`);
   return combinedData;
+};
+
+/**
+ * Fetch stock information for given SKUs - Adding this as a shared utility
+ */
+export const fetchStockForSkus = async (skus: string[]) => {
+  if (!skus.length) {
+    console.log("No SKUs provided, skipping stock fetch");
+    return [];
+  }
+  
+  console.log(`Fetching stock for ${skus.length} SKUs`);
+  
+  const { data, error } = await supabase
+    .from('pinnacle_stock')
+    .select('part_no, stock_quantity, bin_location, cost')
+    .in('part_no', skus);
+    
+  if (error) {
+    console.error("Stock fetch error:", error);
+    throw new Error(`Stock fetch error: ${error.message}`);
+  }
+  
+  console.log(`Fetched stock data for ${data?.length || 0} SKUs`);
+  return data || [];
 };
 
 /**
