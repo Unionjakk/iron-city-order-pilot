@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { PicklistOrder, PicklistDebugInfo, PicklistDataResult } from "../types/picklistTypes";
 import { LEEDS_LOCATION_ID } from "../constants/picklistConstants";
@@ -9,10 +10,9 @@ import {
 } from "../utils/picklistDataUtils";
 import {
   fetchOrdersWithToOrderItems,
-  fetchLineItemsForOrders,
-  fetchStockForSkus,
   fetchToOrderItemsProgress
 } from "../services/toOrderDataService";
+import { fetchLineItemsForOrders, fetchStockForSkus } from "../services/picklistDataService";
 
 /**
  * Hook to fetch and manage "To Order" data
@@ -66,9 +66,9 @@ export const useToOrderData = (): PicklistDataResult => {
       // Step 2: Get all unfulfilled orders that have "To Order" items
       const ordersData = await fetchOrdersWithToOrderItems();
       
-      // Save first few order statuses for debugging
+      // Save first few order details for debugging - removed reference to status
       debug.orderStatus = ordersData?.slice(0, 5).map(o => 
-        `${o.shopify_order_id} (${o.status}, ${o.shopify_order_number || 'No number'})`
+        `${o.shopify_order_id} (${o.shopify_order_number || 'No number'})`
       );
       
       if (!ordersData || ordersData.length === 0) {
