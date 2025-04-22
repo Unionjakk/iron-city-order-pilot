@@ -22,8 +22,14 @@ export const searchHarleyOrders = async (searchSku: string): Promise<HarleyOrder
   }
 };
 
+// Using a more explicit type definition to avoid circular references
 export const matchToHarleyOrder = async (
-  order: HarleyOrderMatch, 
+  order: {
+    hd_orderlinecombo: string;
+    status: string;
+    dealer_po_number: string;
+    hd_order_number: string;
+  }, 
   shopifyOrderId: string, 
   sku: string
 ): Promise<void> => {
