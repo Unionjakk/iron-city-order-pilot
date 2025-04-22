@@ -33,15 +33,16 @@ export const searchHarleyOrders = async (searchSku: string): Promise<HarleyOrder
   }
 };
 
-interface HarleyOrderUpdate {
+// Define a standalone interface for the order parameter
+type OrderUpdateParams = {
   hd_orderlinecombo: string;
   status: string;
   dealer_po_number: string;
   hd_order_number: string;
-}
+};
 
 export const matchToHarleyOrder = async (
-  order: HarleyOrderUpdate,
+  order: OrderUpdateParams, 
   shopifyOrderId: string, 
   sku: string
 ): Promise<void> => {
