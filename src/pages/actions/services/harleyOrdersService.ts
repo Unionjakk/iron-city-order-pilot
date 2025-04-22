@@ -22,7 +22,7 @@ export const searchHarleyOrders = async (searchSku: string): Promise<HarleyOrder
   }
 };
 
-// Using a more explicit type definition to avoid circular references
+// Completely defining the interface here to avoid circular type references
 export const matchToHarleyOrder = async (
   order: {
     hd_orderlinecombo: string;
