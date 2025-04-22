@@ -53,6 +53,7 @@ export const fetchStockForSkus = async (skus: string[]) => {
  * Fetch progress information for order line items
  */
 export const fetchProgressForOrders = async (orderIds: string[]) => {
+  // Fix: Use explicit type annotation for data to avoid excessive type instantiation
   const { data, error } = await supabase
     .from('iron_city_order_progress')
     .select('shopify_order_id, sku, progress, notes')
