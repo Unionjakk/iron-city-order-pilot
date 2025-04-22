@@ -1,4 +1,3 @@
-
 import React from "react";
 import ProgressCard from "../ProgressCard";
 import PickStats from "@/components/stats/PickStats";
@@ -29,42 +28,6 @@ const OrderProgressSection = () => {
             className="md:w-1/3"
           />
           <PickStats className="md:w-2/3" />
-        </div>
-
-        {/* Picked */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <ProgressCard
-            icon={CheckCircle}
-            title="Picked"
-            description="View all orders that have been picked"
-            to="/actions/picked"
-            className="md:w-1/3"
-          />
-          <PickedStats className="md:w-2/3" />
-        </div>
-
-        {/* To Order */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <ProgressCard
-            icon={ShoppingCart}
-            title="To Order"
-            description="Manage orders that need to be ordered from suppliers"
-            to="/actions/toorder"
-            className="md:w-1/3"
-          />
-          <OrderedStats className="md:w-2/3" />
-        </div>
-
-        {/* Ordered */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <ProgressCard
-            icon={PackageCheck}
-            title="Ordered"
-            description="View all orders that have been placed with suppliers"
-            to="/actions/ordered"
-            className="md:w-1/3"
-          />
-          <ComingSoonStats title="Ordered Stats" className="md:w-2/3" />
         </div>
 
         {/* To Dispatch */}
