@@ -1,12 +1,15 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, X, Plus, AlertCircle, Info } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import ExcludeOrderForm from './components/ExcludeOrderForm';
 import ExcludeOrderList from './components/ExcludeOrderList';
 import AwaitingOrdersList from './components/AwaitingOrdersList';
 import { useExcludedOrders } from './hooks/useExcludedOrders';
 
 const LineItemsExclude = () => {
+  const [searchParams] = useSearchParams();
+  const orderNumber = searchParams.get('orderNumber') || '';
+  
   const { 
     excludedOrders, 
     isLoading, 
@@ -35,7 +38,10 @@ const LineItemsExclude = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ExcludeOrderForm onAddExclusion={addExclusion} />
+            <ExcludeOrderForm 
+              onAddExclusion={addExclusion} 
+              defaultOrderNumber={orderNumber}
+            />
           </CardContent>
         </Card>
 

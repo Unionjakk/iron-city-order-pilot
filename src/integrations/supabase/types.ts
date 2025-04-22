@@ -85,22 +85,7 @@ export type Database = {
           updated_at?: string
           upload_batch_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "hd_backorders_line_item_id_fkey"
-            columns: ["line_item_id"]
-            isOneToOne: false
-            referencedRelation: "hd_combined"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "hd_backorders_line_item_id_fkey"
-            columns: ["line_item_id"]
-            isOneToOne: false
-            referencedRelation: "hd_order_line_items"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       hd_combined_allocated: {
         Row: {
@@ -254,6 +239,36 @@ export type Database = {
           status?: string | null
           total_price?: number | null
           unit_price?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hd_order_settings_table: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          setting_name: string
+          setting_type: string
+          setting_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          setting_name: string
+          setting_type: string
+          setting_value: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          setting_name?: string
+          setting_type?: string
+          setting_value?: number
           updated_at?: string
         }
         Relationships: []
@@ -915,6 +930,16 @@ export type Database = {
       }
     }
     Views: {
+      database_health_stats: {
+        Row: {
+          location_names_status: string | null
+          orders_table_count: number | null
+          partial_orders_count: number | null
+          shopify_order_lines_count: number | null
+          to_pick_count: number | null
+        }
+        Relationships: []
+      }
       hd_combined: {
         Row: {
           backorder_clear_by: string | null
@@ -1082,6 +1107,99 @@ export type Database = {
         }
         Relationships: []
       }
+      iron_city_ordered_view: {
+        Row: {
+          current_stock_quantity: number | null
+          customer_expected_date: string | null
+          customer_name: string | null
+          dealer_po_number: string | null
+          expected_arrival_dealership: string | null
+          hd_order_quantity: number | null
+          hd_orderlinecombo: string | null
+          hd_part_number: string | null
+          hd_status: string | null
+          is_backorder: boolean | null
+          notes: string | null
+          order_date: string | null
+          ordered_quantity: number | null
+          pinnacle_qty_when_ordered: number | null
+          price: number | null
+          progress: string | null
+          required_quantity: number | null
+          shopify_line_item_id: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          title: string | null
+        }
+        Insert: {
+          current_stock_quantity?: never
+          customer_expected_date?: never
+          customer_name?: string | null
+          dealer_po_number?: never
+          expected_arrival_dealership?: never
+          hd_order_quantity?: never
+          hd_orderlinecombo?: never
+          hd_part_number?: never
+          hd_status?: never
+          is_backorder?: never
+          notes?: never
+          order_date?: string | null
+          ordered_quantity?: never
+          pinnacle_qty_when_ordered?: never
+          price?: number | null
+          progress?: never
+          required_quantity?: number | null
+          shopify_line_item_id?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          title?: string | null
+        }
+        Update: {
+          current_stock_quantity?: never
+          customer_expected_date?: never
+          customer_name?: string | null
+          dealer_po_number?: never
+          expected_arrival_dealership?: never
+          hd_order_quantity?: never
+          hd_orderlinecombo?: never
+          hd_part_number?: never
+          hd_status?: never
+          is_backorder?: never
+          notes?: never
+          order_date?: string | null
+          ordered_quantity?: never
+          pinnacle_qty_when_ordered?: never
+          price?: number | null
+          progress?: never
+          required_quantity?: number | null
+          shopify_line_item_id?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
+      iron_city_ordered_view_v2: {
+        Row: {
+          backorder_clear_by: string | null
+          customer_expected_date: string | null
+          dealer_po_number: string | null
+          hd_order_number: string | null
+          hd_orderlinecombo: string | null
+          invoice_date: string | null
+          is_backorder: boolean | null
+          is_invoiced: boolean | null
+          notes: string | null
+          order_date: string | null
+          part_number: string | null
+          predicted_dealership_arrival: string | null
+          progress: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
       iron_city_picked_view: {
         Row: {
           customer_email: string | null
@@ -1215,6 +1333,10 @@ export type Database = {
       refresh_orders: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      refresh_stock_and_orders_data2: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       shopify_delete_orders: {
         Args: Record<PropertyKey, never>

@@ -1,16 +1,17 @@
 
 import { useState } from 'react';
 import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { ExcludeReason } from '../types/excludeTypes';
 import ReasonSelector from './ReasonSelector';
 import SubmitButton from './SubmitButton';
+import OrderNumberCombobox from './OrderNumberCombobox';
 
 interface ExcludeOrderFormProps {
   onAddExclusion: (orderNumber: string, reason: ExcludeReason) => void;
+  defaultOrderNumber?: string;
 }
 
 const formSchema = z.object({
@@ -22,13 +23,13 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const ExcludeOrderForm = ({ onAddExclusion }: ExcludeOrderFormProps) => {
+const ExcludeOrderForm = ({ onAddExclusion, defaultOrderNumber = '' }: ExcludeOrderFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      orderNumber: '',
+      orderNumber: defaultOrderNumber,
       reason: 'Check In'
     }
   });
@@ -53,10 +54,9 @@ const ExcludeOrderForm = ({ onAddExclusion }: ExcludeOrderFormProps) => {
           render={({ field }) => (
             <FormItem className="flex flex-col">
               <FormLabel className="text-zinc-300">HD Order Number</FormLabel>
-              <Input 
-                {...field}
-                placeholder="Enter HD order number"
-                className="bg-zinc-800 text-zinc-100 border-zinc-700 placeholder-zinc-500"
+              <OrderNumberCombobox 
+                value={field.value} 
+                onChange={field.onChange} 
               />
               <FormMessage />
             </FormItem>
