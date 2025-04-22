@@ -131,7 +131,7 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
         isOpen={showMatchDialog}
         onClose={() => setShowMatchDialog(false)}
         sku={sku}
-        shopifyOrderId={shopify_order_id}
+        shopifyLineItemId={id} /* Updated: changed from shopifyOrderId to shopifyLineItemId */
         shopifyOrderNumber={shopify_order_number}
         onOrderMatched={onItemUpdated}
         quantity={quantity}
