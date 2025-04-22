@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,7 +41,6 @@ const UsersPage = () => {
   const [newDomain, setNewDomain] = useState('');
   const [loading, setLoading] = useState(true);
   
-  // Assuming admin email is stored in user metadata or can be checked in some way
   const isAdmin = user?.email === 'dale.gillespie@opusmotorgroup.co.uk';
   
   useEffect(() => {
@@ -54,33 +52,24 @@ const UsersPage = () => {
     try {
       setLoading(true);
       
-      // For actual production use, you would need a Supabase Edge Function
-      // that uses the service role key to fetch users securely
-      // For now, if we're the admin, try to fetch users (may fail due to permissions)
       if (isAdmin) {
-        try {
-          // In production, this would be handled through a secure edge function
-          // For now, just show the current logged-in user as a fallback
-          setUsers(user ? [user] : []);
-        } catch (err: any) {
-          console.error("Error fetching users:", err);
-          
-          // Fallback: Just show the current logged-in user
-          setUsers(user ? [user] : []);
+        const { data, error } = await supabase.functions.invoke('fetch-users');
+        
+        if (error) throw error;
+        if (data.users) {
+          setUsers(data.users);
         }
       } else {
-        // Non-admin users just see themselves
         setUsers(user ? [user] : []);
       }
     } catch (error: any) {
       console.error("Error in fetchUsers:", error);
       toast({
         title: "Error fetching users",
-        description: error.message || "User not allowed",
+        description: error.message || "Failed to fetch users",
         variant: "destructive"
       });
       
-      // Set empty array to avoid showing loading state indefinitely
       setUsers([]);
     } finally {
       setLoading(false);
@@ -88,7 +77,6 @@ const UsersPage = () => {
   };
   
   const fetchAllowedDomains = () => {
-    // Retrieve domains from localStorage for persistence
     const storedDomains = localStorage.getItem('allowedDomains');
     if (storedDomains) {
       try {
@@ -97,12 +85,10 @@ const UsersPage = () => {
         console.log("Loaded domains from localStorage:", parsedDomains);
       } catch (error) {
         console.error("Error parsing domains from localStorage:", error);
-        // Fallback to default domain
         setDomains(['opusmotorgroup.co.uk']);
         localStorage.setItem('allowedDomains', JSON.stringify(['opusmotorgroup.co.uk']));
       }
     } else {
-      // Initialize with default domain and store in localStorage
       const defaultDomains = ['opusmotorgroup.co.uk'];
       setDomains(defaultDomains);
       localStorage.setItem('allowedDomains', JSON.stringify(defaultDomains));
@@ -120,7 +106,6 @@ const UsersPage = () => {
         return;
       }
       
-      // In a production app, this would be handled via an edge function
       toast({
         title: "Action not available",
         description: "User deletion requires a secure edge function in production.",
@@ -154,7 +139,6 @@ const UsersPage = () => {
       return;
     }
     
-    // Add domain to list and persist in localStorage
     const updatedDomains = [...domains, newDomain];
     setDomains(updatedDomains);
     localStorage.setItem('allowedDomains', JSON.stringify(updatedDomains));
@@ -176,7 +160,6 @@ const UsersPage = () => {
       return;
     }
     
-    // Don't allow removing all domains
     if (domains.length <= 1) {
       toast({
         title: "Cannot remove domain",
@@ -186,7 +169,6 @@ const UsersPage = () => {
       return;
     }
     
-    // Remove domain from list and update localStorage
     const updatedDomains = domains.filter(d => d !== domain);
     setDomains(updatedDomains);
     localStorage.setItem('allowedDomains', JSON.stringify(updatedDomains));
