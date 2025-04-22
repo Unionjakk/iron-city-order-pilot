@@ -1182,13 +1182,14 @@ export type Database = {
       iron_city_ordered_view_v2: {
         Row: {
           backorder_clear_by: string | null
+          contains_matches: boolean | null
           customer_expected_date: string | null
           dealer_po_number: string | null
           hd_order_number: string | null
           hd_orderlinecombo: string | null
-          invoice_date: string | null
           is_backorder: boolean | null
           is_invoiced: boolean | null
+          matched_status_ordered: boolean | null
           notes: string | null
           order_date: string | null
           part_number: string | null
