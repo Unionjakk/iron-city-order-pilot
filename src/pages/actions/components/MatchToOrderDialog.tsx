@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
@@ -20,7 +19,7 @@ interface MatchToOrderDialogProps {
   isOpen: boolean;
   onClose: () => void;
   sku: string;
-  shopifyOrderId: string;
+  shopifyLineItemId: string;
   shopifyOrderNumber: string | null;
   onOrderMatched: () => void;
   quantity?: number;
@@ -30,7 +29,7 @@ const MatchToOrderDialog = ({
   isOpen,
   onClose,
   sku,
-  shopifyOrderId,
+  shopifyLineItemId,
   shopifyOrderNumber,
   onOrderMatched,
   quantity = 1
@@ -75,7 +74,7 @@ const MatchToOrderDialog = ({
   const handleMatchToOrder = async (order: HarleyOrderMatch) => {
     try {
       setIsMatching(true);
-      await matchToHarleyOrder(order, shopifyOrderId, sku);
+      await matchToHarleyOrder(order, shopifyLineItemId, sku);
       toast.success("Successfully matched to Harley order");
       onOrderMatched();
       onClose();

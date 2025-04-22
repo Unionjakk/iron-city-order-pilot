@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { HarleyOrderMatch } from "../components/harley-orders/HarleyOrdersTable";
 
@@ -22,7 +21,6 @@ export const searchHarleyOrders = async (searchSku: string): Promise<HarleyOrder
   }
 };
 
-// Define a standalone type for the order update parameters
 type OrderUpdateParams = {
   hd_orderlinecombo: string;
   status: string;
@@ -32,7 +30,7 @@ type OrderUpdateParams = {
 
 export const matchToHarleyOrder = async (
   order: OrderUpdateParams,
-  shopifyOrderId: string,
+  shopifyLineItemId: string,
   sku: string
 ): Promise<void> => {
   try {
@@ -45,7 +43,7 @@ export const matchToHarleyOrder = async (
         dealer_po_number: order.dealer_po_number,
         notes: `Matched to HD order: ${order.hd_order_number} | ${new Date().toISOString().slice(0, 10)}`
       })
-      .eq('shopify_order_id', shopifyOrderId)
+      .eq('shopify_line_item_id', shopifyLineItemId)
       .eq('sku', sku);
 
     if (error) {
@@ -56,4 +54,3 @@ export const matchToHarleyOrder = async (
     throw error;
   }
 };
-
