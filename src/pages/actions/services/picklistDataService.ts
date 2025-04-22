@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UNFULFILLED_STATUS } from "../constants/picklistConstants";
 
@@ -55,7 +54,7 @@ export const fetchStockForSkus = async (skus: string[]) => {
 export const fetchProgressForOrders = async (orderIds: string[]) => {
   // Explicitly define the type for data to avoid excessive type instantiation
   type ProgressItem = {
-    shopify_order_id: string;
+    shopify_line_item_id: string;
     sku: string;
     progress: string | null;
     notes: string | null;
@@ -63,8 +62,8 @@ export const fetchProgressForOrders = async (orderIds: string[]) => {
   
   const { data, error } = await supabase
     .from('iron_city_order_progress')
-    .select('shopify_order_id, sku, progress, notes')
-    .in('shopify_order_id', orderIds);
+    .select('shopify_line_item_id, sku, progress, notes')
+    .in('shopify_line_item_id', orderIds);
     
   if (error) throw new Error(`Progress fetch error: ${error.message}`);
   return (data || []) as ProgressItem[];
