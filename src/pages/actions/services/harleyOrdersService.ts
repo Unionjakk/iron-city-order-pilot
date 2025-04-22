@@ -1,6 +1,17 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { HarleyOrderMatch } from "../components/harley-orders/HarleyOrdersTable";
+
+interface HarleyOrderMatch {
+  hd_order_number: string;
+  part_number: string;
+  dealer_po_number: string;
+  order_quantity: number;
+  matched_quantity: number;
+  status: string;
+  hd_orderlinecombo: string;
+  order_date: string;
+  expected_arrival_dealership: string | null;
+}
 
 export const searchHarleyOrders = async (searchSku: string): Promise<HarleyOrderMatch[]> => {
   try {
@@ -22,19 +33,19 @@ export const searchHarleyOrders = async (searchSku: string): Promise<HarleyOrder
   }
 };
 
-// Completely defining the interface here to avoid circular type references
+interface HarleyOrderUpdate {
+  hd_orderlinecombo: string;
+  status: string;
+  dealer_po_number: string;
+  hd_order_number: string;
+}
+
 export const matchToHarleyOrder = async (
-  order: {
-    hd_orderlinecombo: string;
-    status: string;
-    dealer_po_number: string;
-    hd_order_number: string;
-  }, 
+  order: HarleyOrderUpdate,
   shopifyOrderId: string, 
   sku: string
 ): Promise<void> => {
   try {
-    // Update the progress record with Harley Davidson order info
     const { error } = await supabase
       .from('iron_city_order_progress')
       .update({
