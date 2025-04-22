@@ -41,7 +41,8 @@ const UsersPage = () => {
   const [newDomain, setNewDomain] = useState('');
   const [loading, setLoading] = useState(true);
   
-  const isAdmin = user?.email === 'dale.gillespie@opusmotorgroup.co.uk';
+  // All authenticated users are admins
+  const isAdmin = !!user;
   
   useEffect(() => {
     fetchUsers();

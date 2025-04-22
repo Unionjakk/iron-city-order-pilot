@@ -26,14 +26,9 @@ serve(async (req) => {
     // Create authenticated Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
-    // Verify the user is an admin
+    // Verify the user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader)
     if (authError || !user) throw new Error('Unauthorized')
-
-    // Only allow dale.gillespie@opusmotorgroup.co.uk to access users
-    if (user.email !== 'dale.gillespie@opusmotorgroup.co.uk') {
-      throw new Error('Unauthorized - Admin access required')
-    }
 
     // Fetch all users using service role client
     const { data: users, error } = await supabase.auth.admin.listUsers()
