@@ -907,6 +907,116 @@ export type Database = {
         }
         Relationships: []
       }
+      track_shopify_order: {
+        Row: {
+          archive_status: string | null
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          imported_at: string
+          items_count: number
+          line_items: Json | null
+          metadata: Json | null
+          note: string | null
+          shipping_address: Json | null
+          shopify_order_id: string
+          shopify_order_number: string | null
+          status: string
+        }
+        Insert: {
+          archive_status?: string | null
+          created_at: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          imported_at?: string
+          items_count: number
+          line_items?: Json | null
+          metadata?: Json | null
+          note?: string | null
+          shipping_address?: Json | null
+          shopify_order_id: string
+          shopify_order_number?: string | null
+          status?: string
+        }
+        Update: {
+          archive_status?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          imported_at?: string
+          items_count?: number
+          line_items?: Json | null
+          metadata?: Json | null
+          note?: string | null
+          shipping_address?: Json | null
+          shopify_order_id?: string
+          shopify_order_number?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      track_shopify_order_lines: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string | null
+          location_name: string | null
+          order_id: string
+          price: number | null
+          product_id: string | null
+          properties: Json | null
+          quantity: number
+          shopify_line_item_id: string
+          sku: string | null
+          title: string
+          variant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          location_name?: string | null
+          order_id: string
+          price?: number | null
+          product_id?: string | null
+          properties?: Json | null
+          quantity: number
+          shopify_line_item_id: string
+          sku?: string | null
+          title: string
+          variant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          location_name?: string | null
+          order_id?: string
+          price?: number | null
+          product_id?: string | null
+          properties?: Json | null
+          quantity?: number
+          shopify_line_item_id?: string
+          sku?: string | null
+          title?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_shopify_order_lines_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "track_shopify_order"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           created_at: string
@@ -937,6 +1047,7 @@ export type Database = {
           partial_orders_count: number | null
           shopify_order_lines_count: number | null
           to_pick_count: number | null
+          unique_ic_progress_status: string | null
         }
         Relationships: []
       }
@@ -1107,6 +1218,27 @@ export type Database = {
         }
         Relationships: []
       }
+      iron_city_dispatch_complete_view: {
+        Row: {
+          all_items_same_staus: boolean | null
+          all_orderline_count: number | null
+          customer_email: string | null
+          customer_name: string | null
+          is_full_order_check: boolean | null
+          "Order Date": string | null
+          potential_cancelled: boolean | null
+          progress: string | null
+          progress_orderline_count: number | null
+          quantity: number | null
+          quantity_picked: number | null
+          ready_and_complete: boolean | null
+          shopify_line_item_id: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       iron_city_ordered_view: {
         Row: {
           current_stock_quantity: number | null
@@ -1253,6 +1385,10 @@ export type Database = {
     Functions: {
       apply_sku_corrections: {
         Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      call_tracker_single_order_import: {
+        Args: { order_number: string }
         Returns: Json
       }
       clean_iron_city_new_orders_table: {

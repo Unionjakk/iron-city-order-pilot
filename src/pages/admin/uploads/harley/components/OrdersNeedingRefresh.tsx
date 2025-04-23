@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormattedDate } from '@/pages/admin/uploads/harley/components/FormattedDate';
 import { RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowUp, ArrowDown } from 'lucide-react'; // from allowed icons
 
 interface OrderSummary {
   hd_order_number: string;
@@ -21,10 +22,20 @@ interface OrderSummary {
   updated_date: string | null;
 }
 
+const ORDERS_SORT_FIELDS = {
+  HD_ORDER_NUMBER: 'hd_order_number',
+  UPDATED_DATE: 'updated_date'
+} as const;
+
+type SortField = typeof ORDERS_SORT_FIELDS[keyof typeof ORDERS_SORT_FIELDS];
+type SortDirection = 'asc' | 'desc';
+
 const OrdersNeedingRefresh = () => {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<SortField>('updated_date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
     const fetchOrderSummary = async () => {
@@ -32,14 +43,19 @@ const OrdersNeedingRefresh = () => {
       setError(null);
       
       try {
-        const { data, error } = await supabase
+        // Always select all fields needed
+        let query = supabase
           .from('hd_orders_status_summary')
           .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, updated_date')
-          .eq('contains_open_orders', true) // Filter only where contains_open_orders is true
-          .order('updated_date', { ascending: true });
-        
+          .eq('contains_open_orders', true);
+
+        // Apply sorting
+        query = query.order(sortField, { ascending: sortDirection === 'asc' });
+
+        const { data, error } = await query;
+
         if (error) throw error;
-        
+
         setOrders(data || []);
       } catch (err: any) {
         console.error('Error fetching order summary:', err);
@@ -48,15 +64,31 @@ const OrdersNeedingRefresh = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchOrderSummary();
-  }, []);
-  
+  }, [sortField, sortDirection]);
+
   const formatOpenOrdersStatus = (status: boolean | null) => {
     if (status === null) return "-";
     return status ? "Yes" : "No";
   };
-  
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((old) => (old === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return null;
+    return sortDirection === 'asc'
+      ? <ArrowUp className="inline ml-1 h-3 w-3" />
+      : <ArrowDown className="inline ml-1 h-3 w-3" />;
+  };
+
   return (
     <Card className="border-zinc-800 bg-zinc-900/60 backdrop-blur-sm mt-6">
       <CardHeader>
@@ -87,11 +119,15 @@ const OrdersNeedingRefresh = () => {
             <Table>
               <TableHeader className="bg-zinc-800">
                 <TableRow>
-                  <TableHead className="text-zinc-300">HD Order Number</TableHead>
+                  <TableHead className="text-zinc-300 cursor-pointer select-none" onClick={() => handleSort('hd_order_number')}>
+                    HD Order Number {getSortIcon('hd_order_number')}
+                  </TableHead>
                   <TableHead className="text-zinc-300">Dealer PO Number</TableHead>
                   <TableHead className="text-zinc-300">Order Date</TableHead>
                   <TableHead className="text-zinc-300">Contains Open Orders</TableHead>
-                  <TableHead className="text-zinc-300">Last Refreshed</TableHead>
+                  <TableHead className="text-zinc-300 cursor-pointer select-none" onClick={() => handleSort('updated_date')}>
+                    Last Refreshed {getSortIcon('updated_date')}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
