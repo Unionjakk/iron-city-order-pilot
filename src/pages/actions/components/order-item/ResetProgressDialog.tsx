@@ -1,6 +1,7 @@
 
 import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+// Only import the toast function (not useToast or object destructuring)
 import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -37,14 +38,14 @@ const ResetProgressDialog: React.FC<ResetProgressDialogProps> = ({
         .delete()
         .eq('shopify_order_id', shopifyOrderId)
         .eq('sku', sku);
-        
+
       if (error) throw error;
-      
+
       toast({
         title: "Progress Reset",
         description: "Item has been reset to 'To Pick' status",
       });
-      
+
       onReset();
     } catch (error: any) {
       console.error("Error resetting item progress:", error);
@@ -91,4 +92,3 @@ const ResetProgressDialog: React.FC<ResetProgressDialogProps> = ({
 };
 
 export default ResetProgressDialog;
-
