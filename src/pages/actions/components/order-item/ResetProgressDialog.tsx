@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +29,6 @@ const ResetProgressDialog: React.FC<ResetProgressDialogProps> = ({
   onReset
 }) => {
   const [isResetting, setIsResetting] = useState(false);
-  const { toast } = useToast();
 
   const resetItemProgress = async () => {
     try {
@@ -92,3 +91,4 @@ const ResetProgressDialog: React.FC<ResetProgressDialogProps> = ({
 };
 
 export default ResetProgressDialog;
+
