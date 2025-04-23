@@ -1,10 +1,9 @@
 
 import React from "react";
-import { Clipboard, X } from "lucide-react";
+import { Clipboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import MatchToOrderDialog from "./MatchToOrderDialog";
-import ResetProgressDialog from "./order-item/ResetProgressDialog";
 import { useOrderItemActions } from "../hooks/useOrderItemActions";
 
 interface OrderItemProps {
@@ -37,7 +36,6 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
   onItemUpdated
 }) => {
   const [showMatchDialog, setShowMatchDialog] = React.useState(false);
-  const [showResetDialog, setShowResetDialog] = React.useState(false);
   const toast = useToast();
   const { handleCopySku } = useOrderItemActions(sku, { toast });
 
@@ -115,14 +113,6 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
             >
               Match Order
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
-              onClick={() => setShowResetDialog(true)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         </td>
       </tr>
@@ -131,19 +121,12 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
         isOpen={showMatchDialog}
         onClose={() => setShowMatchDialog(false)}
         sku={sku}
-        shopifyLineItemId={id} /* Updated: changed from shopifyOrderId to shopifyLineItemId */
+        shopifyLineItemId={id}
         shopifyOrderNumber={shopify_order_number}
         onOrderMatched={onItemUpdated}
         quantity={quantity}
       />
-
-      <ResetProgressDialog
-        isOpen={showResetDialog}
-        onClose={() => setShowResetDialog(false)}
-        shopifyOrderId={shopify_order_id}
-        sku={sku}
-        onReset={onItemUpdated}
-      />
+      {/* ResetProgressDialog has been removed */}
     </>
   );
 };
