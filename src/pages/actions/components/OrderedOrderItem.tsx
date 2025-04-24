@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Clipboard, X, Check, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,8 +42,8 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
   const [showResetDialog, setShowResetDialog] = React.useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [expectedArrival, setExpectedArrival] = useState<string | null>(null);
-  const { toast } = useToast();
-  const { handleCopySku } = useOrderItemActions(sku, { toast });
+  const toastHelper = useToast();
+  const { handleCopySku } = useOrderItemActions(sku, { toast: toastHelper });
 
   React.useEffect(() => {
     if (hd_orderlinecombo) {
@@ -83,7 +82,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
         
       if (error) throw error;
       
-      toast({
+      toastHelper.toast({
         title: "Item Status Updated",
         description: "Item has been marked as 'Picked'",
       });
@@ -103,7 +102,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
         }
       }
       
-      toast({
+      toastHelper.toast({
         title: "Update Failed",
         description: errorMessage,
         variant: "destructive",

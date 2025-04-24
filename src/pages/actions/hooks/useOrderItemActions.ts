@@ -1,5 +1,5 @@
 
-import { useToast, toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface UseOrderItemActionsProps {
   sku: string;
@@ -9,7 +9,7 @@ interface UseOrderItemActionsProps {
 export const useOrderItemActions = (sku: string, { toast }: UseOrderItemActionsProps) => {
   const handleCopySku = () => {
     navigator.clipboard.writeText(sku);
-    toast({
+    toast.toast({
       title: "SKU Copied",
       description: `${sku} copied to clipboard`,
     });
