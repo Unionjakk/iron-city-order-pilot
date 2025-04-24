@@ -1,10 +1,15 @@
 
-import { useToast } from "@/hooks/use-toast";
+import { useToast, toast } from "@/hooks/use-toast";
 
-export const useOrderItemActions = (sku: string, { toast }: { toast: ReturnType<typeof useToast> }) => {
+interface UseOrderItemActionsProps {
+  sku: string;
+  toast: ReturnType<typeof useToast>;
+}
+
+export const useOrderItemActions = (sku: string, { toast }: UseOrderItemActionsProps) => {
   const handleCopySku = () => {
     navigator.clipboard.writeText(sku);
-    toast.toast({
+    toast({
       title: "SKU Copied",
       description: `${sku} copied to clipboard`,
     });

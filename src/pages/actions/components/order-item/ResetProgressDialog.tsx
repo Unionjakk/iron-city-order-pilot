@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface ResetProgressDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  shopifyOrderId: string;
+  shopifyLineItemId: string;
   sku: string;
   onReset: () => void;
 }
@@ -15,7 +15,7 @@ interface ResetProgressDialogProps {
 const ResetProgressDialog: React.FC<ResetProgressDialogProps> = ({
   isOpen,
   onClose,
-  shopifyOrderId,
+  shopifyLineItemId,
   sku,
   onReset
 }) => {
@@ -24,27 +24,38 @@ const ResetProgressDialog: React.FC<ResetProgressDialogProps> = ({
   const handleReset = async () => {
     try {
       // Delete the progress entry
-      await supabase
+      const { error } = await supabase
         .from('iron_city_order_progress')
         .delete()
-        .eq('shopify_line_item_id', shopifyOrderId)
+        .eq('shopify_line_item_id', shopifyLineItemId)
         .eq('sku', sku);
+
+      if (error) throw error;
       
       toast({
         title: "Progress Reset",
         description: "Item has been reset to 'To Pick' status",
       });
       
-      // Call the onReset callback
       onReset();
-      
-      // Close the dialog
       onClose();
     } catch (error) {
       console.error("Error resetting progress:", error);
+      let errorMessage = "An unknown error occurred";
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        try {
+          errorMessage = String(error);
+        } catch {
+          errorMessage = "Error details unavailable";
+        }
+      }
+
       toast({
         title: "Reset Failed",
-        description: "There was an error resetting the item's progress",
+        description: errorMessage,
         variant: "destructive",
       });
     }

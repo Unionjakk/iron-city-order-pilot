@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Clipboard, X, Check, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface OrderedItemProps {
   id: string;
-  shopify_order_id: string;
+  shopify_line_item_id: string;
   shopify_order_number: string | null;
   sku: string;
   title: string;
@@ -26,7 +25,7 @@ interface OrderedItemProps {
 
 const OrderedOrderItem: React.FC<OrderedItemProps> = ({
   id,
-  shopify_order_id,
+  shopify_line_item_id,
   shopify_order_number,
   sku,
   title,
@@ -44,10 +43,8 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [expectedArrival, setExpectedArrival] = useState<string | null>(null);
   const { toast } = useToast();
-  // Updated: Fixed the toast reference by providing proper toast object
   const { handleCopySku } = useOrderItemActions(sku, { toast });
 
-  // Fetch the expected arrival date from hd_combined
   React.useEffect(() => {
     if (hd_orderlinecombo) {
       const fetchExpectedArrival = async () => {
@@ -80,7 +77,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
           progress: "Picked",
           notes: notes ? `${notes} | Marked as arrived & picked: ${new Date().toISOString().slice(0, 10)}` : `Marked as arrived & picked: ${new Date().toISOString().slice(0, 10)}`
         })
-        .eq('shopify_order_id', shopify_order_id)
+        .eq('shopify_line_item_id', shopify_line_item_id)
         .eq('sku', sku);
         
       if (error) throw error;
@@ -95,7 +92,6 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
       console.error("Error updating item status:", error);
       let errorMessage = "An unknown error occurred";
       
-      // Handle error safely
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (typeof error === 'object' && error !== null) {
@@ -228,7 +224,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
       <ResetProgressDialog
         isOpen={showResetDialog}
         onClose={() => setShowResetDialog(false)}
-        shopifyOrderId={shopify_order_id}
+        shopifyLineItemId={shopify_line_item_id}
         sku={sku}
         onReset={onItemUpdated}
       />
