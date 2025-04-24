@@ -72,11 +72,18 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
       console.error("Error marking for dispatch:", error);
       let errorMessage = "An unknown error occurred";
       
-      // Fix: Handle the error object safely
+      // Fix: Handle the error object safely without circular references
       if (error instanceof Error) {
         errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null && 'message' in error) {
-        errorMessage = String(error.message);
+      } else if (typeof error === 'object' && error !== null) {
+        // Safer way to extract message without causing circular reference
+        try {
+          const errorString = String(error);
+          errorMessage = errorString;
+        } catch {
+          // Fallback if stringifying fails
+          errorMessage = "Error details unavailable";
+        }
       }
       
       toast({

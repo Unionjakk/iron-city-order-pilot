@@ -44,6 +44,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [expectedArrival, setExpectedArrival] = useState<string | null>(null);
   const { toast } = useToast();
+  // Updated: Fixed the toast reference by providing proper toast object
   const { handleCopySku } = useOrderItemActions(sku, { toast });
 
   // Fetch the expected arrival date from hd_combined
@@ -79,10 +80,10 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
           progress: "Picked",
           notes: notes ? `${notes} | Marked as arrived & picked: ${new Date().toISOString().slice(0, 10)}` : `Marked as arrived & picked: ${new Date().toISOString().slice(0, 10)}`
         })
-        .eq('shopify_line_item_id', shopify_order_id)
+        .eq('shopify_order_id', shopify_order_id)
         .eq('sku', sku);
         
-      if (error) throw new Error(error.message);
+      if (error) throw error;
       
       toast({
         title: "Item Status Updated",
@@ -94,9 +95,15 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
       console.error("Error updating item status:", error);
       let errorMessage = "An unknown error occurred";
       
-      // Fix: Handle the error object safely
+      // Handle error safely
       if (error instanceof Error) {
         errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        try {
+          errorMessage = String(error);
+        } catch {
+          errorMessage = "Error details unavailable";
+        }
       }
       
       toast({
