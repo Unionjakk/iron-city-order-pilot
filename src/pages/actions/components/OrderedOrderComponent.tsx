@@ -65,7 +65,7 @@ const OrderedOrderComponent = ({ order, refreshData }: OrderedOrderComponentProp
         <OrderedOrderItem 
           key={`item-${item.id}`} 
           id={item.id}
-          shopify_order_id={order.shopify_order_id}
+          shopify_line_item_id={item.shopify_line_item_id}
           shopify_order_number={order.shopify_order_number}
           sku={item.sku}
           title={item.title}

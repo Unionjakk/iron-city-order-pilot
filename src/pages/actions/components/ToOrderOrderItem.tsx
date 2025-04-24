@@ -36,7 +36,7 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
   onItemUpdated
 }) => {
   const [showMatchDialog, setShowMatchDialog] = React.useState(false);
-  const toast = useToast();
+  const { toast } = useToast();
   const { handleCopySku } = useOrderItemActions(sku, { toast });
 
   return (
@@ -126,7 +126,6 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
         onOrderMatched={onItemUpdated}
         quantity={quantity}
       />
-      {/* ResetProgressDialog has been removed */}
     </>
   );
 };
