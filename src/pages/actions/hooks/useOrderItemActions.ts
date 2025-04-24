@@ -2,7 +2,6 @@
 import { useToast } from "@/hooks/use-toast";
 
 interface UseOrderItemActionsProps {
-  sku: string;
   toast: ReturnType<typeof useToast>;
 }
 
