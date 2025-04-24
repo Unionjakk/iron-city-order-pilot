@@ -43,7 +43,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
   const [showResetDialog, setShowResetDialog] = React.useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [expectedArrival, setExpectedArrival] = useState<string | null>(null);
-  const toast = useToast();
+  const { toast } = useToast();
   const { handleCopySku } = useOrderItemActions(sku, { toast });
 
   // Fetch the expected arrival date from hd_combined
@@ -90,11 +90,18 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
       });
       
       onItemUpdated();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error updating item status:", error);
+      let errorMessage = "An unknown error occurred";
+      
+      // Fix: Handle the error object safely
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Update Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { PicklistOrderItem, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -67,11 +68,20 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
       
       // Refresh data
       refreshData();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error marking for dispatch:", error);
+      let errorMessage = "An unknown error occurred";
+      
+      // Fix: Handle the error object safely
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = String(error.message);
+      }
+      
       toast({
         title: "Update failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
