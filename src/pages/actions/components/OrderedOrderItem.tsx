@@ -79,12 +79,12 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
           progress: "Picked",
           notes: notes ? `${notes} | Marked as arrived & picked: ${new Date().toISOString().slice(0, 10)}` : `Marked as arrived & picked: ${new Date().toISOString().slice(0, 10)}`
         })
-        .eq('shopify_order_id', shopify_order_id)
+        .eq('shopify_line_item_id', shopify_order_id)
         .eq('sku', sku);
         
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       
-      toast.toast({
+      toast({
         title: "Item Status Updated",
         description: "Item has been marked as 'Picked'",
       });
@@ -92,7 +92,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
       onItemUpdated();
     } catch (error: any) {
       console.error("Error updating item status:", error);
-      toast.toast({
+      toast({
         title: "Update Failed",
         description: error.message,
         variant: "destructive",
