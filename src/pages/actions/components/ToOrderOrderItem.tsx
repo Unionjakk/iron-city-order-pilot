@@ -36,7 +36,9 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
   onItemUpdated
 }) => {
   const [showMatchDialog, setShowMatchDialog] = React.useState(false);
+  // IMPORTANT: Extract toast from useToast() hook directly
   const { toast } = useToast();
+  // Pass just the toast function, not the whole object
   const { handleCopySku } = useOrderItemActions(sku, { toast });
 
   return (
@@ -121,7 +123,7 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
         isOpen={showMatchDialog}
         onClose={() => setShowMatchDialog(false)}
         sku={sku}
-        shopifyLineItemId={id}
+        shopifyLineItemId={id} // IMPORTANT: This should be passing the correct ID field
         shopifyOrderNumber={shopify_order_number}
         onOrderMatched={onItemUpdated}
         quantity={quantity}

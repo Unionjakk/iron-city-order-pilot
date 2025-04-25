@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Clipboard, X, Check, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface OrderedItemProps {
   id: string;
-  shopify_line_item_id: string;
+  shopify_line_item_id: string; // IMPORTANT: This is the correct property name
   shopify_order_number: string | null;
   sku: string;
   title: string;
@@ -25,7 +26,7 @@ interface OrderedItemProps {
 
 const OrderedOrderItem: React.FC<OrderedItemProps> = ({
   id,
-  shopify_line_item_id,
+  shopify_line_item_id, // IMPORTANT: Using the correct property name
   shopify_order_number,
   sku,
   title,
@@ -42,7 +43,9 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
   const [showResetDialog, setShowResetDialog] = React.useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [expectedArrival, setExpectedArrival] = useState<string | null>(null);
+  // IMPORTANT: Extract toast from useToast() hook directly
   const { toast } = useToast();
+  // Pass just the toast function, not the whole object
   const { handleCopySku } = useOrderItemActions(sku, { toast });
 
   React.useEffect(() => {
@@ -71,6 +74,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
   const handleMarkAsPicked = async () => {
     setIsUpdating(true);
     try {
+      // IMPORTANT: Now using the correct column name shopify_line_item_id
       const { error } = await supabase
         .from('iron_city_order_progress')
         .update({
@@ -82,7 +86,8 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
         
       if (error) throw error;
       
-      toast.toast({
+      // Call toast directly - not as a method of an object
+      toast({
         title: "Item Status Updated",
         description: "Item has been marked as 'Picked'",
       });
@@ -102,7 +107,8 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
         }
       }
       
-      toast.toast({
+      // Call toast directly - not as a method of an object
+      toast({
         title: "Update Failed",
         description: errorMessage,
         variant: "destructive",
@@ -224,7 +230,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
       <ResetProgressDialog
         isOpen={showResetDialog}
         onClose={() => setShowResetDialog(false)}
-        shopifyLineItemId={shopify_line_item_id}
+        shopifyLineItemId={shopify_line_item_id} // IMPORTANT: Using the correct property name
         sku={sku}
         onReset={onItemUpdated}
       />

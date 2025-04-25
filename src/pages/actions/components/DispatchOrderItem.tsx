@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { PicklistOrderItem, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -25,9 +26,11 @@ interface DispatchOrderItemProps {
 }
 
 const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps) => {
+  // IMPORTANT: Extract toast from useToast() and pass it directly to hooks
   const { toast } = useToast();
   const [processing, setProcessing] = useState<boolean>(false);
   const [isDispatchDialogOpen, setIsDispatchDialogOpen] = useState<boolean>(false);
+  // Pass the toast function directly - not the whole useToast return object
   const { handleCopySku } = useOrderItemActions(item.sku || "No SKU", { toast });
 
   const getStockColor = (inStock: boolean, quantity: number | null, orderQuantity: number): string => {
@@ -49,6 +52,8 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
     setProcessing(true);
     
     try {
+      // IMPORTANT: This is using shopify_order_id - ensure this matches the column name in your DB
+      // The correct column name is shopify_order_id for the order and shopify_line_item_id for the line item
       const { error } = await supabase
         .from('iron_city_order_progress')
         .update({
