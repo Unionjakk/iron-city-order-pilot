@@ -42,8 +42,8 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
   const [showResetDialog, setShowResetDialog] = React.useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [expectedArrival, setExpectedArrival] = useState<string | null>(null);
-  const toastHelper = useToast();
-  const { handleCopySku } = useOrderItemActions(sku, { toast: toastHelper });
+  const { toast } = useToast();
+  const { handleCopySku } = useOrderItemActions(sku, { toast });
 
   React.useEffect(() => {
     if (hd_orderlinecombo) {
@@ -82,7 +82,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
         
       if (error) throw error;
       
-      toastHelper.toast({
+      toast.toast({
         title: "Item Status Updated",
         description: "Item has been marked as 'Picked'",
       });
@@ -102,7 +102,7 @@ const OrderedOrderItem: React.FC<OrderedItemProps> = ({
         }
       }
       
-      toastHelper.toast({
+      toast.toast({
         title: "Update Failed",
         description: errorMessage,
         variant: "destructive",

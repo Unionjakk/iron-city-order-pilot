@@ -1,8 +1,9 @@
 
 import { useToast } from "@/hooks/use-toast";
+import { Toast, ToasterToast } from "@/hooks/use-toast";
 
 interface UseOrderItemActionsProps {
-  toast: ReturnType<typeof useToast>["toast"];
+  toast: (props: Toast) => { id: string; dismiss: () => void; update: (props: ToasterToast) => void; };
 }
 
 export const useOrderItemActions = (sku: string, { toast }: UseOrderItemActionsProps) => {

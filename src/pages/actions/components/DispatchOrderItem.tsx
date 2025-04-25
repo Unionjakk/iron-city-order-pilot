@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { PicklistOrderItem, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -29,9 +28,8 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
   const { toast } = useToast();
   const [processing, setProcessing] = useState<boolean>(false);
   const [isDispatchDialogOpen, setIsDispatchDialogOpen] = useState<boolean>(false);
-  const { handleCopySku } = useOrderItemActions(item.sku || "No SKU", { toast: toast });
+  const { handleCopySku } = useOrderItemActions(item.sku || "No SKU", { toast });
 
-  // Utility functions for styling
   const getStockColor = (inStock: boolean, quantity: number | null, orderQuantity: number): string => {
     if (!inStock || quantity === null || quantity === 0) return "text-green-800";
     if (quantity < orderQuantity) return "text-green-600";
@@ -51,7 +49,6 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
     setProcessing(true);
     
     try {
-      // Update progress entry to "Dispatched" status
       const { error } = await supabase
         .from('iron_city_order_progress')
         .update({
@@ -68,22 +65,17 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
         description: "Item has been marked as dispatched",
       });
       
-      // Refresh data
       refreshData();
     } catch (error) {
-      console.error("Error marking for dispatch:", error);
       let errorMessage = "An unknown error occurred";
       
-      // Fix: Handle the error object safely without circular references
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (typeof error === 'object' && error !== null) {
-        // Safer way to extract message without causing circular reference
         try {
           const errorString = String(error);
           errorMessage = errorString;
         } catch {
-          // Fallback if stringifying fails
           errorMessage = "Error details unavailable";
         }
       }
@@ -99,10 +91,8 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
     }
   };
 
-  // Check if item is fully picked
   const isFullyPicked = (item.quantity_picked || 0) >= (item.quantity_required || item.quantity || 1);
   
-  // Flag to show if this is a partial pick
   const isPartialPick = item.is_partial === true;
 
   return (
@@ -174,7 +164,6 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
         </TableCell>
       </TableRow>
       
-      {/* Notes field under each item - now read-only */}
       <TableRow className="border-none">
         <TableCell colSpan={9} className="pt-0 pb-2">
           <Input
