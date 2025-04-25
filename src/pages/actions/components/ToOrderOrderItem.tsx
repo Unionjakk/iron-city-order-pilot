@@ -36,9 +36,9 @@ const ToOrderOrderItem: React.FC<OrderItemProps> = ({
   onItemUpdated
 }) => {
   const [showMatchDialog, setShowMatchDialog] = React.useState(false);
-  // IMPORTANT: Extract toast from useToast() hook directly
+  // Extract toast function from useToast() to avoid type instantiation issues
   const { toast } = useToast();
-  // Pass just the toast function, not the whole object
+  // Pass toast function directly to the hook
   const { handleCopySku } = useOrderItemActions(sku, { toast });
 
   return (

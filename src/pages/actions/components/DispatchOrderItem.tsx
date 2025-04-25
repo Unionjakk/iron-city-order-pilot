@@ -26,11 +26,12 @@ interface DispatchOrderItemProps {
 }
 
 const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps) => {
-  // IMPORTANT: Extract toast from useToast() and pass it directly to hooks
+  // IMPORTANT: Extract toast function from useToast() hook to avoid typing issues
   const { toast } = useToast();
   const [processing, setProcessing] = useState<boolean>(false);
   const [isDispatchDialogOpen, setIsDispatchDialogOpen] = useState<boolean>(false);
-  // Pass the toast function directly - not the whole useToast return object
+  
+  // Pass toast function directly to the hook - this pattern prevents TS2589 errors
   const { handleCopySku } = useOrderItemActions(item.sku || "No SKU", { toast });
 
   const getStockColor = (inStock: boolean, quantity: number | null, orderQuantity: number): string => {
@@ -52,8 +53,8 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
     setProcessing(true);
     
     try {
-      // IMPORTANT: This is using shopify_order_id - ensure this matches the column name in your DB
-      // The correct column name is shopify_order_id for the order and shopify_line_item_id for the line item
+      // CRITICAL: We use 'shopify_order_id' column in DB but it actually contains what we call 
+      // 'shopify_line_item_id' in our code - never change this column reference
       const { error } = await supabase
         .from('iron_city_order_progress')
         .update({
