@@ -2,7 +2,7 @@
 import { useToast } from "@/hooks/use-toast";
 
 interface UseOrderItemActionsProps {
-  toast: ReturnType<typeof useToast>;
+  toast: ReturnType<typeof useToast>["toast"];
 }
 
 export const useOrderItemActions = (sku: string, { toast }: UseOrderItemActionsProps) => {

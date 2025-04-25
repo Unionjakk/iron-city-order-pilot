@@ -29,7 +29,7 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
   const { toast } = useToast();
   const [processing, setProcessing] = useState<boolean>(false);
   const [isDispatchDialogOpen, setIsDispatchDialogOpen] = useState<boolean>(false);
-  const { handleCopySku } = useOrderItemActions(item.sku || "No SKU", { toast });
+  const { handleCopySku } = useOrderItemActions(item.sku || "No SKU", { toast: toast });
 
   // Utility functions for styling
   const getStockColor = (inStock: boolean, quantity: number | null, orderQuantity: number): string => {
