@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { 
   Table, 
@@ -11,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FormattedDate } from '@/pages/admin/uploads/harley/components/FormattedDate';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { ArrowUp, ArrowDown } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const ORDERS_SORT_FIELDS = {
   HD_ORDER_NUMBER: 'hd_order_number',
