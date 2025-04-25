@@ -943,6 +943,33 @@ export type Database = {
         }
         Relationships: []
       }
+      track_faqs: {
+        Row: {
+          answer: string
+          category: string
+          created_at: string
+          id: string
+          question: string
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          category: string
+          created_at?: string
+          id?: string
+          question: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          category?: string
+          created_at?: string
+          id?: string
+          question?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       track_shopify_order: {
         Row: {
           archive_status: string | null
@@ -1543,19 +1570,15 @@ export type Database = {
           customer_email: string | null
           customer_expected_date: string | null
           customer_name: string | null
-          dealer_po_number: string | null
-          hd_order_number: string | null
           hd_orderlinecombo: string | null
           hd_status: string | null
           icop_updated_at: string | null
-          invoice_date: string | null
-          invoice_number: string | null
           is_backorder: boolean | null
           location_name: string | null
-          order_date: string | null
           progress: string | null
           quantity: number | null
           shopify_line_item_id: string | null
+          shopify_order_date: string | null
           shopify_order_id: string | null
           shopify_order_number: string | null
           sku: string | null
@@ -1591,6 +1614,10 @@ export type Database = {
         Returns: undefined
       }
       delete_all_shopify_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      delete_all_tracking_data: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
@@ -1663,6 +1690,10 @@ export type Database = {
         Returns: undefined
       }
       shopify_import_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      shopify_location_sweep_up: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

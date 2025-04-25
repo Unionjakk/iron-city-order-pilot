@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Table, 
@@ -8,11 +7,19 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormattedDate } from '@/pages/admin/uploads/harley/components/FormattedDate';
 import { RefreshCw, Loader2 } from 'lucide-react';
-import { ArrowUp, ArrowDown } from 'lucide-react'; // from allowed icons
+import { ArrowUp, ArrowDown } from 'lucide-react';
+
+const ORDERS_SORT_FIELDS = {
+  HD_ORDER_NUMBER: 'hd_order_number',
+  UPDATED_DATE: 'updated_date',
+  ORDER_DATE: 'order_date'
+} as const;
+
+type SortField = typeof ORDERS_SORT_FIELDS[keyof typeof ORDERS_SORT_FIELDS];
+type SortDirection = 'asc' | 'desc';
 
 interface OrderSummary {
   hd_order_number: string;
@@ -21,14 +28,6 @@ interface OrderSummary {
   contains_open_orders: boolean;
   updated_date: string | null;
 }
-
-const ORDERS_SORT_FIELDS = {
-  HD_ORDER_NUMBER: 'hd_order_number',
-  UPDATED_DATE: 'updated_date'
-} as const;
-
-type SortField = typeof ORDERS_SORT_FIELDS[keyof typeof ORDERS_SORT_FIELDS];
-type SortDirection = 'asc' | 'desc';
 
 const OrdersNeedingRefresh = () => {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
@@ -43,13 +42,11 @@ const OrdersNeedingRefresh = () => {
       setError(null);
       
       try {
-        // Always select all fields needed
         let query = supabase
           .from('hd_orders_status_summary')
           .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, updated_date')
           .eq('contains_open_orders', true);
 
-        // Apply sorting
         query = query.order(sortField, { ascending: sortDirection === 'asc' });
 
         const { data, error } = await query;
@@ -119,13 +116,24 @@ const OrdersNeedingRefresh = () => {
             <Table>
               <TableHeader className="bg-zinc-800">
                 <TableRow>
-                  <TableHead className="text-zinc-300 cursor-pointer select-none" onClick={() => handleSort('hd_order_number')}>
+                  <TableHead 
+                    className="text-zinc-300 cursor-pointer select-none" 
+                    onClick={() => handleSort('hd_order_number')}
+                  >
                     HD Order Number {getSortIcon('hd_order_number')}
                   </TableHead>
                   <TableHead className="text-zinc-300">Dealer PO Number</TableHead>
-                  <TableHead className="text-zinc-300">Order Date</TableHead>
+                  <TableHead 
+                    className="text-zinc-300 cursor-pointer select-none"
+                    onClick={() => handleSort('order_date')}
+                  >
+                    Order Date {getSortIcon('order_date')}
+                  </TableHead>
                   <TableHead className="text-zinc-300">Contains Open Orders</TableHead>
-                  <TableHead className="text-zinc-300 cursor-pointer select-none" onClick={() => handleSort('updated_date')}>
+                  <TableHead 
+                    className="text-zinc-300 cursor-pointer select-none" 
+                    onClick={() => handleSort('updated_date')}
+                  >
                     Last Refreshed {getSortIcon('updated_date')}
                   </TableHead>
                 </TableRow>
