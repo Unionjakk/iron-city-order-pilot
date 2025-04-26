@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -10,8 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormattedDate } from '@/pages/admin/uploads/harley/components/FormattedDate';
-import { RefreshCw, Loader2 } from 'lucide-react';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { RefreshCw, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const ORDERS_SORT_FIELDS = {
@@ -28,6 +27,7 @@ interface OrderSummary {
   dealer_po_number: string | null;
   order_date: string | null;
   contains_open_orders: boolean;
+  has_shopify_match: boolean;
   updated_date: string | null;
 }
 
@@ -46,7 +46,7 @@ const OrdersNeedingRefresh = () => {
       try {
         let query = supabase
           .from('hd_orders_status_summary')
-          .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, updated_date')
+          .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, has_shopify_match, updated_date')
           .eq('contains_open_orders', true);
 
         query = query.order(sortField, { ascending: sortDirection === 'asc' });
@@ -132,6 +132,7 @@ const OrdersNeedingRefresh = () => {
                     Order Date {getSortIcon('order_date')}
                   </TableHead>
                   <TableHead className="text-zinc-300">Contains Open Orders</TableHead>
+                  <TableHead className="text-zinc-300">Has Shopify Match</TableHead>
                   <TableHead 
                     className="text-zinc-300 cursor-pointer select-none" 
                     onClick={() => handleSort('updated_date')}
@@ -160,7 +161,10 @@ const OrdersNeedingRefresh = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-zinc-300">
-                      {formatOpenOrdersStatus(order.contains_open_orders)}
+                      {order.contains_open_orders ? "True" : ""}
+                    </TableCell>
+                    <TableCell className="text-zinc-300">
+                      {order.has_shopify_match ? "True" : ""}
                     </TableCell>
                     <TableCell className="text-zinc-300">
                       {order.updated_date ? (
