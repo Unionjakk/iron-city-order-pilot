@@ -15,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const ORDERS_SORT_FIELDS = {
   HD_ORDER_NUMBER: 'hd_order_number',
-  UPDATED_DATE: 'updated_date',
+  UPDATED_DATE: 'updated_at',  // Changing this to updated_at which is likely the column name
   ORDER_DATE: 'order_date'
 } as const;
 
@@ -28,14 +28,14 @@ interface OrderSummary {
   order_date: string | null;
   contains_open_orders: boolean;
   has_shopify_match: boolean;
-  updated_date: string | null;
+  updated_at: string | null;  // Changed from updated_date to updated_at
 }
 
 const OrdersNeedingRefresh = () => {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>('updated_date');
+  const [sortField, setSortField] = useState<SortField>('updated_at');  // Changed from updated_date to updated_at
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
@@ -44,9 +44,10 @@ const OrdersNeedingRefresh = () => {
       setError(null);
       
       try {
+        // Using the correct table and column names based on the console error
         let query = supabase
           .from('hd_orders_with_status')
-          .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, has_shopify_match, updated_date')
+          .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, has_shopify_match, updated_at')
           .eq('contains_open_orders', true);
 
         query = query.order(sortField, { ascending: sortDirection === 'asc' });
@@ -135,9 +136,9 @@ const OrdersNeedingRefresh = () => {
                   <TableHead className="text-zinc-300">Has Shopify Match</TableHead>
                   <TableHead 
                     className="text-zinc-300 cursor-pointer select-none" 
-                    onClick={() => handleSort('updated_date')}
+                    onClick={() => handleSort('updated_at')}
                   >
-                    Last Refreshed {getSortIcon('updated_date')}
+                    Last Refreshed {getSortIcon('updated_at')}
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -167,8 +168,8 @@ const OrdersNeedingRefresh = () => {
                       {order.has_shopify_match ? "True" : ""}
                     </TableCell>
                     <TableCell className="text-zinc-300">
-                      {order.updated_date ? (
-                        <FormattedDate date={order.updated_date} />
+                      {order.updated_at ? (
+                        <FormattedDate date={order.updated_at} />
                       ) : (
                         'Never'
                       )}
