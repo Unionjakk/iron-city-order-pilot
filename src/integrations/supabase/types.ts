@@ -970,24 +970,6 @@ export type Database = {
         }
         Relationships: []
       }
-      track_order_usage: {
-        Row: {
-          created_date: string
-          id: string
-          shopify_order_number: string
-        }
-        Insert: {
-          created_date?: string
-          id?: string
-          shopify_order_number: string
-        }
-        Update: {
-          created_date?: string
-          id?: string
-          shopify_order_number?: string
-        }
-        Relationships: []
-      }
       track_shopify_order: {
         Row: {
           archive_status: string | null
@@ -1091,62 +1073,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "track_shopify_order_lines_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "track_shopify_order"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      track_shopify_refunded_lines: {
-        Row: {
-          admin_user: string | null
-          amount: number | null
-          created_at: string
-          currency_code: string | null
-          id: string
-          note: string | null
-          order_id: string
-          quantity: number
-          reason: string | null
-          refund_created_at: string
-          restock: boolean | null
-          shopify_line_item_id: string
-          shopify_refund_id: string
-        }
-        Insert: {
-          admin_user?: string | null
-          amount?: number | null
-          created_at?: string
-          currency_code?: string | null
-          id?: string
-          note?: string | null
-          order_id: string
-          quantity: number
-          reason?: string | null
-          refund_created_at: string
-          restock?: boolean | null
-          shopify_line_item_id: string
-          shopify_refund_id: string
-        }
-        Update: {
-          admin_user?: string | null
-          amount?: number | null
-          created_at?: string
-          currency_code?: string | null
-          id?: string
-          note?: string | null
-          order_id?: string
-          quantity?: number
-          reason?: string | null
-          refund_created_at?: string
-          restock?: boolean | null
-          shopify_line_item_id?: string
-          shopify_refund_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "track_shopify_refunded_lines_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "track_shopify_order"
@@ -1281,7 +1207,6 @@ export type Database = {
         Row: {
           contains_open_orders: boolean | null
           dealer_po_number: string | null
-          has_shopify_match: boolean | null
           hd_order_number: string | null
           order_date: string | null
           order_type: string | null
@@ -1650,7 +1575,6 @@ export type Database = {
           icop_updated_at: string | null
           is_backorder: boolean | null
           location_name: string | null
-          order_line_refunded: boolean | null
           progress: string | null
           quantity: number | null
           shopify_line_item_id: string | null
