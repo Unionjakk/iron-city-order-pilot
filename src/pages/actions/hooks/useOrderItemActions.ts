@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 // Define a specific type for the toast function to prevent deep type instantiation issues
 // This exact typing pattern should be preserved in future edits
 type ToastFunction = {
-  (props: { title: string; description: string }): void;
+  (props: { title: string; description: string; variant?: "default" | "destructive" }): void;
 };
 
 // IMPORTANT NAMING CONVENTION:

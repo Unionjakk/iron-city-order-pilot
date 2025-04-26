@@ -16,7 +16,6 @@ import { supabase } from '@/integrations/supabase/client';
 
 const ORDERS_SORT_FIELDS = {
   HD_ORDER_NUMBER: 'hd_order_number',
-  UPDATED_DATE: 'updated_date',
   ORDER_DATE: 'order_date',
   HAS_SHOPIFY_MATCH: 'has_shopify_match'
 } as const;
@@ -30,14 +29,14 @@ interface OrderSummary {
   order_date: string | null;
   contains_open_orders: boolean;
   has_shopify_match: boolean;
-  updated_date: string | null;
+  updated_at?: string | null; // Using updated_at instead of updated_date
 }
 
 const OrdersNeedingRefresh = () => {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>('updated_date');
+  const [sortField, setSortField] = useState<SortField>('hd_order_number');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
@@ -48,7 +47,7 @@ const OrdersNeedingRefresh = () => {
       try {
         let query = supabase
           .from('hd_orders_with_status')
-          .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, has_shopify_match, updated_date')
+          .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, has_shopify_match')
           .eq('contains_open_orders', true);
 
         query = query.order(sortField, { ascending: sortDirection === 'asc' });
@@ -145,12 +144,6 @@ const OrdersNeedingRefresh = () => {
                   >
                     Has Shopify Match {getSortIcon('has_shopify_match')}
                   </TableHead>
-                  <TableHead 
-                    className="text-zinc-300 cursor-pointer select-none" 
-                    onClick={() => handleSort('updated_date')}
-                  >
-                    Last Refreshed {getSortIcon('updated_date')}
-                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -177,13 +170,6 @@ const OrdersNeedingRefresh = () => {
                     </TableCell>
                     <TableCell className="text-zinc-300">
                       {formatShopifyMatch(order.has_shopify_match)}
-                    </TableCell>
-                    <TableCell className="text-zinc-300">
-                      {order.updated_date ? (
-                        <FormattedDate date={order.updated_date} />
-                      ) : (
-                        'Never'
-                      )}
                     </TableCell>
                   </TableRow>
                 ))}
