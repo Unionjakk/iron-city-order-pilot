@@ -5,7 +5,9 @@ import { useToast } from "@/hooks/use-toast";
 
 // Define a specific type for the toast function to prevent deep type instantiation issues
 // This exact typing pattern should be preserved in future edits
-type ToastFunction = ReturnType<typeof useToast>["toast"];
+type ToastFunction = {
+  (props: { title: string; description: string }): void;
+};
 
 // IMPORTANT NAMING CONVENTION:
 // Throughout the application, we use 'shopify_line_item_id' as the column name

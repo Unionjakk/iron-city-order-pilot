@@ -17,7 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 const ORDERS_SORT_FIELDS = {
   HD_ORDER_NUMBER: 'hd_order_number',
   UPDATED_DATE: 'updated_date',
-  ORDER_DATE: 'order_date'
+  ORDER_DATE: 'order_date',
+  HAS_SHOPIFY_MATCH: 'has_shopify_match'
 } as const;
 
 type SortField = typeof ORDERS_SORT_FIELDS[keyof typeof ORDERS_SORT_FIELDS];
@@ -28,6 +29,7 @@ interface OrderSummary {
   dealer_po_number: string | null;
   order_date: string | null;
   contains_open_orders: boolean;
+  has_shopify_match: boolean;
   updated_date: string | null;
 }
 
@@ -45,8 +47,8 @@ const OrdersNeedingRefresh = () => {
       
       try {
         let query = supabase
-          .from('hd_orders_status_summary')
-          .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, updated_date')
+          .from('hd_orders_with_status')
+          .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, has_shopify_match, updated_date')
           .eq('contains_open_orders', true);
 
         query = query.order(sortField, { ascending: sortDirection === 'asc' });
@@ -70,6 +72,11 @@ const OrdersNeedingRefresh = () => {
   const formatOpenOrdersStatus = (status: boolean | null) => {
     if (status === null) return "-";
     return status ? "Yes" : "No";
+  };
+
+  const formatShopifyMatch = (hasMatch: boolean | null) => {
+    if (hasMatch === null || !hasMatch) return "";
+    return "True";
   };
 
   const handleSort = (field: SortField) => {
@@ -133,6 +140,12 @@ const OrdersNeedingRefresh = () => {
                   </TableHead>
                   <TableHead className="text-zinc-300">Contains Open Orders</TableHead>
                   <TableHead 
+                    className="text-zinc-300 cursor-pointer select-none"
+                    onClick={() => handleSort('has_shopify_match')}
+                  >
+                    Has Shopify Match {getSortIcon('has_shopify_match')}
+                  </TableHead>
+                  <TableHead 
                     className="text-zinc-300 cursor-pointer select-none" 
                     onClick={() => handleSort('updated_date')}
                   >
@@ -161,6 +174,9 @@ const OrdersNeedingRefresh = () => {
                     </TableCell>
                     <TableCell className="text-zinc-300">
                       {formatOpenOrdersStatus(order.contains_open_orders)}
+                    </TableCell>
+                    <TableCell className="text-zinc-300">
+                      {formatShopifyMatch(order.has_shopify_match)}
                     </TableCell>
                     <TableCell className="text-zinc-300">
                       {order.updated_date ? (
