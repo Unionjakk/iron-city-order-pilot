@@ -1285,6 +1285,7 @@ export type Database = {
           hd_order_number: string | null
           order_date: string | null
           order_type: string | null
+          order_updated_at: string | null
         }
         Relationships: []
       }
