@@ -1,23 +1,10 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { PicklistOrderItem, PicklistOrder } from "../types/picklistTypes";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, Package, SplitIcon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useOrderItemActions } from "../hooks/useOrderItemActions";
+import { Button } from "@/components/ui/button";
+import { Package } from "lucide-react";
 
 interface DispatchOrderItemProps {
   item: PicklistOrderItem;
@@ -25,92 +12,13 @@ interface DispatchOrderItemProps {
   refreshData: () => void;
 }
 
-const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps) => {
-  // IMPORTANT: Extract toast function from useToast() hook to avoid typing issues
-  const { toast } = useToast();
-  const [processing, setProcessing] = useState<boolean>(false);
-  const [isDispatchDialogOpen, setIsDispatchDialogOpen] = useState<boolean>(false);
-  
-  // Pass toast function directly to the hook - this pattern prevents TS2589 errors
-  const { handleCopySku } = useOrderItemActions(item.sku || "No SKU", { toast });
-
-  const getStockColor = (inStock: boolean, quantity: number | null, orderQuantity: number): string => {
-    if (!inStock || quantity === null || quantity === 0) return "text-green-800";
-    if (quantity < orderQuantity) return "text-green-600";
-    return "text-green-500";
-  };
-
-  const getLocationColor = (inStock: boolean): string => {
-    return inStock ? "text-green-500" : "text-green-800";
-  };
-
-  const getCostColor = (inStock: boolean, cost: number | null): string => {
-    if (!inStock || cost === null) return "text-green-800";
-    return "text-green-500";
-  };
-
-  const handleDispatch = async () => {
-    setProcessing(true);
-    
-    try {
-      // CRITICAL: We use 'shopify_order_id' column in DB but it actually contains what we call 
-      // 'shopify_line_item_id' in our code - never change this column reference
-      const { error } = await supabase
-        .from('iron_city_order_progress')
-        .update({
-          progress: "Dispatched",
-          notes: (item.notes ? item.notes + " | " : "") + "Marked as dispatched: " + new Date().toISOString().slice(0, 10)
-        })
-        .eq('shopify_order_id', order.shopify_order_id)
-        .eq('sku', item.sku);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Item dispatched",
-        description: "Item has been marked as dispatched",
-      });
-      
-      refreshData();
-    } catch (error) {
-      let errorMessage = "An unknown error occurred";
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        try {
-          const errorString = String(error);
-          errorMessage = errorString;
-        } catch {
-          errorMessage = "Error details unavailable";
-        }
-      }
-      
-      toast({
-        title: "Update failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setProcessing(false);
-      setIsDispatchDialogOpen(false);
-    }
-  };
-
-  const isFullyPicked = (item.quantity_picked || 0) >= (item.quantity_required || item.quantity || 1);
-  
-  const isPartialPick = item.is_partial === true;
-
+const DispatchOrderItem = ({ item, order }: DispatchOrderItemProps) => {
   return (
     <>
       <TableRow className="hover:bg-zinc-800/30 border-t border-zinc-800/30">
         <TableCell className="font-mono text-zinc-300 pr-1">{item.sku || "No SKU"}</TableCell>
         <TableCell className="pl-1 text-emerald-500 flex items-center">
-          {isPartialPick ? (
-            <SplitIcon className="h-4 w-4 mr-2 text-amber-500" aria-label="Partial pick" />
-          ) : (
-            <CheckCircle className="h-4 w-4 mr-2 text-emerald-500" />
-          )}
+          <Package className="h-4 w-4 mr-2 text-emerald-500" />
           {item.title}
         </TableCell>
         <TableCell className="text-center">
@@ -119,54 +27,23 @@ const DispatchOrderItem = ({ item, order, refreshData }: DispatchOrderItemProps)
         <TableCell className="text-center">
           {item.price ? `£${item.price.toFixed(2)}` : "N/A"}
         </TableCell>
-        <TableCell className="text-center">
-          <span className={getStockColor(item.in_stock, item.stock_quantity, item.quantity)}>
-            {item.stock_quantity || 0}
-          </span>
+        <TableCell className="text-center text-zinc-300">
+          {item.stock_quantity || 0}
         </TableCell>
-        <TableCell>
-          <span className={getLocationColor(item.in_stock)}>
-            {item.bin_location || "N/A"}
-          </span>
+        <TableCell className="text-zinc-300">
+          {item.bin_location || "N/A"}
         </TableCell>
-        <TableCell>
-          <span className={getCostColor(item.in_stock, item.cost)}>
-            {item.in_stock && item.cost ? `£${item.cost.toFixed(2)}` : "N/A"}
-          </span>
+        <TableCell className="text-zinc-300">
+          {item.cost ? `£${item.cost.toFixed(2)}` : "N/A"}
         </TableCell>
         <TableCell>
           <Button 
-            onClick={() => setIsDispatchDialogOpen(true)}
-            disabled={processing}
+            disabled
             size="sm"
-            className="w-full bg-green-600 hover:bg-green-700 text-white"
+            className="w-full bg-zinc-700 text-zinc-400 cursor-not-allowed"
           >
-            {processing ? "Processing..." : "Dispatch"}
+            Dispatch
           </Button>
-          
-          <AlertDialog open={isDispatchDialogOpen} onOpenChange={setIsDispatchDialogOpen}>
-            <AlertDialogContent className="bg-zinc-900 border-zinc-700">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-orange-400">Dispatch Item?</AlertDialogTitle>
-                <AlertDialogDescription className="text-zinc-300">
-                  Are you sure you want to mark this item as dispatched?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel 
-                  className="bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
-                >
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={handleDispatch}
-                  className="bg-orange-500 text-white hover:bg-orange-600"
-                >
-                  Dispatch
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </TableCell>
       </TableRow>
       
