@@ -45,7 +45,7 @@ const OrdersNeedingRefresh = () => {
       
       try {
         let query = supabase
-          .from('hd_orders_status_summary')
+          .from('hd_orders_with_status')
           .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, has_shopify_match, updated_date')
           .eq('contains_open_orders', true);
 
