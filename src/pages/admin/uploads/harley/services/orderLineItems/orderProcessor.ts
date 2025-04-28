@@ -15,7 +15,7 @@ export const processOrderData = async (
   let processedCount = 0;
   let errorsCount = 0;
 
-  // Find the corresponding order to get its ID (without relying on foreign keys)
+  // Find the corresponding order to get its ID (without requiring it to exist)
   const { data: existingOrders, error: fetchError } = await supabase
     .from('hd_orders')
     .select('id')
@@ -28,13 +28,11 @@ export const processOrderData = async (
     return { replacedLineNumbers, processedCount, errorsCount };
   }
   
-  if (!existingOrders || existingOrders.length === 0) {
-    console.warn(`Order ${hdOrderNumber} not found in database. Skipping its line items.`);
-    errorsCount++;
-    return { replacedLineNumbers, processedCount, errorsCount };
+  // Get the order ID if it exists, but don't require it
+  const orderId = existingOrders?.[0]?.id;
+  if (!orderId) {
+    console.log(`Order ${hdOrderNumber} not found in database. Processing line items without order reference.`);
   }
-  
-  const orderId = existingOrders[0].id;
   
   // Fetch exclusions for this order
   const { data: exclusions, error: exclusionsError } = await supabase
@@ -65,7 +63,6 @@ export const processOrderData = async (
   existingLineItems?.forEach(item => existingLineNumbers.set(item.line_number, item.id));
   
   // First delete existing line items for THIS ORDER ONLY
-  // This ensures we're only replacing line items for the orders in the current file
   const { error: deleteError } = await supabase
     .from('hd_order_line_items')
     .delete()
@@ -77,7 +74,7 @@ export const processOrderData = async (
     return { replacedLineNumbers, processedCount, errorsCount };
   }
   
-  // Insert all the line items
+  // Process and insert each line item
   for (const item of lineItems) {
     const lineNumberStr = String(item.line_number);
     const partNumber = item.part_number || '';
@@ -95,14 +92,12 @@ export const processOrderData = async (
         String(item.order_date)) : 
       null;
     
-    // Process backorder fields if they exist in the order line item
     const backorderClearBy = item.backorder_clear_by ? 
       (item.backorder_clear_by instanceof Date ? 
         item.backorder_clear_by.toISOString().split('T')[0] : 
         String(item.backorder_clear_by)) : 
       null;
       
-    // Process invoice date if it exists
     const invoiceDate = item.invoice_date ? 
       (item.invoice_date instanceof Date ? 
         item.invoice_date.toISOString().split('T')[0] : 
@@ -111,22 +106,17 @@ export const processOrderData = async (
       
     const projectedShippingQuantity = item.projected_shipping_quantity || 0;
     
-    // Log dealer PO number and invoice info to debug
-    console.log(`Inserting line item with dealer PO number: ${item.dealer_po_number || 'NONE'}`);
-    console.log(`Invoice number: ${item.invoice_number || 'NONE'}, Invoice date: ${invoiceDate || 'NONE'}`);
-    
     if (existingLineNumbers.has(lineNumberStr)) {
       replacedLineNumbers.push(lineNumberStr);
     }
     
-    // Ensure dealer_po_number is explicitly set even if it's an empty string
     const dealerPoNumber = item.dealer_po_number || '';
     
-    // IMPORTANT: Always include both hd_order_id and hd_order_number to maintain proper relationship
+    // Insert line item with optional order_id
     const { error: insertError } = await supabase
       .from('hd_order_line_items')
       .insert({
-        hd_order_id: orderId,
+        ...(orderId ? { hd_order_id: orderId } : {}), // Only include if order exists
         hd_order_number: hdOrderNumber,
         line_number: lineNumberStr,
         part_number: partNumber,
@@ -157,18 +147,21 @@ export const processOrderData = async (
     console.log(`Replaced ${replacedLineNumbers.length} existing line items for order ${hdOrderNumber}: ${replacedLineNumbers.join(', ')}`);
   }
   
-  // Update the has_line_items flag for the order
-  const { error: updateError } = await supabase
-    .from('hd_orders')
-    .update({ has_line_items: true })
-    .eq('id', orderId);
-  
-  if (updateError) {
-    console.error(`Error updating has_line_items for order ${hdOrderNumber}:`, updateError);
-    errorsCount++;
+  // Only update the order if it exists
+  if (orderId) {
+    const { error: updateError } = await supabase
+      .from('hd_orders')
+      .update({ has_line_items: true })
+      .eq('id', orderId);
+    
+    if (updateError) {
+      console.error(`Error updating has_line_items for order ${hdOrderNumber}:`, updateError);
+      errorsCount++;
+    }
   }
   
   console.log(`Successfully processed ${lineItems.length} line items for order ${hdOrderNumber}`);
   
   return { replacedLineNumbers, processedCount, errorsCount };
 };
+

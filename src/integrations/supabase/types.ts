@@ -1214,6 +1214,32 @@ export type Database = {
         }
         Relationships: []
       }
+      hd_combined_distinct: {
+        Row: {
+          backorder_clear_by: string | null
+          customer_expected_date: string | null
+          dealer_po_number: string | null
+          description: string | null
+          expected_arrival_dealership: string | null
+          hd_order_number: string | null
+          hd_orderlinecombo: string | null
+          id: string | null
+          invoice_date: string | null
+          invoice_number: string | null
+          is_backorder: boolean | null
+          is_invoiced: boolean | null
+          line_number: string | null
+          open_quantity: number | null
+          order_date: string | null
+          order_quantity: number | null
+          part_number: string | null
+          price_totaled: number | null
+          status: string | null
+          unit_price: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       hd_dashboard_stats: {
         Row: {
           backorder_items: number | null
@@ -1482,6 +1508,7 @@ export type Database = {
           hd_orderlinecombo: string | null
           hdc_backorder_clear: string | null
           hdc_customer_expected: string | null
+          hdc_invoice_date: string | null
           hdc_is_backorder: boolean | null
           hdc_status: string | null
           id: string | null
@@ -1502,6 +1529,7 @@ export type Database = {
           pinnacle_more_than_one_match: boolean | null
           pinnacle_part_number: string | null
           pinnacle_stock_quantity: number | null
+          predicted_dealership_arrival: string | null
           price: number | null
           price_ex_vat: number | null
           quantity: number | null
@@ -1520,6 +1548,7 @@ export type Database = {
           hd_orderlinecombo?: string | null
           hdc_backorder_clear?: never
           hdc_customer_expected?: never
+          hdc_invoice_date?: never
           hdc_is_backorder?: never
           hdc_status?: never
           id?: string | null
@@ -1540,6 +1569,7 @@ export type Database = {
           pinnacle_more_than_one_match?: boolean | null
           pinnacle_part_number?: string | null
           pinnacle_stock_quantity?: number | null
+          predicted_dealership_arrival?: never
           price?: number | null
           price_ex_vat?: number | null
           quantity?: number | null
@@ -1558,6 +1588,7 @@ export type Database = {
           hd_orderlinecombo?: string | null
           hdc_backorder_clear?: never
           hdc_customer_expected?: never
+          hdc_invoice_date?: never
           hdc_is_backorder?: never
           hdc_status?: never
           id?: string | null
@@ -1578,6 +1609,7 @@ export type Database = {
           pinnacle_more_than_one_match?: boolean | null
           pinnacle_part_number?: string | null
           pinnacle_stock_quantity?: number | null
+          predicted_dealership_arrival?: never
           price?: number | null
           price_ex_vat?: number | null
           quantity?: number | null
@@ -1643,6 +1675,9 @@ export type Database = {
         Row: {
           archive_status: string | null
           backorder_clear_by: string | null
+          backorder_notified_date: string | null
+          backorder_public_note: string | null
+          backorder_response_date: string | null
           customer_email: string | null
           customer_expected_date: string | null
           customer_name: string | null
