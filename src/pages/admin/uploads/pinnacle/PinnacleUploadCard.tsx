@@ -50,9 +50,12 @@ const PinnacleUploadCard = ({
       const formData = new FormData();
       formData.append('file', file);
       
-      // Use the Supabase Edge Function endpoint
+      // Use the Supabase Edge Function endpoint with proper authorization header
       const response = await fetch('https://hbmismnzmocjazaiicdu.supabase.co/functions/v1/pinnacle-upload', {
         method: 'POST',
+        headers: {
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhibWlzbW56bW9jamF6YWlpY2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyNjk1MDcsImV4cCI6MjA1OTg0NTUwN30.gnCYxUmbL0nZMmmiZp641fkEjv7bbitUNIFK2LMjMXE',
+        },
         body: formData,
       });
       
