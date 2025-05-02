@@ -1623,6 +1623,183 @@ export type Database = {
         }
         Relationships: []
       }
+      iron_city_orders_with_hd_data_backorders: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_response_date: string | null
+          dealer_po_number: string | null
+          hd_orderlinecombo: string | null
+          hdc_backorder_clear: string | null
+          hdc_customer_expected: string | null
+          hdc_invoice_date: string | null
+          hdc_is_backorder: boolean | null
+          hdc_status: string | null
+          id: string | null
+          iron_anyaction: boolean | null
+          iron_created: string | null
+          iron_cust_expected_date: string | null
+          iron_last_updated: string | null
+          iron_notes: string | null
+          iron_order_quantity: number | null
+          iron_picked_quantity: number | null
+          iron_progress: string | null
+          notified_date: string | null
+          order_id: string | null
+          orders_with_backorders: boolean | null
+          orders_with_notification: boolean | null
+          pinnacle_bin_location: string | null
+          pinnacle_close_match: boolean | null
+          pinnacle_cost: number | null
+          pinnacle_description: string | null
+          pinnacle_exact_match: boolean | null
+          pinnacle_more_than_one_match: boolean | null
+          pinnacle_part_number: string | null
+          pinnacle_stock_quantity: number | null
+          predicted_dealership_arrival: string | null
+          price: number | null
+          price_ex_vat: number | null
+          public_note: string | null
+          quantity: number | null
+          quantity_exceeds_picked: boolean | null
+          shopify_line_item_id: string | null
+          shopify_notes: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          snapshot_date: string | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_response_date?: never
+          dealer_po_number?: never
+          hd_orderlinecombo?: string | null
+          hdc_backorder_clear?: never
+          hdc_customer_expected?: never
+          hdc_invoice_date?: never
+          hdc_is_backorder?: never
+          hdc_status?: never
+          id?: string | null
+          iron_anyaction?: boolean | null
+          iron_created?: string | null
+          iron_cust_expected_date?: never
+          iron_last_updated?: string | null
+          iron_notes?: string | null
+          iron_order_quantity?: number | null
+          iron_picked_quantity?: number | null
+          iron_progress?: string | null
+          notified_date?: never
+          order_id?: string | null
+          orders_with_backorders?: never
+          orders_with_notification?: never
+          pinnacle_bin_location?: string | null
+          pinnacle_close_match?: boolean | null
+          pinnacle_cost?: number | null
+          pinnacle_description?: string | null
+          pinnacle_exact_match?: boolean | null
+          pinnacle_more_than_one_match?: boolean | null
+          pinnacle_part_number?: string | null
+          pinnacle_stock_quantity?: number | null
+          predicted_dealership_arrival?: never
+          price?: number | null
+          price_ex_vat?: number | null
+          public_note?: never
+          quantity?: number | null
+          quantity_exceeds_picked?: boolean | null
+          shopify_line_item_id?: string | null
+          shopify_notes?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          snapshot_date?: string | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_response_date?: never
+          dealer_po_number?: never
+          hd_orderlinecombo?: string | null
+          hdc_backorder_clear?: never
+          hdc_customer_expected?: never
+          hdc_invoice_date?: never
+          hdc_is_backorder?: never
+          hdc_status?: never
+          id?: string | null
+          iron_anyaction?: boolean | null
+          iron_created?: string | null
+          iron_cust_expected_date?: never
+          iron_last_updated?: string | null
+          iron_notes?: string | null
+          iron_order_quantity?: number | null
+          iron_picked_quantity?: number | null
+          iron_progress?: string | null
+          notified_date?: never
+          order_id?: string | null
+          orders_with_backorders?: never
+          orders_with_notification?: never
+          pinnacle_bin_location?: string | null
+          pinnacle_close_match?: boolean | null
+          pinnacle_cost?: number | null
+          pinnacle_description?: string | null
+          pinnacle_exact_match?: boolean | null
+          pinnacle_more_than_one_match?: boolean | null
+          pinnacle_part_number?: string | null
+          pinnacle_stock_quantity?: number | null
+          predicted_dealership_arrival?: never
+          price?: number | null
+          price_ex_vat?: number | null
+          public_note?: never
+          quantity?: number | null
+          quantity_exceeds_picked?: boolean | null
+          shopify_line_item_id?: string | null
+          shopify_notes?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          snapshot_date?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
+      iron_city_orders_with_hd_data_backorders_disp: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          order_id: string | null
+          shopify_order_number: string | null
+        }
+        Relationships: []
+      }
+      iron_city_orders_with_hd_data_backorders_or: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          order_id: string | null
+          shopify_order_number: string | null
+        }
+        Relationships: []
+      }
+      iron_city_orders_with_hd_data_backorders_pk: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          order_id: string | null
+          shopify_order_number: string | null
+        }
+        Relationships: []
+      }
+      iron_city_orders_with_hd_data_backorders_tp: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          order_id: string | null
+          shopify_order_number: string | null
+        }
+        Relationships: []
+      }
       iron_city_picked_view: {
         Row: {
           customer_email: string | null

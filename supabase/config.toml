@@ -42,6 +42,9 @@ enable_libsql = false
 [functions]
 strict_get_region_invocation = true
 
+[functions.pinnacle-upload]
+verify_jwt = false
+
 [functions.shopify-sync]
 verify_jwt = false
 
