@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { 
   Table, 
@@ -16,9 +17,8 @@ const ORDERS_SORT_FIELDS = {
   HD_ORDER_NUMBER: 'hd_order_number',
   DEALER_PO_NUMBER: 'dealer_po_number',
   ORDER_DATE: 'order_date',
-  CONTAINS_OPEN_ORDERS: 'contains_open_orders',
   HAS_SHOPIFY_MATCH: 'has_shopify_match',
-  ORDER_UPDATED_AT: 'order_updated_at'
+  LAST_REFRESHED: 'last_refreshed'
 } as const;
 
 type SortField = typeof ORDERS_SORT_FIELDS[keyof typeof ORDERS_SORT_FIELDS];
@@ -28,16 +28,15 @@ interface OrderSummary {
   hd_order_number: string;
   dealer_po_number: string | null;
   order_date: string | null;
-  contains_open_orders: boolean;
   has_shopify_match: boolean | null;
-  order_updated_at: string | null;
+  last_refreshed: string | null;
 }
 
 const OrdersNeedingRefresh = () => {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>('order_updated_at');
+  const [sortField, setSortField] = useState<SortField>('last_refreshed');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
@@ -47,9 +46,8 @@ const OrdersNeedingRefresh = () => {
       
       try {
         let query = supabase
-          .from('hd_orders_with_status')
-          .select('hd_order_number, dealer_po_number, order_date, contains_open_orders, has_shopify_match, order_updated_at')
-          .eq('contains_open_orders', true);
+          .from('hd_orders_with_status_pivot_view')
+          .select('hd_order_number, dealer_po_number, order_date, has_shopify_match, last_refreshed');
 
         query = query.order(sortField, { ascending: sortDirection === 'asc' });
 
@@ -68,11 +66,6 @@ const OrdersNeedingRefresh = () => {
 
     fetchOrderSummary();
   }, [sortField, sortDirection]);
-
-  const formatOpenOrdersStatus = (status: boolean | null) => {
-    if (status === null) return "-";
-    return status ? "Yes" : "No";
-  };
 
   const formatShopifyMatch = (status: boolean | null) => {
     if (!status) return "";
@@ -145,21 +138,15 @@ const OrdersNeedingRefresh = () => {
                   </TableHead>
                   <TableHead 
                     className="text-zinc-300 cursor-pointer select-none"
-                    onClick={() => handleSort('contains_open_orders')}
-                  >
-                    Contains Open Orders {getSortIcon('contains_open_orders')}
-                  </TableHead>
-                  <TableHead 
-                    className="text-zinc-300 cursor-pointer select-none"
                     onClick={() => handleSort('has_shopify_match')}
                   >
                     Has Shopify Match {getSortIcon('has_shopify_match')}
                   </TableHead>
                   <TableHead 
                     className="text-zinc-300 cursor-pointer select-none" 
-                    onClick={() => handleSort('order_updated_at')}
+                    onClick={() => handleSort('last_refreshed')}
                   >
-                    Last Refreshed {getSortIcon('order_updated_at')}
+                    Last Refreshed {getSortIcon('last_refreshed')}
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -183,14 +170,11 @@ const OrdersNeedingRefresh = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-zinc-300">
-                      {formatOpenOrdersStatus(order.contains_open_orders)}
-                    </TableCell>
-                    <TableCell className="text-zinc-300">
                       {formatShopifyMatch(order.has_shopify_match)}
                     </TableCell>
                     <TableCell className="text-zinc-300">
-                      {order.order_updated_at ? (
-                        <FormattedDate date={order.order_updated_at} />
+                      {order.last_refreshed ? (
+                        <FormattedDate date={order.last_refreshed} />
                       ) : (
                         'Never'
                       )}

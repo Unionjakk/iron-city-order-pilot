@@ -390,6 +390,54 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_imported_shopify_data: {
+        Row: {
+          archive_status: string | null
+          created_at: string | null
+          customer_country: string | null
+          fulfillment_status: string | null
+          id: string
+          paid: number | null
+          payout: number | null
+          pinnacle_invoiced: boolean | null
+          shipping: number | null
+          shopify_order_id: string
+          shopify_status: string | null
+          updated_at: string | null
+          vat: number | null
+        }
+        Insert: {
+          archive_status?: string | null
+          created_at?: string | null
+          customer_country?: string | null
+          fulfillment_status?: string | null
+          id?: string
+          paid?: number | null
+          payout?: number | null
+          pinnacle_invoiced?: boolean | null
+          shipping?: number | null
+          shopify_order_id: string
+          shopify_status?: string | null
+          updated_at?: string | null
+          vat?: number | null
+        }
+        Update: {
+          archive_status?: string | null
+          created_at?: string | null
+          customer_country?: string | null
+          fulfillment_status?: string | null
+          id?: string
+          paid?: number | null
+          payout?: number | null
+          pinnacle_invoiced?: boolean | null
+          shipping?: number | null
+          shopify_order_id?: string
+          shopify_status?: string | null
+          updated_at?: string | null
+          vat?: number | null
+        }
+        Relationships: []
+      }
       iron_city_new_orders_table: {
         Row: {
           created_at: string | null
@@ -1240,6 +1288,32 @@ export type Database = {
         }
         Relationships: []
       }
+      hd_combined_for_phil: {
+        Row: {
+          backorder_clear_by: string | null
+          customer_expected_date: string | null
+          dealer_po_number: string | null
+          description: string | null
+          expected_arrival_dealership: string | null
+          hd_order_number: string | null
+          hd_orderlinecombo: string | null
+          id: string | null
+          invoice_date: string | null
+          invoice_number: string | null
+          is_backorder: boolean | null
+          is_invoiced: boolean | null
+          line_number: string | null
+          open_quantity: number | null
+          order_date: string | null
+          order_quantity: number | null
+          part_number: string | null
+          price_totaled: number | null
+          status: string | null
+          unit_price: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       hd_dashboard_stats: {
         Row: {
           backorder_items: number | null
@@ -1312,6 +1386,74 @@ export type Database = {
           order_date: string | null
           order_type: string | null
           order_updated_at: string | null
+        }
+        Relationships: []
+      }
+      hd_orders_with_status_pivot_view: {
+        Row: {
+          dealer_po_number: string | null
+          has_shopify_match: boolean | null
+          hd_order_number: string | null
+          last_refreshed: string | null
+          order_date: string | null
+        }
+        Relationships: []
+      }
+      invoice_completed_flag_all_rows: {
+        Row: {
+          all_rows_complete: boolean | null
+          completed_line_items: number | null
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          hd_orderlinecombo: string | null
+          id: string | null
+          iron_anyaction: boolean | null
+          iron_created: string | null
+          iron_last_updated: string | null
+          iron_notes: string | null
+          iron_order_quantity: number | null
+          iron_picked_quantity: number | null
+          iron_progress: string | null
+          order_id: string | null
+          pinnacle_bin_location: string | null
+          pinnacle_close_match: boolean | null
+          pinnacle_cost: number | null
+          pinnacle_description: string | null
+          pinnacle_exact_match: boolean | null
+          pinnacle_more_than_one_match: boolean | null
+          pinnacle_part_number: string | null
+          pinnacle_stock_quantity: number | null
+          price: number | null
+          price_ex_vat: number | null
+          quantity: number | null
+          quantity_exceeds_picked: boolean | null
+          shopify_line_item_id: string | null
+          shopify_notes: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          snapshot_date: string | null
+          title: string | null
+          total_line_items: number | null
+        }
+        Relationships: []
+      }
+      invoice_completed_flag_pivot: {
+        Row: {
+          archive_status: string | null
+          created_at: string | null
+          customer_country: string | null
+          fulfillment_status: string | null
+          has_imported_data: boolean | null
+          paid: number | null
+          payout: number | null
+          pinnacle_invoiced: boolean | null
+          shipping: number | null
+          shopify_order_id: string | null
+          shopify_order_number: string | null
+          shopify_status: string | null
+          updated_at: string | null
+          vat: number | null
         }
         Relationships: []
       }
@@ -1403,6 +1545,134 @@ export type Database = {
           shopify_order_number: string | null
           sku: string | null
           title: string | null
+        }
+        Relationships: []
+      }
+      iron_city_dispatch_complete_view_true: {
+        Row: {
+          all_items_same_staus: boolean | null
+          all_orderline_count: number | null
+          customer_email: string | null
+          customer_name: string | null
+          is_full_order_check: boolean | null
+          not_full_contains_complete: boolean | null
+          "Order Date": string | null
+          order_id: string | null
+          potential_cancelled: boolean | null
+          progress: string | null
+          progress_orderline_count: number | null
+          quantity: number | null
+          quantity_picked: number | null
+          ready_and_complete: boolean | null
+          shopify_line_item_id: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
+      iron_city_new_orders_with_total_picked: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          hd_orderlinecombo: string | null
+          id: string | null
+          iron_anyaction: boolean | null
+          iron_created: string | null
+          iron_last_updated: string | null
+          iron_notes: string | null
+          iron_order_quantity: number | null
+          iron_picked_quantity: number | null
+          iron_progress: string | null
+          order_id: string | null
+          pinnacle_bin_location: string | null
+          pinnacle_close_match: boolean | null
+          pinnacle_cost: number | null
+          pinnacle_description: string | null
+          pinnacle_exact_match: boolean | null
+          pinnacle_more_than_one_match: boolean | null
+          pinnacle_part_number: string | null
+          pinnacle_stock_quantity: number | null
+          price: number | null
+          price_ex_vat: number | null
+          quantity: number | null
+          quantity_exceeds_picked: boolean | null
+          shopify_line_item_id: string | null
+          shopify_notes: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          snapshot_date: string | null
+          title: string | null
+          total_quantity_picked: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          hd_orderlinecombo?: string | null
+          id?: string | null
+          iron_anyaction?: boolean | null
+          iron_created?: string | null
+          iron_last_updated?: string | null
+          iron_notes?: string | null
+          iron_order_quantity?: number | null
+          iron_picked_quantity?: number | null
+          iron_progress?: string | null
+          order_id?: string | null
+          pinnacle_bin_location?: string | null
+          pinnacle_close_match?: boolean | null
+          pinnacle_cost?: number | null
+          pinnacle_description?: string | null
+          pinnacle_exact_match?: boolean | null
+          pinnacle_more_than_one_match?: boolean | null
+          pinnacle_part_number?: string | null
+          pinnacle_stock_quantity?: number | null
+          price?: number | null
+          price_ex_vat?: number | null
+          quantity?: number | null
+          quantity_exceeds_picked?: boolean | null
+          shopify_line_item_id?: string | null
+          shopify_notes?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          snapshot_date?: string | null
+          title?: string | null
+          total_quantity_picked?: never
+        }
+        Update: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          hd_orderlinecombo?: string | null
+          id?: string | null
+          iron_anyaction?: boolean | null
+          iron_created?: string | null
+          iron_last_updated?: string | null
+          iron_notes?: string | null
+          iron_order_quantity?: number | null
+          iron_picked_quantity?: number | null
+          iron_progress?: string | null
+          order_id?: string | null
+          pinnacle_bin_location?: string | null
+          pinnacle_close_match?: boolean | null
+          pinnacle_cost?: number | null
+          pinnacle_description?: string | null
+          pinnacle_exact_match?: boolean | null
+          pinnacle_more_than_one_match?: boolean | null
+          pinnacle_part_number?: string | null
+          pinnacle_stock_quantity?: number | null
+          price?: number | null
+          price_ex_vat?: number | null
+          quantity?: number | null
+          quantity_exceeds_picked?: boolean | null
+          shopify_line_item_id?: string | null
+          shopify_notes?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          snapshot_date?: string | null
+          title?: string | null
+          total_quantity_picked?: never
         }
         Relationships: []
       }
@@ -1800,6 +2070,118 @@ export type Database = {
         }
         Relationships: []
       }
+      iron_city_orders_with_total_picked: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          hd_orderlinecombo: string | null
+          id: string | null
+          iron_anyaction: boolean | null
+          iron_created: string | null
+          iron_last_updated: string | null
+          iron_notes: string | null
+          iron_order_quantity: number | null
+          iron_picked_quantity: number | null
+          iron_progress: string | null
+          order_id: string | null
+          pinnacle_bin_location: string | null
+          pinnacle_close_match: boolean | null
+          pinnacle_cost: number | null
+          pinnacle_description: string | null
+          pinnacle_exact_match: boolean | null
+          pinnacle_more_than_one_match: boolean | null
+          pinnacle_part_number: string | null
+          pinnacle_stock_quantity: number | null
+          price: number | null
+          price_ex_vat: number | null
+          quantity: number | null
+          quantity_exceeds_picked: boolean | null
+          shopify_line_item_id: string | null
+          shopify_notes: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          snapshot_date: string | null
+          title: string | null
+          total_quantity_picked: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          hd_orderlinecombo?: string | null
+          id?: string | null
+          iron_anyaction?: boolean | null
+          iron_created?: string | null
+          iron_last_updated?: string | null
+          iron_notes?: string | null
+          iron_order_quantity?: number | null
+          iron_picked_quantity?: number | null
+          iron_progress?: string | null
+          order_id?: string | null
+          pinnacle_bin_location?: string | null
+          pinnacle_close_match?: boolean | null
+          pinnacle_cost?: number | null
+          pinnacle_description?: string | null
+          pinnacle_exact_match?: boolean | null
+          pinnacle_more_than_one_match?: boolean | null
+          pinnacle_part_number?: string | null
+          pinnacle_stock_quantity?: number | null
+          price?: number | null
+          price_ex_vat?: number | null
+          quantity?: number | null
+          quantity_exceeds_picked?: boolean | null
+          shopify_line_item_id?: string | null
+          shopify_notes?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          snapshot_date?: string | null
+          title?: string | null
+          total_quantity_picked?: never
+        }
+        Update: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          hd_orderlinecombo?: string | null
+          id?: string | null
+          iron_anyaction?: boolean | null
+          iron_created?: string | null
+          iron_last_updated?: string | null
+          iron_notes?: string | null
+          iron_order_quantity?: number | null
+          iron_picked_quantity?: number | null
+          iron_progress?: string | null
+          order_id?: string | null
+          pinnacle_bin_location?: string | null
+          pinnacle_close_match?: boolean | null
+          pinnacle_cost?: number | null
+          pinnacle_description?: string | null
+          pinnacle_exact_match?: boolean | null
+          pinnacle_more_than_one_match?: boolean | null
+          pinnacle_part_number?: string | null
+          pinnacle_stock_quantity?: number | null
+          price?: number | null
+          price_ex_vat?: number | null
+          quantity?: number | null
+          quantity_exceeds_picked?: boolean | null
+          shopify_line_item_id?: string | null
+          shopify_notes?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          snapshot_date?: string | null
+          title?: string | null
+          total_quantity_picked?: never
+        }
+        Relationships: []
+      }
+      iron_city_picked_sku_pivot_view: {
+        Row: {
+          pinnacle_sku_matched: string | null
+          total_quantity_picked: number | null
+        }
+        Relationships: []
+      }
       iron_city_picked_view: {
         Row: {
           customer_email: string | null
@@ -1818,6 +2200,63 @@ export type Database = {
           sku: string | null
           status: string | null
           title: string | null
+        }
+        Relationships: []
+      }
+      iron_city_to_order_view: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          iron_notes: string | null
+          iron_progress: string | null
+          order_id: string | null
+          pinnacle_bin_location: string | null
+          pinnacle_cost: number | null
+          pinnacle_stock_quantity: number | null
+          price: number | null
+          price_ex_vat: number | null
+          quantity: number | null
+          shopify_line_item_id: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          iron_notes?: string | null
+          iron_progress?: string | null
+          order_id?: string | null
+          pinnacle_bin_location?: string | null
+          pinnacle_cost?: number | null
+          pinnacle_stock_quantity?: number | null
+          price?: number | null
+          price_ex_vat?: number | null
+          quantity?: number | null
+          shopify_line_item_id?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          iron_notes?: string | null
+          iron_progress?: string | null
+          order_id?: string | null
+          pinnacle_bin_location?: string | null
+          pinnacle_cost?: number | null
+          pinnacle_stock_quantity?: number | null
+          price?: number | null
+          price_ex_vat?: number | null
+          quantity?: number | null
+          shopify_line_item_id?: string | null
+          shopify_order_number?: string | null
+          sku?: string | null
+          title?: string | null
         }
         Relationships: []
       }
@@ -1914,6 +2353,29 @@ export type Database = {
         Args: { sql: string }
         Returns: Json[]
       }
+      get_all_dispatch_complete_items: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          all_items_same_staus: boolean | null
+          all_orderline_count: number | null
+          customer_email: string | null
+          customer_name: string | null
+          is_full_order_check: boolean | null
+          not_full_contains_complete: boolean | null
+          "Order Date": string | null
+          order_id: string | null
+          potential_cancelled: boolean | null
+          progress: string | null
+          progress_orderline_count: number | null
+          quantity: number | null
+          quantity_picked: number | null
+          ready_and_complete: boolean | null
+          shopify_line_item_id: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          title: string | null
+        }[]
+      }
       get_archived_shopify_orders: {
         Args: { limit_count: number }
         Returns: {
@@ -1937,6 +2399,29 @@ export type Database = {
       get_dashboard_stats: {
         Args: { stats_type_param: string }
         Returns: Json
+      }
+      get_dispatch_complete_items_by_order_number: {
+        Args: { search_term: string }
+        Returns: {
+          all_items_same_staus: boolean | null
+          all_orderline_count: number | null
+          customer_email: string | null
+          customer_name: string | null
+          is_full_order_check: boolean | null
+          not_full_contains_complete: boolean | null
+          "Order Date": string | null
+          order_id: string | null
+          potential_cancelled: boolean | null
+          progress: string | null
+          progress_orderline_count: number | null
+          quantity: number | null
+          quantity_picked: number | null
+          ready_and_complete: boolean | null
+          shopify_line_item_id: string | null
+          shopify_order_number: string | null
+          sku: string | null
+          title: string | null
+        }[]
       }
       get_hd_stats: {
         Args: Record<PropertyKey, never>
